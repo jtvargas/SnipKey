@@ -12,7 +12,7 @@ import SwiftData
 struct SnipKeyApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            SnippetItem.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -25,7 +25,7 @@ struct SnipKeyApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            SnippetView()
         }
         .modelContainer(sharedModelContainer)
     }
