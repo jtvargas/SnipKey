@@ -25,8 +25,9 @@ struct SnipKeyApp: App {
 
     var body: some Scene {
         WindowGroup {
-            SnippetView()
+            SnippetView(modelContext: sharedModelContainer.mainContext)
         }
         .modelContainer(sharedModelContainer)
     }
 }
+
