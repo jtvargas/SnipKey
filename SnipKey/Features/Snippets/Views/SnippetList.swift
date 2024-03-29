@@ -7,27 +7,25 @@
 
 import SwiftUI
 
-
 struct SnippetList: View {
-    let items: [SnippetItem]
-    var onDeleteHandler: (_: IndexSet) -> Void
+  let items: [SnippetItem]
+  var onDeleteHandler: (_: IndexSet) -> Void
 
-    
-    func test() -> Void {
-        print("hello world")
-    }
-    
-    var body: some View {
-        List {
-            ForEach(items, id: \.self.id) { item in
-                NavigationLink(destination: SnippetViewDetail()){
-                    SnippetListItem(item: item)
-                }
-            }
-            .onDelete(perform: { indexSet in
-                self.onDeleteHandler(indexSet)
-            })
+  func test() {
+    print("hello world")
+  }
+
+  var body: some View {
+    List {
+      ForEach(items, id: \.self.id) { item in
+        NavigationLink(destination: SnippetViewDetail()) {
+          SnippetListItem(item: item)
         }
+        .listRowBackground(Color.customSecondary)
+      }
+      .onDelete(perform: { indexSet in
+        self.onDeleteHandler(indexSet)
+      })
     }
+  }
 }
-
