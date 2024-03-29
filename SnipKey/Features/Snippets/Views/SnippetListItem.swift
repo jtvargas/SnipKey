@@ -32,7 +32,9 @@ struct SnippetListItem: View {
                 Text("Item at \(item.title)")
                     .bold()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.headline)
+                    .tint(Color.black)
+                    .bold()
+                    .font(.custom("IBMPlexMono-Medium", size: 16))
                 
                 Text("#TAG: \(item.tag)")
                     .frame(maxWidth: .infinity, alignment: .leading)

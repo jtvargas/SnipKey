@@ -41,8 +41,8 @@ struct SnippetView: View {
                         Button(action: toggleFormModal) {
                             Label("Add Item", systemImage: "plus")
                         }.sheet(isPresented: $isPresented) { // Passing the state to the sheet API
-                            SnippetForm(onClosePress: toggleFormModal, onSavePress: handleOnSavePress)
-                                .interactiveDismissDisabled()
+                                SnippetForm(onClosePress: toggleFormModal, onSavePress: handleOnSavePress)
+                                    .interactiveDismissDisabled()
                         }
                     }
                 }

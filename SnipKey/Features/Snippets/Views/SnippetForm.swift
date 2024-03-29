@@ -23,10 +23,10 @@ struct CustomRadioButtonGroup<T: Hashable>: View {
                     VStack {
                         SnippetImage(type: item as! SnipType)
                         Text(self.labels[item] ?? "")
-                            .foregroundColor(selection == item ? Color.customAccent : .gray)
+                            .foregroundColor(selection == item ? Color.black : .gray)
                         if selection == item {
                             Circle()
-                                .fill(Color.customAccent)
+                                .fill(Color.black)
                                 .frame(width: 10, height: 10)
                         } else {
                             Circle()
@@ -40,10 +40,9 @@ struct CustomRadioButtonGroup<T: Hashable>: View {
                     
                 }
                 .buttonStyle(PlainButtonStyle())
-                .cornerRadius(20) /// make the background rounded
                 .overlay( /// apply a rounded border
-                    selection == item ? RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.customAccent, lineWidth: 3) : nil
+                    selection == item ? RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.black, lineWidth: 2) : nil
                 )
                 
                 
@@ -66,42 +65,53 @@ func imageForTag(_ tag: Tags) -> String {
 }
 
 struct SnippetForm: View {
+    enum Field {
+        case snippetTitle
+        case snippetContent
+    }
+    
     var onClosePress: () -> Void
     var onSavePress: (_ title: String, _ content: String, _ tag: Tags, _ option: SnipType) -> Void
     @State private var snippetTitle: String = ""
     @State private var selectedTag: Tags = .none
     @State private var snippetContent: String = ""
     @State private var selectedOption: SnipType = .txt
-    @FocusState var isInputActive: Bool
-
+    @FocusState private var focusedField: Field?
+    
     let options: [SnipType] = [.txt, .url]
     let labels: [SnipType: String] = [.txt: "text", .url: "url"]
     
     var body: some View {
         NavigationStack {
             Form {
-                
                 Section(header: Text("snippet type")){
                     CustomRadioButtonGroup(items:options, selection: $selectedOption, labels: labels)
                     
                 }
+                .listRowBackground(EmptyView().background(Color.customSecondary))
                 
                 Section(header: Text("snippet title")) {
                     TextField("Title", text: $snippetTitle)
                         .disableAutocorrection(true)
-                        .focused($isInputActive)
+                        .focused($focusedField, equals: .snippetTitle)
+                        .submitLabel(.next)
                     
                 }
+                .listRowBackground(EmptyView().background(Color.customSecondary))
+                
+                
+                
                 Section(header: Text("snippet content")) {
                     TextField("Content", text: $snippetContent, axis: .vertical)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .lineLimit(5...10)
-                        .focused($isInputActive)
+                        .focused($focusedField, equals: .snippetContent)
+                        .submitLabel(.return)
                 }
+                .listRowBackground(EmptyView().background(Color.customSecondary))
                 
-                
-                Section(header: Text("tag")){
+                Section(header: Text("tag"), footer:  Label("Categorize your snippets for easy access", systemImage: "questionmark.circle")){
                     Picker(selection: $selectedTag, label: Image(systemName: "tag.fill")) {
                         ForEach(Tags.allCases, id: \.id) { tag in
                             HStack {
@@ -119,27 +129,55 @@ struct SnippetForm: View {
                         impactMed.impactOccurred()
                     }
                 }
+                .listRowBackground(EmptyView().background(Color.customSecondary))
+                
             }
-            .navigationTitle("Snippet Form")
+            .onAppear {
+                self.focusedField = .snippetTitle
+            }
+            .onSubmit {
+                switch focusedField {
+                case .snippetTitle:
+                    focusedField = .snippetContent
+                default:
+                    print("SnippetContent")
+                }
+            }
+            .navigationTitle("Snippet")
+            .font(.custom("IBMPlexMono-Bold", size: 14))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     
                     Button("Done") {
-                        isInputActive = false
+                        //                        isInputActive = false
+                        focusedField = nil
                     }
-                }
+                    .font(.custom("IBMPlexMono-Bold", size: 14))
+                    .tint(Color.black)
+                    .background(Color.customSecondary)
+                    .cornerRadius(40)                }
+                
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: self.onClosePress) {
                         Text("Close")
+                            .tint(Color.black)
+                            .bold()
+                            .underline()
+                            .font(.custom("IBMPlexMono-Medium", size: 15))
                     }
                 }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: {
                         self.onSavePress(snippetTitle, snippetContent, selectedTag, selectedOption)
                     }) {
                         Text("Save")
+                            .tint(Color.black)
+                            .bold()
+                            .underline()
+                            .font(.custom("IBMPlexMono-Medium", size: 15))
                     }
                     .disabled(snippetTitle.isEmpty || snippetContent.isEmpty)
                 }

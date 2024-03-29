@@ -22,6 +22,10 @@
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
 		06F4F2FA2BB5F3BD00399C78 /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F92BB5F3BD00399C78 /* Strings.swift */; };
+		06F4F3092BB6270F00399C78 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */; };
+		06F4F30D2BB6270F00399C78 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FF2BB6270E00399C78 /* IBMPlexMono-Medium.ttf */; };
+		06F4F3102BB6270F00399C78 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F3022BB6270E00399C78 /* IBMPlexMono-SemiBold.ttf */; };
+		06F4F3122BB6270F00399C78 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F3042BB6270E00399C78 /* IBMPlexMono-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +64,11 @@
 		06EA76932BB4DED000E3E1F0 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetForm.swift; sourceTree = "<group>"; };
 		06F4F2F92BB5F3BD00399C78 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
+		06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Bold.ttf"; sourceTree = "<group>"; };
+		06F4F2FF2BB6270E00399C78 /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
+		06F4F3022BB6270E00399C78 /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-SemiBold.ttf"; sourceTree = "<group>"; };
+		06F4F3042BB6270E00399C78 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
+		06F4F3172BB6275600399C78 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,11 +119,16 @@
 		066FAF0C2BB216160086F135 /* SnipKey */ = {
 			isa = PBXGroup;
 			children = (
+				06F4F3172BB6275600399C78 /* Info.plist */,
 				06F4F2F82BB5F3AF00399C78 /* Helper */,
 				06EA76922BB4DEBE00E3E1F0 /* Core */,
 				068C77C72BB4C5AA0008D9A1 /* Features */,
 				066FAF0D2BB216160086F135 /* SnipKeyApp.swift */,
 				066FAF132BB216170086F135 /* Assets.xcassets */,
+				06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */,
+				06F4F2FF2BB6270E00399C78 /* IBMPlexMono-Medium.ttf */,
+				06F4F3042BB6270E00399C78 /* IBMPlexMono-Regular.ttf */,
+				06F4F3022BB6270E00399C78 /* IBMPlexMono-SemiBold.ttf */,
 				066FAF152BB216170086F135 /* Preview Content */,
 			);
 			path = SnipKey;
@@ -296,7 +310,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				066FAF172BB216170086F135 /* Preview Assets.xcassets in Resources */,
+				06F4F3102BB6270F00399C78 /* IBMPlexMono-SemiBold.ttf in Resources */,
 				066FAF142BB216170086F135 /* Assets.xcassets in Resources */,
+				06F4F3122BB6270F00399C78 /* IBMPlexMono-Regular.ttf in Resources */,
+				06F4F30D2BB6270F00399C78 /* IBMPlexMono-Medium.ttf in Resources */,
+				06F4F3092BB6270F00399C78 /* IBMPlexMono-Bold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -497,6 +515,7 @@
 				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SnipKey/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SnipKey;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -529,6 +548,7 @@
 				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SnipKey/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SnipKey;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
