@@ -7,16 +7,24 @@
 
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
+import AlertToast
 
 struct SnippetViewDetail: View {
+  @State private var showToast = false
   @State var isEditFormVisible: Bool = false
   @State private var snippet: SnippetItem = SnippetItem(
     title: "", content: "", tag: Tags.none, type: SnipType.txt)
 
   func toggleEditForm() {
     self.isEditFormVisible.toggle()
-    //        snippet = SnippetItem(title: "", content: "", tag: Tags.none, type: SnipType.txt);
   }
+    
+    func copyToClipboard(){
+        let clipboard = UIPasteboard.general
+        clipboard.setValue(snippet.content, forPasteboardType: UTType.plainText.identifier)
+        showToast.toggle()
+    }
 
   var body: some View {
     Form {
@@ -50,9 +58,19 @@ struct SnippetViewDetail: View {
       .frame(alignment: .center)
       .listRowBackground(Color.customSecondary)
 
+       
       Section(
         header: Text("Content"),
-        footer: Label("\(snippet.tag)", systemImage: imageForTag(snippet.tag))
+        footer:  HStack{
+            Label("\(snippet.tag)", systemImage: imageForTag(snippet.tag))
+            Spacer()
+            Button(action: copyToClipboard) {
+              Text("Copy")
+                .bold()
+                .font(.custom("IBMPlexMono-Medium", size: 16))
+                .underline()
+            }
+        }
       ) {
         ScrollView {
           Text("\(snippet.content)")
@@ -97,9 +115,9 @@ struct SnippetViewDetail: View {
         }
       }
     }
-    //        .onAppear(){
-    //            viewModel.modelContext = modelContext
-    //        }
+    .toast(isPresenting: $showToast){
+        AlertToast(displayMode: .banner(.pop), type: .systemImage("doc.on.clipboard", .black), title: "Content copied!", style: .style(backgroundColor: Color.customSecondary, titleFont: .custom("IBMPlexMono-Medium", size: 14)))
+    }
   }
 
   init(item: SnippetItem) {

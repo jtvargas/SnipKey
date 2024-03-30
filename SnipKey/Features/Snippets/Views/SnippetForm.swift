@@ -113,7 +113,7 @@ struct SnippetForm: View {
         TextField("Title", text: $snippetItem.title)
           .disableAutocorrection(true)
           .focused($focusedField, equals: .snippetTitle)
-          .submitLabel(.next)
+          .submitLabel(.return)
           .limitText($snippetItem.title, to: 25)
 
       }
@@ -156,8 +156,6 @@ struct SnippetForm: View {
 
       .onSubmit {
         switch focusedField {
-        case .snippetTitle:
-          focusedField = .snippetContent
         default:
           print("SnippetContent")
         }
@@ -166,16 +164,16 @@ struct SnippetForm: View {
     .bold()
     .font(.custom("IBMPlexMono-Medium", size: 15))
     .toolbar {
-      //            ToolbarItemGroup(placement: .keyboard){
-      //                Spacer()
-      //                Button("Done") {
-      //                    focusedField = nil
-      //                }
-      //                .font(.custom("IBMPlexMono-Bold", size: 14))
-      //                .tint(Color.black)
-      //                .background(Color.customSecondary)
-      //                .cornerRadius(40)
-      //            }
+        ToolbarItemGroup(placement: .keyboard){
+            Spacer()
+            Button("Done") {
+                focusedField = nil
+            }
+            .font(.custom("IBMPlexMono-Bold", size: 14))
+            .tint(Color.black)
+            .background(Color.customSecondary)
+            .cornerRadius(40)
+        }
     }
   }
 }

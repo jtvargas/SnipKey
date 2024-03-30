@@ -154,7 +154,7 @@ struct SnippetView: View {
             .sheet(isPresented: $isPresentedFormModal) {
               NavigationStack {
                 SnippetForm(isFormVisible: $isPresentedFormModal, snippetItem: $snippet)
-                  .navigationTitle("Snippet")
+                  .navigationTitle("New Snippet")
                   .font(.custom("IBMPlexMono-Bold", size: 14))
                   .navigationBarTitleDisplayMode(.inline)
                   .interactiveDismissDisabled()
