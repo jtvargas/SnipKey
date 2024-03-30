@@ -5,6 +5,7 @@
 //  Created by Jonathan Taveras Vargas on 3/28/24.
 //
 
+import SwiftData
 import SwiftUI
 
 struct CustomRadioButtonGroup<T: Hashable>: View {
@@ -19,9 +20,13 @@ struct CustomRadioButtonGroup<T: Hashable>: View {
           let impactMed = UIImpactFeedbackGenerator(style: .medium)
           impactMed.impactOccurred()
           self.selection = item
+          hideKeyboard()
         }) {
           VStack {
             SnippetImage(type: item as! SnipType)
+              .frame(width: 35, height: 35)
+              .background(Color.black, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+              .foregroundStyle(.white)
             Text(self.labels[item] ?? "")
               .foregroundColor(selection == item ? Color.black : .gray)
             if selection == item {
@@ -65,79 +70,90 @@ func imageForTag(_ tag: Tags) -> String {
 
 }
 
+let options: [SnipType] = [.txt, .url]
+let labels: [SnipType: String] = [.txt: "text", .url: "url"]
+let charLimit = 25
+enum Field {
+  case snippetTitle
+  case snippetContent
+}
+//TODO: Investigate how to handle the data to be able to edit and create from specific view
 struct SnippetForm: View {
-  enum Field {
-    case snippetTitle
-    case snippetContent
+  //    @Environment(\.modelContext) var modelContext
+  @FocusState private var focusedField: Field?
+  //    @State private var snippet: SnippetItem = SnippetItem(title: "", content: "", tag: Tags.none, type: SnipType.txt);
+  @Binding var isFormVisible: Bool
+  @Binding var snippetItem: SnippetItem
+
+  func toggleFormVisibility() {
+    if snippetItem.title.isEmpty || snippetItem.content.isEmpty {
+      print("cant save empty")
+    } else {
+      isFormVisible.toggle()
+    }
+
   }
 
-  var onClosePress: () -> Void
-  var onSavePress: (_ title: String, _ content: String, _ tag: Tags, _ option: SnipType) -> Void
-  @State private var snippetTitle: String = ""
-  @State private var selectedTag: Tags = .none
-  @State private var snippetContent: String = ""
-  @State private var selectedOption: SnipType = .txt
-  @FocusState private var focusedField: Field?
-
-  let options: [SnipType] = [.txt, .url]
-  let labels: [SnipType: String] = [.txt: "text", .url: "url"]
+  func onClosePress() {
+    self.toggleFormVisibility()
+  }
 
   var body: some View {
-    NavigationStack {
-      Form {
-        Section(header: Text("snippet type")) {
-          CustomRadioButtonGroup(items: options, selection: $selectedOption, labels: labels)
+    Form {
+      Section(header: Text("snippet type")) {
+        CustomRadioButtonGroup(items: options, selection: $snippetItem.type, labels: labels)
 
-        }
-        .listRowBackground(EmptyView().background(Color.customSecondary))
+      }
+      .listRowBackground(EmptyView().background(Color.customSecondary))
 
-        Section(header: Text("snippet title")) {
-          TextField("Title", text: $snippetTitle)
-            .disableAutocorrection(true)
-            .focused($focusedField, equals: .snippetTitle)
-            .submitLabel(.next)
+      Section(
+        header: Text("snippet title *"),
+        footer: Text("Remaining: \(charLimit - snippetItem.title.count)")
+      ) {
+        TextField("Title", text: $snippetItem.title)
+          .disableAutocorrection(true)
+          .focused($focusedField, equals: .snippetTitle)
+          .submitLabel(.next)
+          .limitText($snippetItem.title, to: 25)
 
-        }
-        .listRowBackground(EmptyView().background(Color.customSecondary))
+      }
+      .listRowBackground(EmptyView().background(Color.customSecondary))
 
-        Section(header: Text("snippet content")) {
-          TextField("Content", text: $snippetContent, axis: .vertical)
-            .textInputAutocapitalization(.never)
-            .disableAutocorrection(true)
-            .lineLimit(5...10)
-            .focused($focusedField, equals: .snippetContent)
-            .submitLabel(.return)
-        }
-        .listRowBackground(EmptyView().background(Color.customSecondary))
+      Section(header: Text("snippet content *")) {
+        TextField("Content", text: $snippetItem.content, axis: .vertical)
+          .textInputAutocapitalization(.never)
+          .disableAutocorrection(true)
+          .lineLimit(5...10)
+          .focused($focusedField, equals: .snippetContent)
+          .submitLabel(.return)
 
-        Section(
-          header: Text("tag"),
-          footer: Label(
-            "Categorize your snippets for easy access", systemImage: "questionmark.circle")
-        ) {
-          Picker(selection: $selectedTag, label: Image(systemName: "tag.fill")) {
-            ForEach(Tags.allCases, id: \.id) { tag in
-              HStack {
-                Text(tag.rawValue)
-                Spacer()
-                Image(systemName: imageForTag(tag))
-              }
-              .tag(tag)
+      }
+      .listRowBackground(EmptyView().background(Color.customSecondary))
+
+      Section(
+        header: Text("tag"),
+        footer: Label(
+          "Categorize your snippets for easy access", systemImage: "questionmark.circle")
+      ) {
+        Picker(selection: $snippetItem.tag, label: Image(systemName: "tag.fill")) {
+          ForEach(Tags.allCases, id: \.id) { tag in
+            HStack {
+              Text(tag.rawValue)
+              Spacer()
+              Image(systemName: imageForTag(tag))
             }
-          }
-          .pickerStyle(.menu)
-          .tint(Color.black)
-          .onTapGesture {
-            let impactMed = UIImpactFeedbackGenerator(style: .medium)
-            impactMed.impactOccurred()
+            .tag(tag)
           }
         }
-        .listRowBackground(EmptyView().background(Color.customSecondary))
+        .pickerStyle(.menu)
+        .tint(Color.black)
+        .onTapGesture {
+          let impactMed = UIImpactFeedbackGenerator(style: .medium)
+          impactMed.impactOccurred()
+        }
+      }
+      .listRowBackground(EmptyView().background(Color.customSecondary))
 
-      }
-      .onAppear {
-        self.focusedField = .snippetTitle
-      }
       .onSubmit {
         switch focusedField {
         case .snippetTitle:
@@ -146,57 +162,34 @@ struct SnippetForm: View {
           print("SnippetContent")
         }
       }
-      .navigationTitle("Snippet")
-      .font(.custom("IBMPlexMono-Bold", size: 14))
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItemGroup(placement: .keyboard) {
-          Spacer()
-
-          Button("Done") {
-            focusedField = nil
-          }
-          .font(.custom("IBMPlexMono-Bold", size: 14))
-          .tint(Color.black)
-          .background(Color.customSecondary)
-          .cornerRadius(40)
-        }
-
-        ToolbarItem(placement: .topBarLeading) {
-          Button(action: self.onClosePress) {
-            Text("Close")
-              .tint(Color.black)
-              .bold()
-              .underline()
-              .font(.custom("IBMPlexMono-Medium", size: 15))
-          }
-        }
-
-        ToolbarItem(placement: .topBarTrailing) {
-          Button(action: {
-            self.onSavePress(snippetTitle, snippetContent, selectedTag, selectedOption)
-          }) {
-            Text("Save")
-              .tint(Color.black)
-              .bold()
-              .underline()
-              .font(.custom("IBMPlexMono-Medium", size: 15))
-          }
-          .disabled(snippetTitle.isEmpty || snippetContent.isEmpty)
-        }
-      }
+    }
+    .bold()
+    .font(.custom("IBMPlexMono-Medium", size: 15))
+    .toolbar {
+      //            ToolbarItemGroup(placement: .keyboard){
+      //                Spacer()
+      //                Button("Done") {
+      //                    focusedField = nil
+      //                }
+      //                .font(.custom("IBMPlexMono-Bold", size: 14))
+      //                .tint(Color.black)
+      //                .background(Color.customSecondary)
+      //                .cornerRadius(40)
+      //            }
     }
   }
 }
 
+struct SnippetFormBindingPreview: View {
+  @State private var value = false
+  @State private var tempSnippet: SnippetItem = SnippetItem(
+    title: "", content: "", tag: Tags.none, type: SnipType.txt)
+
+  var body: some View {
+    SnippetForm(isFormVisible: $value, snippetItem: $tempSnippet)
+  }
+}
+
 #Preview {
-  func handleOnClosePress() {
-    print("on close press")
-  }
-
-  func handleOnSavePress(_ title: String, _ content: String, _ tag: Tags, _ type: SnipType) {
-    print("Title: \(title), \(content), \(tag), \(type)")
-  }
-
-  return SnippetForm(onClosePress: handleOnClosePress, onSavePress: handleOnSavePress)
+  return SnippetFormBindingPreview()
 }

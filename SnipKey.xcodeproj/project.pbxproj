@@ -13,11 +13,10 @@
 		066FAF212BB216170086F135 /* SnipKeyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF202BB216170086F135 /* SnipKeyTests.swift */; };
 		066FAF2B2BB216170086F135 /* SnipKeyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF2A2BB216170086F135 /* SnipKeyUITests.swift */; };
 		066FAF2D2BB216170086F135 /* SnipKeyUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF2C2BB216170086F135 /* SnipKeyUITestsLaunchTests.swift */; };
-		068C77CB2BB4C5FB0008D9A1 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CA2BB4C5FB0008D9A1 /* Model.swift */; };
+		068C77CB2BB4C5FB0008D9A1 /* SnippetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CA2BB4C5FB0008D9A1 /* SnippetModel.swift */; };
 		068C77CD2BB4C60C0008D9A1 /* SnippetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */; };
 		068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CE2BB4C62D0008D9A1 /* SnippetView.swift */; };
 		068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */; };
-		068C77D32BB4CD160008D9A1 /* SnippetList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D22BB4CD160008D9A1 /* SnippetList.swift */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
@@ -28,6 +27,10 @@
 		06F4F3122BB6270F00399C78 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F3042BB6270E00399C78 /* IBMPlexMono-Regular.ttf */; };
 		06F4F3192BB6777E00399C78 /* SnippetListEmpty.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3182BB6777E00399C78 /* SnippetListEmpty.swift */; };
 		06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F31A2BB67C9600399C78 /* KeyboardStatusView.swift */; };
+		06F4F31F2BB71E8F00399C78 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F31E2BB71E8F00399C78 /* WelcomeView.swift */; };
+		06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3202BB720AF00399C78 /* OnBoardingModel.swift */; };
+		06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3222BB7247900399C78 /* BoardingCardView.swift */; };
+		06F4F3252BB7484000399C78 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3242BB7484000399C78 /* Views.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,11 +60,10 @@
 		066FAF262BB216170086F135 /* SnipKeyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnipKeyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		066FAF2A2BB216170086F135 /* SnipKeyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyUITests.swift; sourceTree = "<group>"; };
 		066FAF2C2BB216170086F135 /* SnipKeyUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		068C77CA2BB4C5FB0008D9A1 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
+		068C77CA2BB4C5FB0008D9A1 /* SnippetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetModel.swift; sourceTree = "<group>"; };
 		068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewModel.swift; sourceTree = "<group>"; };
 		068C77CE2BB4C62D0008D9A1 /* SnippetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetView.swift; sourceTree = "<group>"; };
 		068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetListItem.swift; sourceTree = "<group>"; };
-		068C77D22BB4CD160008D9A1 /* SnippetList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetList.swift; sourceTree = "<group>"; };
 		06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewDetail.swift; sourceTree = "<group>"; };
 		06EA76932BB4DED000E3E1F0 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetForm.swift; sourceTree = "<group>"; };
@@ -73,6 +75,10 @@
 		06F4F3172BB6275600399C78 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		06F4F3182BB6777E00399C78 /* SnippetListEmpty.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetListEmpty.swift; sourceTree = "<group>"; };
 		06F4F31A2BB67C9600399C78 /* KeyboardStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardStatusView.swift; sourceTree = "<group>"; };
+		06F4F31E2BB71E8F00399C78 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		06F4F3202BB720AF00399C78 /* OnBoardingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnBoardingModel.swift; sourceTree = "<group>"; };
+		06F4F3222BB7247900399C78 /* BoardingCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardingCardView.swift; sourceTree = "<group>"; };
+		06F4F3242BB7484000399C78 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -166,6 +172,7 @@
 		068C77C72BB4C5AA0008D9A1 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				06F4F31C2BB71E5E00399C78 /* OnBoarding */,
 				068C77C82BB4C5C00008D9A1 /* Snippets */,
 			);
 			path = Features;
@@ -175,7 +182,7 @@
 			isa = PBXGroup;
 			children = (
 				068C77C92BB4C5E70008D9A1 /* Views */,
-				068C77CA2BB4C5FB0008D9A1 /* Model.swift */,
+				068C77CA2BB4C5FB0008D9A1 /* SnippetModel.swift */,
 				068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */,
 			);
 			path = Snippets;
@@ -186,7 +193,6 @@
 			children = (
 				068C77CE2BB4C62D0008D9A1 /* SnippetView.swift */,
 				068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */,
-				068C77D22BB4CD160008D9A1 /* SnippetList.swift */,
 				06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */,
 				06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */,
 				06F4F3182BB6777E00399C78 /* SnippetListEmpty.swift */,
@@ -207,8 +213,27 @@
 			isa = PBXGroup;
 			children = (
 				06F4F2F92BB5F3BD00399C78 /* Strings.swift */,
+				06F4F3242BB7484000399C78 /* Views.swift */,
 			);
 			path = Helper;
+			sourceTree = "<group>";
+		};
+		06F4F31C2BB71E5E00399C78 /* OnBoarding */ = {
+			isa = PBXGroup;
+			children = (
+				06F4F31D2BB71E7400399C78 /* Views */,
+				06F4F3202BB720AF00399C78 /* OnBoardingModel.swift */,
+			);
+			path = OnBoarding;
+			sourceTree = "<group>";
+		};
+		06F4F31D2BB71E7400399C78 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				06F4F31E2BB71E8F00399C78 /* WelcomeView.swift */,
+				06F4F3222BB7247900399C78 /* BoardingCardView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -349,14 +374,17 @@
 				06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */,
 				06F4F3192BB6777E00399C78 /* SnippetListEmpty.swift in Sources */,
 				06F4F2FA2BB5F3BD00399C78 /* Strings.swift in Sources */,
+				06F4F3252BB7484000399C78 /* Views.swift in Sources */,
 				066FAF0E2BB216160086F135 /* SnipKeyApp.swift in Sources */,
 				06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */,
 				06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */,
+				06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */,
+				06F4F31F2BB71E8F00399C78 /* WelcomeView.swift in Sources */,
 				068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */,
-				068C77D32BB4CD160008D9A1 /* SnippetList.swift in Sources */,
-				068C77CB2BB4C5FB0008D9A1 /* Model.swift in Sources */,
+				068C77CB2BB4C5FB0008D9A1 /* SnippetModel.swift in Sources */,
 				068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */,
 				06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */,
+				06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

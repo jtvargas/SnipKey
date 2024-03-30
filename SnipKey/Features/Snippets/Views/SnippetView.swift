@@ -8,53 +8,110 @@
 import SwiftData
 import SwiftUI
 
-//TODO: Add OnBoarding Feature and Settings Feature, then try to see issue in SnippetForm is lag while oppening the first time
-
 struct SnippetView: View {
   @State var showSnippedDetailSheet = false
-  @State private var viewModel: ViewModel
-  @State private var showModal = false
-  @State private var selectedSnippet: SnippetItem?
-  @State var isPresented: Bool = false
+  @Environment(\.modelContext) var modelContext
+  @State var viewModel = ViewModel()
+  @Query(sort: \SnippetItem.timestamp, order: .reverse) private var snippets: [SnippetItem]
 
+  @State private var showModal = false
+  @State var isPresentedFormModal: Bool = false
+  @State var isPresentedWelcomeInfo: Bool = false
   @State private var selectedFilter: Tags = .none
 
+  @State private var snippet: SnippetItem = SnippetItem(
+    title: "", content: "", tag: Tags.none, type: SnipType.txt)
+
   func toggleFormModal() {
-    self.isPresented.toggle()
+    snippet = SnippetItem(title: "", content: "", tag: Tags.none, type: SnipType.txt)
+    self.isPresentedFormModal.toggle()
   }
 
-  func handleOnSavePress(_ title: String, _ content: String, _ tag: Tags, _ type: SnipType) {
-    print("Title: \(title), \(content)")
-    viewModel.addItem(title, content: content, tag: tag, type: type)
-    toggleFormModal()
+  func toggleWelcomeInfo() {
+    self.isPresentedWelcomeInfo.toggle()
+  }
+  func toggleSettingsModal() {
+    print("toggleSettingsModal")
   }
 
   func handleOnKeyboardStatusPress() {
     print("Keyboard Status press")
   }
 
+  func getSnippetItems() -> [SnippetItem] {
+    if selectedFilter == .none {
+      return snippets
+    }
+
+    let snippetsFiltered = snippets.filter { snippetItem in
+      return snippetItem.tag == selectedFilter
+    }
+
+    return snippetsFiltered
+  }
+
+  func handleDeleteSnippet(offsets: IndexSet) {
+    viewModel.deleteItems(offsets: offsets, snippets: snippets)
+  }
+
+  func onCreateSnippet() {
+    if snippet.title.isEmpty || snippet.content.isEmpty {
+      print("cant save empty")
+    } else {
+      viewModel.addItem(
+        snippet.title, content: snippet.content, tag: snippet.tag, type: snippet.type)
+
+      self.toggleFormModal()
+      print("Snippet CREATED")
+    }
+
+  }
+
   var body: some View {
-    NavigationSplitView {
+    NavigationStack {
       VStack {
-        if !viewModel.snippets.isEmpty {
+        if !snippets.isEmpty {
           KeyboardStatusView(isActive: false, onKeyboardStatusPress: handleOnKeyboardStatusPress)
           Form {
             Section(header: Text("Snippets")) {
-              SnippetList(
-                items: viewModel.snippets, onDeleteHandler: viewModel.deleteItems(offsets:))
+              //              SnippetList(
+              //                items: getSnippetItems(), onDeleteHandler: handleDeleteSnippet)
+              List {
+                ForEach(getSnippetItems(), id: \.self.id) { snippetItem in
+                  NavigationLink(destination: SnippetViewDetail(item: snippetItem)) {
+                    SnippetListItem(item: snippetItem)
+                  }
+                  .listRowBackground(Color.customSecondary)
+                }
+                .onDelete(perform: { indexSet in
+                  self.handleDeleteSnippet(offsets: indexSet)
+                })
+              }
             }
           }
         }
 
       }
-      .navigationTitle("SnipKey")
-      .navigationBarTitleDisplayMode(.inline)
+      .navigationTitle(snippets.isEmpty ? "" : "SnipKey")
+      .font(.custom("IBMPlexMono-Medium", size: 16))
+      .navigationBarTitleDisplayMode(.large)
       .safeAreaInset(edge: .bottom) {
-        if viewModel.snippets.isEmpty {
+        if snippets.isEmpty {
           SnippetListEmpty()
         }
       }
       .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          if !snippets.isEmpty {
+            EditButton()
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .tint(Color.black)
+              .bold()
+              .font(.custom("IBMPlexMono-Medium", size: 16))
+              .underline()
+          }
+
+        }
         ToolbarItem(placement: .topBarTrailing) {
           Menu(
             content: {
@@ -70,32 +127,22 @@ struct SnippetView: View {
               }
             },
             label: {
-              Image(systemName: "line.3.horizontal.decrease.circle").tint(Color.black)
-            })
-        }
-
-        ToolbarItem(placement: .topBarLeading) {
-          if !viewModel.snippets.isEmpty {
-            EditButton()
-              .bold()
-              .frame(maxWidth: .infinity, alignment: .leading)
+              Image(
+                systemName: selectedFilter != Tags.none
+                  ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
+              )
               .tint(Color.black)
-              .bold()
-              .font(.custom("IBMPlexMono-Medium", size: 16))
-              .underline()
-          }
-
+            })
         }
 
         ToolbarItem(placement: .bottomBar) {
           HStack(alignment: .center) {
-            Button(action: toggleFormModal) {
+            Button(action: toggleWelcomeInfo) {
               Image(systemName: "info.circle.fill")
                 .tint(Color.black)
                 .font(.system(size: 24))
-            }.sheet(isPresented: $isPresented) {  // Passing the state to the sheet API
-              SnippetForm(onClosePress: toggleFormModal, onSavePress: handleOnSavePress)
-                .interactiveDismissDisabled()
+            }.sheet(isPresented: $isPresentedWelcomeInfo) {
+              WelcomeView(skipCallback: toggleWelcomeInfo)
             }
             Spacer()
             Button(action: toggleFormModal) {
@@ -104,35 +151,64 @@ struct SnippetView: View {
                 .font(.system(size: 28))
 
             }
-            .sheet(isPresented: $isPresented) {  // Passing the state to the sheet API
-              SnippetForm(onClosePress: toggleFormModal, onSavePress: handleOnSavePress)
-                .interactiveDismissDisabled()
+            .sheet(isPresented: $isPresentedFormModal) {
+              NavigationStack {
+                SnippetForm(isFormVisible: $isPresentedFormModal, snippetItem: $snippet)
+                  .navigationTitle("Snippet")
+                  .font(.custom("IBMPlexMono-Bold", size: 14))
+                  .navigationBarTitleDisplayMode(.inline)
+                  .interactiveDismissDisabled()
+                  .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                      Button(action: toggleFormModal) {
+                        Text("Close")
+                          .tint(Color.black)
+                          .bold()
+                          .underline()
+                          .font(.custom("IBMPlexMono-Medium", size: 15))
+                      }
+                    }
+
+                    ToolbarItem(placement: .topBarTrailing) {
+                      Button(action: onCreateSnippet) {
+                        Text("Save")
+                          .tint(Color.black)
+                          .bold()
+                          .underline()
+                          .font(.custom("IBMPlexMono-Medium", size: 15))
+                      }
+                    }
+                  }
+              }
             }
 
             Spacer()
-            Button(action: toggleFormModal) {
+            Button(action: toggleSettingsModal) {
               Image(systemName: "gearshape.circle.fill")
                 .tint(Color.black)
                 .font(.system(size: 24))
-            }.sheet(isPresented: $isPresented) {  // Passing the state to the sheet API
-              SnippetForm(onClosePress: toggleFormModal, onSavePress: handleOnSavePress)
-                .interactiveDismissDisabled()
             }
 
           }
           .padding(.bottom, 10)
+
         }
-
       }
-
-    } detail: {
-      Text("DETAIL")
+    }
+    .tint(Color.black)
+    .onAppear {
+      viewModel.modelContext = modelContext
+      //      viewModel.fetchData()
     }
   }
 
-  init(modelContext: ModelContext) {
-    let viewModel = ViewModel(modelContext: modelContext)
-    _viewModel = State(initialValue: viewModel)
+  init() {
+    UINavigationBar.appearance().largeTitleTextAttributes = [
+      .font: UIFont(name: "IBMPlexMono-Bold", size: 34)!
+    ]
+    UINavigationBar.appearance().titleTextAttributes = [
+      .font: UIFont(name: "IBMPlexMono-Bold", size: 20)!
+    ]
   }
 }
 
@@ -150,6 +226,7 @@ struct SnippetView: View {
     }
   }()
 
-  return SnippetView(modelContext: sharedModelContainer.mainContext)
+  return SnippetView()
     .modelContainer(sharedModelContainer)
+
 }
