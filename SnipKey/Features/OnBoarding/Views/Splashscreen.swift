@@ -44,7 +44,7 @@ struct Splashscreen: View {
             .padding(.top, 40)
         }
         .padding(40)
-        .tint(Color.black)
+        .tint(Color.label)
         .onAppear {
                 withAnimation {
                     self.animateImage = true

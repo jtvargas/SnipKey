@@ -66,9 +66,8 @@ struct WelcomeView: View {
 
     }  //: TAB
     .padding(.vertical, 20)
-    .background(Color.customBackground)
-    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-    .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .never))
+    .background(Color.systemBackground)
+    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
 
     HStack(
       alignment: .bottom,
@@ -76,7 +75,7 @@ struct WelcomeView: View {
         if viewId != boardingItems.count - 1 {
           Button(action: closeWelcome) {
             Text("Skip")
-              .tint(Color.black)
+              .tint(Color.label)
               .bold()
               .font(.custom("IBMPlexMono-Medium", size: 16))
               .underline()
@@ -86,7 +85,7 @@ struct WelcomeView: View {
         Spacer()
         Button(action: nextItem) {
           Text(viewId == boardingItems.count - 1 ? "Close" : "Next")
-            .tint(Color.black)
+            .tint(Color.label)
             .bold()
             .font(.custom("IBMPlexMono-Medium", size: 16))
             .underline()
@@ -94,7 +93,7 @@ struct WelcomeView: View {
       }
     )
     .padding()
-    .background(Color.customBackground)
+    .background(Color.systemBackground)
 
   }
 }

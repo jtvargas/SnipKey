@@ -81,6 +81,7 @@ struct SnippetListItemKeyboard: View {
             }
         }
         
+        
     }
 }
 
@@ -125,18 +126,30 @@ extension View {
 
 struct KeyboardView: View {
     @Environment(\.modelContext) var modelContext
-    @Query(sort: \SnippetItem.timestamp, order: .reverse) private var snippetsTest: [SnippetItem]
-    
-    @State private var snippets = ["hello", "noway"]
-    
+    @Query(sort: \SnippetItem.timestamp, order: .reverse) private var snippets: [SnippetItem]
     @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
     
     @State private var text: String = ""
+    @State private var selectedFilter: Tags = .none
+    @State private var snippetTest: [SnippetItem] = [.dummy, .dummy, .dummy, .dummy, .dummy, .dummy, .dummy, .dummy]
     let columns = [GridItem(.adaptive(minimum: 150, maximum: 175), spacing: 6)]
     
     func actionPerform() {
-        print("snippets: \(snippetsTest)")
+        print("snippets: \(snippets)")
     }
+    
+    func getSnippetItems() -> [SnippetItem] {
+      if selectedFilter == .none {
+        return snippetTest
+      }
+
+      let snippetsFiltered = snippetTest.filter { snippetItem in
+        return snippetItem.tag == selectedFilter
+      }
+
+      return snippetsFiltered
+    }
+    
     private func emoji(_ value: Int) -> String {
              guard let scalar = UnicodeScalar(value) else { return "?" }
              return String(Character(scalar))
@@ -152,44 +165,38 @@ struct KeyboardView: View {
         
         VStack {
                 ScrollView {
-                    LazyVGrid(columns: columns) {
-                        ForEach(snippets, id: \.self) { snippet in
-                            GroupBox {
-                                Button {
-                                    sentValueToTextInput(value: "ok")
-                                } label: {
-                                    Text("hello")
-                                        .font(.largeTitle)
-                                        .fixedSize()
-                                    Text("bye")
-                                        .fixedSize()
-                                }
-                                
+                    LazyVGrid(columns: layout, spacing: 20) {
+                        ForEach(getSnippetItems(), id: \.self.id) { snippet in
+                            Button {
+                                sentValueToTextInput(value: snippet.content)
+                            } label: {
+                                SnippetListItem(item: snippet)
+                                    .padding(8)
+                                    .overlay(
+                                           RoundedRectangle(cornerRadius: 4)
+                                            .stroke(Color.tertiarySystemBackground, lineWidth: 2)
+                                       )
                             }
+                            
+                           
                         }
                     }
+                    .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.green)
+//                    .background(Color.secondarySystemBackground)
                 }
-            Button {
-                actionPerform()
-            } label: {
-                Text("hello")
-                    .font(.largeTitle)
-                    .fixedSize()
+            Picker("What is your favorite color?", selection: $selectedFilter) {
+                Text("All").tag(Tags.none)
+                Text("Personal").tag(Tags.personal)
+                Text("Work").tag(Tags.work)
             }
-//            Picker("What is your favorite color?", selection: $favoriteColor) {
-//                Image(systemName:"circle.fill").tag(0)
-//                Text("Personal").tag(1)
-//                Text("Work").tag(2)
-//            }
-//            .pickerStyle(.segmented)
-//            .background(Color.red)
-//            
-//            Text("Value: \(favoriteColor)")
+            .padding(.bottom, 10)
+            .padding(.horizontal, 10)
+            .pickerStyle(.segmented)
+            
         }
-        .frame( height: 250)
-        .background(Color.gray)
+        .frame( height: 240)
+        .background(Color.secondarySystemBackground)
 
     }
 }

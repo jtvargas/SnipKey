@@ -30,10 +30,10 @@ struct KeyboardStatusView: View {
           .padding()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .border(Color.customSecondary)
+        .border(Color.secondarySystemBackground, width: 4)
         .padding()
         .font(.custom("IBMPlexMono-Bold", size: 14))
-        .tint(Color.black)
+        .tint(Color.label)
       })
 
   }

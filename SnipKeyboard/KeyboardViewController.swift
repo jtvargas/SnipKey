@@ -11,6 +11,7 @@ import SwiftUI
 class KeyboardViewController: UIInputViewController {
 
     @IBOutlet var nextKeyboardButton: UIButton!
+    let container = SnipKeyDataManager().makeSharedContainer()
     private let keyboardView = KeyboardView()
     
     override func updateViewConstraints() {
@@ -36,7 +37,7 @@ class KeyboardViewController: UIInputViewController {
         self.nextKeyboardButton.leftAnchor.constraint(equalTo: self.view.leftAnchor).isActive = true
         self.nextKeyboardButton.bottomAnchor.constraint(equalTo: self.view.bottomAnchor).isActive = true
         
-        view.addKeyboardSubview(UIHostingController(rootView: keyboardView.modelContainer(for: SnippetItem.self)).view)
+        view.addKeyboardSubview(UIHostingController(rootView: keyboardView.modelContext(container.mainContext)).view)
         
         // insert text to textInput
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ notification in

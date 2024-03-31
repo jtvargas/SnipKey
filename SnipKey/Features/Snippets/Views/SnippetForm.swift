@@ -25,17 +25,17 @@ struct CustomRadioButtonGroup<T: Hashable>: View {
           VStack {
             SnippetImage(type: item as! SnipType)
               .frame(width: 35, height: 35)
-              .background(Color.black, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+              .background(Color.secondarySystemBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
               .foregroundStyle(.white)
             Text(self.labels[item] ?? "")
-              .foregroundColor(selection == item ? Color.black : .gray)
+              .foregroundColor(selection == item ? Color.label : .gray)
             if selection == item {
               Circle()
-                .fill(Color.black)
+                .fill(Color.label)
                 .frame(width: 10, height: 10)
             } else {
               Circle()
-                .stroke(Color.gray, lineWidth: 1)
+                .stroke(Color.label, lineWidth: 1)
                 .frame(width: 10, height: 10)
             }
           }
@@ -49,7 +49,7 @@ struct CustomRadioButtonGroup<T: Hashable>: View {
           /// apply a rounded border
           selection == item
             ? RoundedRectangle(cornerRadius: 8)
-              .stroke(Color.black, lineWidth: 2) : nil
+              .stroke(Color.secondarySystemBackground, lineWidth: 4) : nil
         )
 
       }
@@ -104,7 +104,7 @@ struct SnippetForm: View {
         CustomRadioButtonGroup(items: options, selection: $snippetItem.type, labels: labels)
 
       }
-      .listRowBackground(EmptyView().background(Color.customSecondary))
+      .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
 
       Section(
         header: Text("snippet title *"),
@@ -117,7 +117,7 @@ struct SnippetForm: View {
           .limitText($snippetItem.title, to: 25)
 
       }
-      .listRowBackground(EmptyView().background(Color.customSecondary))
+      .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
 
       Section(header: Text("snippet content *")) {
         TextField("Content", text: $snippetItem.content, axis: .vertical)
@@ -128,7 +128,7 @@ struct SnippetForm: View {
           .submitLabel(.return)
 
       }
-      .listRowBackground(EmptyView().background(Color.customSecondary))
+      .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
 
       Section(
         header: Text("tag"),
@@ -146,13 +146,13 @@ struct SnippetForm: View {
           }
         }
         .pickerStyle(.menu)
-        .tint(Color.black)
+        .tint(Color.label)
         .onTapGesture {
           let impactMed = UIImpactFeedbackGenerator(style: .medium)
           impactMed.impactOccurred()
         }
       }
-      .listRowBackground(EmptyView().background(Color.customSecondary))
+      .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
 
       .onSubmit {
         switch focusedField {

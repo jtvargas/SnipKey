@@ -11,9 +11,8 @@ struct SnippetImage: View {
   let type: SnipType
 
   var body: some View {
-      Image(systemName: type == .txt ? "character.cursor.ibeam" : "link.circle")
-        .background(Color.black, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .foregroundStyle(.white)
+      Image(systemName: "character.cursor.ibeam" )
+          .foregroundStyle(Color.label)
   }
 }
 
@@ -24,20 +23,19 @@ struct SnippetListItem: View {
     HStack {
       SnippetImage(type: item.type)
             .frame(width: 35, height: 35)
-            .background(Color.black, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(Color.secondarySystemBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .foregroundStyle(.white)
     
       VStack {
         Text("\(item.title)")
-          .bold()
           .frame(maxWidth: .infinity, alignment: .leading)
-          .tint(Color.black)
+          .tint(Color.label)
           .bold()
           .font(.custom("IBMPlexMono-Medium", size: 16))
 
           Text("#\(item.tag)")
-              .frame(maxWidth: .infinity, alignment: .leading)
-          .foregroundColor(Color.customAccent)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .foregroundColor(Color.secondaryLabel)
           .font(.subheadline)
       }
 

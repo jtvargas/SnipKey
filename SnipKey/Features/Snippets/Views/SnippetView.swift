@@ -74,14 +74,12 @@ struct SnippetView: View {
           KeyboardStatusView(isActive: false, onKeyboardStatusPress: handleOnKeyboardStatusPress)
           Form {
             Section(header: Text("Snippets")) {
-              //              SnippetList(
-              //                items: getSnippetItems(), onDeleteHandler: handleDeleteSnippet)
               List {
                 ForEach(getSnippetItems(), id: \.self.id) { snippetItem in
                   NavigationLink(destination: SnippetViewDetail(item: snippetItem)) {
                     SnippetListItem(item: snippetItem)
                   }
-                  .listRowBackground(Color.customSecondary)
+                  .listRowBackground(Color.tertiarySystemBackground)
                 }
                 .onDelete(perform: { indexSet in
                   self.handleDeleteSnippet(offsets: indexSet)
@@ -94,6 +92,7 @@ struct SnippetView: View {
       }
       .navigationTitle(snippets.isEmpty ? "" : "SnipKey")
       .font(.custom("IBMPlexMono-Medium", size: 16))
+      .tint(Color.label)
       .navigationBarTitleDisplayMode(.large)
       .safeAreaInset(edge: .bottom) {
         if snippets.isEmpty {
@@ -105,10 +104,11 @@ struct SnippetView: View {
           if !snippets.isEmpty {
             EditButton()
               .frame(maxWidth: .infinity, alignment: .leading)
-              .tint(Color.black)
+              .underline()
+              .tint(Color.label)
               .bold()
               .font(.custom("IBMPlexMono-Medium", size: 16))
-              .underline()
+             
           }
 
         }
@@ -131,7 +131,7 @@ struct SnippetView: View {
                 systemName: selectedFilter != Tags.none
                   ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
               )
-              .tint(Color.black)
+              .tint(Color.label)
             })
         }
 
@@ -139,7 +139,7 @@ struct SnippetView: View {
           HStack(alignment: .center) {
             Button(action: toggleWelcomeInfo) {
               Image(systemName: "info.circle.fill")
-                .tint(Color.black)
+                .tint(Color.label)
                 .font(.system(size: 24))
             }.sheet(isPresented: $isPresentedWelcomeInfo) {
               WelcomeView(skipCallback: toggleWelcomeInfo)
@@ -147,7 +147,7 @@ struct SnippetView: View {
             Spacer()
             Button(action: toggleFormModal) {
               Image(systemName: "plus.app.fill")
-                .tint(Color.black)
+                .tint(Color.label)
                 .font(.system(size: 28))
 
             }
@@ -162,7 +162,7 @@ struct SnippetView: View {
                     ToolbarItem(placement: .topBarLeading) {
                       Button(action: toggleFormModal) {
                         Text("Close")
-                          .tint(Color.black)
+                          .tint(Color.label)
                           .bold()
                           .underline()
                           .font(.custom("IBMPlexMono-Medium", size: 15))
@@ -172,7 +172,7 @@ struct SnippetView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                       Button(action: onCreateSnippet) {
                         Text("Save")
-                          .tint(Color.black)
+                          .tint(Color.label)
                           .bold()
                           .underline()
                           .font(.custom("IBMPlexMono-Medium", size: 15))
@@ -185,7 +185,7 @@ struct SnippetView: View {
             Spacer()
             Button(action: toggleSettingsModal) {
               Image(systemName: "gearshape.circle.fill")
-                .tint(Color.black)
+                .tint(Color.label)
                 .font(.system(size: 24))
             }
 
@@ -195,10 +195,9 @@ struct SnippetView: View {
         }
       }
     }
-    .tint(Color.black)
+    .tint(Color.label)
     .onAppear {
       viewModel.modelContext = modelContext
-      //      viewModel.fetchData()
     }
   }
 
@@ -213,20 +212,9 @@ struct SnippetView: View {
 }
 
 #Preview {
-  var sharedModelContainer: ModelContainer = {
-    let schema = Schema([
-      SnippetItem.self
-    ])
-    let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-    do {
-      return try ModelContainer(for: schema, configurations: [modelConfiguration])
-    } catch {
-      fatalError("Could not create ModelContainer: \(error)")
-    }
-  }()
+    let container = SnipKeyDataManager().makeSharedContainer()
 
   return SnippetView()
-    .modelContainer(sharedModelContainer)
+    .modelContainer(container)
 
 }

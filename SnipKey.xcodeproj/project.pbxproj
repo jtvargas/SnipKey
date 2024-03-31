@@ -24,13 +24,14 @@
 		066FAF0E2BB216160086F135 /* SnipKeyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF0D2BB216160086F135 /* SnipKeyApp.swift */; };
 		066FAF142BB216170086F135 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 066FAF132BB216170086F135 /* Assets.xcassets */; };
 		066FAF172BB216170086F135 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 066FAF162BB216170086F135 /* Preview Assets.xcassets */; };
-		066FAF212BB216170086F135 /* SnipKeyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF202BB216170086F135 /* SnipKeyTests.swift */; };
-		066FAF2B2BB216170086F135 /* SnipKeyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF2A2BB216170086F135 /* SnipKeyUITests.swift */; };
-		066FAF2D2BB216170086F135 /* SnipKeyUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF2C2BB216170086F135 /* SnipKeyUITestsLaunchTests.swift */; };
 		068C77CB2BB4C5FB0008D9A1 /* SnippetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CA2BB4C5FB0008D9A1 /* SnippetModel.swift */; };
 		068C77CD2BB4C60C0008D9A1 /* SnippetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */; };
 		068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CE2BB4C62D0008D9A1 /* SnippetView.swift */; };
 		068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */; };
+		06C6FE2C2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */; };
+		06C6FE2D2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */; };
+		06C6FE2E2BB9EEAB00166AB0 /* SnippetListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */; };
+		06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
@@ -54,20 +55,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 066E69D32BB9831900D971E8;
 			remoteInfo = SnipKeyboard;
-		};
-		066FAF1D2BB216170086F135 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 066FAF022BB216160086F135 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 066FAF092BB216160086F135;
-			remoteInfo = SnipKey;
-		};
-		066FAF272BB216170086F135 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 066FAF022BB216160086F135 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 066FAF092BB216160086F135;
-			remoteInfo = SnipKey;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -98,15 +85,11 @@
 		066FAF0D2BB216160086F135 /* SnipKeyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyApp.swift; sourceTree = "<group>"; };
 		066FAF132BB216170086F135 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		066FAF162BB216170086F135 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		066FAF1C2BB216170086F135 /* SnipKeyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnipKeyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		066FAF202BB216170086F135 /* SnipKeyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyTests.swift; sourceTree = "<group>"; };
-		066FAF262BB216170086F135 /* SnipKeyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnipKeyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		066FAF2A2BB216170086F135 /* SnipKeyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyUITests.swift; sourceTree = "<group>"; };
-		066FAF2C2BB216170086F135 /* SnipKeyUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		068C77CA2BB4C5FB0008D9A1 /* SnippetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetModel.swift; sourceTree = "<group>"; };
 		068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewModel.swift; sourceTree = "<group>"; };
 		068C77CE2BB4C62D0008D9A1 /* SnippetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetView.swift; sourceTree = "<group>"; };
 		068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetListItem.swift; sourceTree = "<group>"; };
+		06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyDataManager.swift; sourceTree = "<group>"; };
 		06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewDetail.swift; sourceTree = "<group>"; };
 		06EA76932BB4DED000E3E1F0 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetForm.swift; sourceTree = "<group>"; };
@@ -140,20 +123,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		066FAF192BB216170086F135 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		066FAF232BB216170086F135 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -173,8 +142,6 @@
 			children = (
 				066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */,
 				066FAF0C2BB216160086F135 /* SnipKey */,
-				066FAF1F2BB216170086F135 /* SnipKeyTests */,
-				066FAF292BB216170086F135 /* SnipKeyUITests */,
 				066E69D52BB9831900D971E8 /* SnipKeyboard */,
 				066FAF0B2BB216160086F135 /* Products */,
 			);
@@ -184,8 +151,6 @@
 			isa = PBXGroup;
 			children = (
 				066FAF0A2BB216160086F135 /* SnipKey.app */,
-				066FAF1C2BB216170086F135 /* SnipKeyTests.xctest */,
-				066FAF262BB216170086F135 /* SnipKeyUITests.xctest */,
 				066E69D42BB9831900D971E8 /* SnipKeyboard.appex */,
 			);
 			name = Products;
@@ -200,6 +165,7 @@
 				06EA76922BB4DEBE00E3E1F0 /* Core */,
 				068C77C72BB4C5AA0008D9A1 /* Features */,
 				066FAF0D2BB216160086F135 /* SnipKeyApp.swift */,
+				06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */,
 				066FAF132BB216170086F135 /* Assets.xcassets */,
 				06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */,
 				06F4F2FF2BB6270E00399C78 /* IBMPlexMono-Medium.ttf */,
@@ -216,23 +182,6 @@
 				066FAF162BB216170086F135 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
-			sourceTree = "<group>";
-		};
-		066FAF1F2BB216170086F135 /* SnipKeyTests */ = {
-			isa = PBXGroup;
-			children = (
-				066FAF202BB216170086F135 /* SnipKeyTests.swift */,
-			);
-			path = SnipKeyTests;
-			sourceTree = "<group>";
-		};
-		066FAF292BB216170086F135 /* SnipKeyUITests */ = {
-			isa = PBXGroup;
-			children = (
-				066FAF2A2BB216170086F135 /* SnipKeyUITests.swift */,
-				066FAF2C2BB216170086F135 /* SnipKeyUITestsLaunchTests.swift */,
-			);
-			path = SnipKeyUITests;
 			sourceTree = "<group>";
 		};
 		068C77C72BB4C5AA0008D9A1 /* Features */ = {
@@ -345,42 +294,6 @@
 			productReference = 066FAF0A2BB216160086F135 /* SnipKey.app */;
 			productType = "com.apple.product-type.application";
 		};
-		066FAF1B2BB216170086F135 /* SnipKeyTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 066FAF332BB216170086F135 /* Build configuration list for PBXNativeTarget "SnipKeyTests" */;
-			buildPhases = (
-				066FAF182BB216170086F135 /* Sources */,
-				066FAF192BB216170086F135 /* Frameworks */,
-				066FAF1A2BB216170086F135 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				066FAF1E2BB216170086F135 /* PBXTargetDependency */,
-			);
-			name = SnipKeyTests;
-			productName = SnipKeyTests;
-			productReference = 066FAF1C2BB216170086F135 /* SnipKeyTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		066FAF252BB216170086F135 /* SnipKeyUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 066FAF362BB216170086F135 /* Build configuration list for PBXNativeTarget "SnipKeyUITests" */;
-			buildPhases = (
-				066FAF222BB216170086F135 /* Sources */,
-				066FAF232BB216170086F135 /* Frameworks */,
-				066FAF242BB216170086F135 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				066FAF282BB216170086F135 /* PBXTargetDependency */,
-			);
-			name = SnipKeyUITests;
-			productName = SnipKeyUITests;
-			productReference = 066FAF262BB216170086F135 /* SnipKeyUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -396,14 +309,6 @@
 					};
 					066FAF092BB216160086F135 = {
 						CreatedOnToolsVersion = 15.0.1;
-					};
-					066FAF1B2BB216170086F135 = {
-						CreatedOnToolsVersion = 15.0.1;
-						TestTargetID = 066FAF092BB216160086F135;
-					};
-					066FAF252BB216170086F135 = {
-						CreatedOnToolsVersion = 15.0.1;
-						TestTargetID = 066FAF092BB216160086F135;
 					};
 				};
 			};
@@ -424,8 +329,6 @@
 			projectRoot = "";
 			targets = (
 				066FAF092BB216160086F135 /* SnipKey */,
-				066FAF1B2BB216170086F135 /* SnipKeyTests */,
-				066FAF252BB216170086F135 /* SnipKeyUITests */,
 				066E69D32BB9831900D971E8 /* SnipKeyboard */,
 			);
 		};
@@ -458,20 +361,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		066FAF1A2BB216170086F135 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		066FAF242BB216170086F135 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -480,8 +369,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */,
+				06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */,
 				066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */,
 				066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */,
+				06C6FE2D2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
+				06C6FE2E2BB9EEAB00166AB0 /* SnippetListItem.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -494,6 +386,7 @@
 				06F4F3192BB6777E00399C78 /* SnippetListEmpty.swift in Sources */,
 				06F4F2FA2BB5F3BD00399C78 /* Strings.swift in Sources */,
 				06F4F3252BB7484000399C78 /* Views.swift in Sources */,
+				06C6FE2C2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
 				066FAF0E2BB216160086F135 /* SnipKeyApp.swift in Sources */,
 				06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */,
 				06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */,
@@ -510,23 +403,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		066FAF182BB216170086F135 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				066FAF212BB216170086F135 /* SnipKeyTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		066FAF222BB216170086F135 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				066FAF2D2BB216170086F135 /* SnipKeyUITestsLaunchTests.swift in Sources */,
-				066FAF2B2BB216170086F135 /* SnipKeyUITests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -534,16 +410,6 @@
 			isa = PBXTargetDependency;
 			target = 066E69D32BB9831900D971E8 /* SnipKeyboard */;
 			targetProxy = 066E69D92BB9831900D971E8 /* PBXContainerItemProxy */;
-		};
-		066FAF1E2BB216170086F135 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 066FAF092BB216160086F135 /* SnipKey */;
-			targetProxy = 066FAF1D2BB216170086F135 /* PBXContainerItemProxy */;
-		};
-		066FAF282BB216170086F135 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 066FAF092BB216160086F135 /* SnipKey */;
-			targetProxy = 066FAF272BB216170086F135 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -743,7 +609,6 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -780,7 +645,6 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -792,82 +656,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		066FAF342BB216170086F135 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J7K9Z79S5F;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKeyTests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SnipKey.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SnipKey";
-			};
-			name = Debug;
-		};
-		066FAF352BB216170086F135 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J7K9Z79S5F;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKeyTests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SnipKey.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SnipKey";
-			};
-			name = Release;
-		};
-		066FAF372BB216170086F135 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J7K9Z79S5F;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKeyUITests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = SnipKey;
-			};
-			name = Debug;
-		};
-		066FAF382BB216170086F135 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J7K9Z79S5F;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKeyUITests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = SnipKey;
 			};
 			name = Release;
 		};
@@ -897,24 +685,6 @@
 			buildConfigurations = (
 				066FAF312BB216170086F135 /* Debug */,
 				066FAF322BB216170086F135 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		066FAF332BB216170086F135 /* Build configuration list for PBXNativeTarget "SnipKeyTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				066FAF342BB216170086F135 /* Debug */,
-				066FAF352BB216170086F135 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		066FAF362BB216170086F135 /* Build configuration list for PBXNativeTarget "SnipKeyUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				066FAF372BB216170086F135 /* Debug */,
-				066FAF382BB216170086F135 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
