@@ -10,6 +10,17 @@
 		060399962BB8836E00A6E818 /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 060399952BB8836E00A6E818 /* AlertToast */; };
 		066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */; };
 		066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */; };
+		066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69D62BB9831900D971E8 /* KeyboardViewController.swift */; };
+		066E69DB2BB9831900D971E8 /* SnipKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 066E69D42BB9831900D971E8 /* SnipKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69E02BB985CF00D971E8 /* KeyboardView.swift */; };
+		066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69E02BB985CF00D971E8 /* KeyboardView.swift */; };
+		066E69E32BB9896400D971E8 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69D62BB9831900D971E8 /* KeyboardViewController.swift */; };
+		066E69F42BB9CB7600D971E8 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */; };
+		066E69F52BB9CB7900D971E8 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FF2BB6270E00399C78 /* IBMPlexMono-Medium.ttf */; };
+		066E69F62BB9CB7C00D971E8 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F3042BB6270E00399C78 /* IBMPlexMono-Regular.ttf */; };
+		066E69F72BB9CB7F00D971E8 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F3022BB6270E00399C78 /* IBMPlexMono-SemiBold.ttf */; };
+		066E69F82BB9CB9000D971E8 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */; };
+		066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CA2BB4C5FB0008D9A1 /* SnippetModel.swift */; };
 		066FAF0E2BB216160086F135 /* SnipKeyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF0D2BB216160086F135 /* SnipKeyApp.swift */; };
 		066FAF142BB216170086F135 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 066FAF132BB216170086F135 /* Assets.xcassets */; };
 		066FAF172BB216170086F135 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 066FAF162BB216170086F135 /* Preview Assets.xcassets */; };
@@ -37,6 +48,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		066E69D92BB9831900D971E8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 066FAF022BB216160086F135 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 066E69D32BB9831900D971E8;
+			remoteInfo = SnipKeyboard;
+		};
 		066FAF1D2BB216170086F135 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 066FAF022BB216160086F135 /* Project object */;
@@ -53,9 +71,29 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		066E69DF2BB9831900D971E8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 12;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				066E69DB2BB9831900D971E8 /* SnipKeyboard.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKey.entitlements; sourceTree = "<group>"; };
+		0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKeyboard.entitlements; sourceTree = "<group>"; };
 		066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
 		066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Splashscreen.swift; sourceTree = "<group>"; };
+		066E69D42BB9831900D971E8 /* SnipKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SnipKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		066E69D62BB9831900D971E8 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		066E69D82BB9831900D971E8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		066E69E02BB985CF00D971E8 /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
 		066FAF0A2BB216160086F135 /* SnipKey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnipKey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		066FAF0D2BB216160086F135 /* SnipKeyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyApp.swift; sourceTree = "<group>"; };
 		066FAF132BB216170086F135 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -87,6 +125,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		066E69D12BB9831900D971E8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		066FAF072BB216160086F135 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -112,6 +157,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		066E69D52BB9831900D971E8 /* SnipKeyboard */ = {
+			isa = PBXGroup;
+			children = (
+				0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */,
+				066E69D62BB9831900D971E8 /* KeyboardViewController.swift */,
+				066E69D82BB9831900D971E8 /* Info.plist */,
+				066E69E02BB985CF00D971E8 /* KeyboardView.swift */,
+			);
+			path = SnipKeyboard;
+			sourceTree = "<group>";
+		};
 		066FAF012BB216160086F135 = {
 			isa = PBXGroup;
 			children = (
@@ -119,6 +175,7 @@
 				066FAF0C2BB216160086F135 /* SnipKey */,
 				066FAF1F2BB216170086F135 /* SnipKeyTests */,
 				066FAF292BB216170086F135 /* SnipKeyUITests */,
+				066E69D52BB9831900D971E8 /* SnipKeyboard */,
 				066FAF0B2BB216160086F135 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -129,6 +186,7 @@
 				066FAF0A2BB216160086F135 /* SnipKey.app */,
 				066FAF1C2BB216170086F135 /* SnipKeyTests.xctest */,
 				066FAF262BB216170086F135 /* SnipKeyUITests.xctest */,
+				066E69D42BB9831900D971E8 /* SnipKeyboard.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -136,6 +194,7 @@
 		066FAF0C2BB216160086F135 /* SnipKey */ = {
 			isa = PBXGroup;
 			children = (
+				0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */,
 				06F4F3172BB6275600399C78 /* Info.plist */,
 				06F4F2F82BB5F3AF00399C78 /* Helper */,
 				06EA76922BB4DEBE00E3E1F0 /* Core */,
@@ -247,6 +306,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		066E69D32BB9831900D971E8 /* SnipKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 066E69DC2BB9831900D971E8 /* Build configuration list for PBXNativeTarget "SnipKeyboard" */;
+			buildPhases = (
+				066E69D02BB9831900D971E8 /* Sources */,
+				066E69D12BB9831900D971E8 /* Frameworks */,
+				066E69D22BB9831900D971E8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SnipKeyboard;
+			productName = SnipKeyboard;
+			productReference = 066E69D42BB9831900D971E8 /* SnipKeyboard.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		066FAF092BB216160086F135 /* SnipKey */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 066FAF302BB216170086F135 /* Build configuration list for PBXNativeTarget "SnipKey" */;
@@ -254,10 +330,12 @@
 				066FAF062BB216160086F135 /* Sources */,
 				066FAF072BB216160086F135 /* Frameworks */,
 				066FAF082BB216160086F135 /* Resources */,
+				066E69DF2BB9831900D971E8 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				066E69DA2BB9831900D971E8 /* PBXTargetDependency */,
 			);
 			name = SnipKey;
 			packageProductDependencies = (
@@ -310,9 +388,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
+				LastSwiftUpdateCheck = 1530;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					066E69D32BB9831900D971E8 = {
+						CreatedOnToolsVersion = 15.3;
+					};
 					066FAF092BB216160086F135 = {
 						CreatedOnToolsVersion = 15.0.1;
 					};
@@ -345,11 +426,24 @@
 				066FAF092BB216160086F135 /* SnipKey */,
 				066FAF1B2BB216170086F135 /* SnipKeyTests */,
 				066FAF252BB216170086F135 /* SnipKeyUITests */,
+				066E69D32BB9831900D971E8 /* SnipKeyboard */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		066E69D22BB9831900D971E8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				066E69F52BB9CB7900D971E8 /* IBMPlexMono-Medium.ttf in Resources */,
+				066E69F62BB9CB7C00D971E8 /* IBMPlexMono-Regular.ttf in Resources */,
+				066E69F72BB9CB7F00D971E8 /* IBMPlexMono-SemiBold.ttf in Resources */,
+				066E69F82BB9CB9000D971E8 /* Launch Screen.storyboard in Resources */,
+				066E69F42BB9CB7600D971E8 /* IBMPlexMono-Bold.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		066FAF082BB216160086F135 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -381,6 +475,16 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		066E69D02BB9831900D971E8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */,
+				066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */,
+				066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		066FAF062BB216160086F135 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -398,7 +502,9 @@
 				06F4F31F2BB71E8F00399C78 /* WelcomeView.swift in Sources */,
 				068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */,
 				068C77CB2BB4C5FB0008D9A1 /* SnippetModel.swift in Sources */,
+				066E69E32BB9896400D971E8 /* KeyboardViewController.swift in Sources */,
 				068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */,
+				066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */,
 				06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */,
 				06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */,
 			);
@@ -424,6 +530,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		066E69DA2BB9831900D971E8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 066E69D32BB9831900D971E8 /* SnipKeyboard */;
+			targetProxy = 066E69D92BB9831900D971E8 /* PBXContainerItemProxy */;
+		};
 		066FAF1E2BB216170086F135 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 066FAF092BB216160086F135 /* SnipKey */;
@@ -437,6 +548,60 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		066E69DD2BB9831900D971E8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SnipKeyboard/SnipKeyboard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J7K9Z79S5F;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SnipKeyboard/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SnipKeyboard;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey.SnipKeyboard";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		066E69DE2BB9831900D971E8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SnipKeyboard/SnipKeyboard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J7K9Z79S5F;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SnipKeyboard/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SnipKeyboard;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey.SnipKeyboard";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		066FAF2E2BB216170086F135 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -559,9 +724,11 @@
 		066FAF312BB216170086F135 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = SnipKey/SnipKey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
@@ -577,6 +744,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -593,9 +761,11 @@
 		066FAF322BB216170086F135 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = SnipKey/SnipKey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
@@ -611,6 +781,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -703,6 +874,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		066E69DC2BB9831900D971E8 /* Build configuration list for PBXNativeTarget "SnipKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				066E69DD2BB9831900D971E8 /* Debug */,
+				066E69DE2BB9831900D971E8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		066FAF052BB216160086F135 /* Build configuration list for PBXProject "SnipKey" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
