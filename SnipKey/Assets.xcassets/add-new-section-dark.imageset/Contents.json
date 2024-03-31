@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "add-new-section-dark.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

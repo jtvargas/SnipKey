@@ -35,7 +35,7 @@ struct SnippetViewDetail: View {
             SnippetImage(type: snippet.type)
               .font(.system(size: 44))
               .frame(width: 82, height: 82)
-//              .background(Color.label, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+              .background(Color.secondarySystemBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
               .foregroundStyle(.white)
             Text("\(snippet.type)")
           }

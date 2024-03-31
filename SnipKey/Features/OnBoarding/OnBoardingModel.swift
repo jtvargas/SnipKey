@@ -13,4 +13,5 @@ struct BoardingItem: Identifiable {
   var title: String
   var information: String
   var image: String
+  var darkImage: String?
 }

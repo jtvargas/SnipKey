@@ -11,7 +11,7 @@ struct SnippetImage: View {
   let type: SnipType
 
   var body: some View {
-      Image(systemName: "character.cursor.ibeam" )
+      Image(systemName: type == .txt ? "character.cursor.ibeam" : "link.circle")
           .foregroundStyle(Color.label)
   }
 }

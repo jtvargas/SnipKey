@@ -8,16 +8,41 @@
 import SwiftData
 import SwiftUI
 
+func isKeyboardExtensionEnabled() -> Bool {
+  guard let appBundleIdentifier = Bundle.main.bundleIdentifier else {
+      fatalError("isKeyboardExtensionEnabled(): Cannot retrieve bundle identifier.")
+  }
+
+  guard let keyboards = UserDefaults.standard.dictionaryRepresentation()["AppleKeyboards"] as? [String] else {
+      // There is no key `AppleKeyboards` in NSUserDefaults. That happens sometimes.
+      return false
+  }
+
+  let keyboardExtensionBundleIdentifierPrefix = appBundleIdentifier + ".SnipKeyboard"
+    
+  for keyboard in keyboards {
+      print("\(keyboard)")
+      if keyboard.hasPrefix(keyboardExtensionBundleIdentifierPrefix) {
+          return true
+      }
+  }
+
+  return false
+}
+
 struct SnippetView: View {
   @State var showSnippedDetailSheet = false
   @Environment(\.modelContext) var modelContext
+  @Environment(\.scenePhase) var scenePhase
   @State var viewModel = ViewModel()
   @Query(sort: \SnippetItem.timestamp, order: .reverse) private var snippets: [SnippetItem]
 
   @State private var showModal = false
   @State var isPresentedFormModal: Bool = false
+  @State var isPresentedGuide: Bool = false
   @State var isPresentedWelcomeInfo: Bool = false
   @State private var selectedFilter: Tags = .none
+  @State var isKeyboardActive: Bool = false
 
   @State private var snippet: SnippetItem = SnippetItem(
     title: "", content: "", tag: Tags.none, type: SnipType.txt)
@@ -35,7 +60,7 @@ struct SnippetView: View {
   }
 
   func handleOnKeyboardStatusPress() {
-    print("Keyboard Status press")
+      isPresentedGuide = true
   }
 
   func getSnippetItems() -> [SnippetItem] {
@@ -71,7 +96,10 @@ struct SnippetView: View {
     NavigationStack {
       VStack {
         if !snippets.isEmpty {
-          KeyboardStatusView(isActive: false, onKeyboardStatusPress: handleOnKeyboardStatusPress)
+          KeyboardStatusView(isActive: isKeyboardActive, onKeyboardStatusPress: handleOnKeyboardStatusPress)
+                .sheet(isPresented: $isPresentedGuide, content: {
+                        KeyboardHelpGuideView(isPresented: $isPresentedGuide)
+                })
           Form {
             Section(header: Text("Snippets")) {
               List {
@@ -198,6 +226,16 @@ struct SnippetView: View {
     .tint(Color.label)
     .onAppear {
       viewModel.modelContext = modelContext
+      isKeyboardActive = isKeyboardExtensionEnabled()
+    }
+    .onChange(of: scenePhase) { oldPhase, newPhase in
+        if newPhase == .active {
+            isKeyboardActive = isKeyboardExtensionEnabled()
+        } else if newPhase == .inactive {
+            print("Inactive")
+        } else if newPhase == .background {
+            print("Background")
+        }
     }
   }
 
