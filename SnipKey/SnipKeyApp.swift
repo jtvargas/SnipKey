@@ -11,6 +11,7 @@ import SwiftData
 @main
 struct SnipKeyApp: App {
     @AppStorage("isOnboarding") var isOnboarding: Bool = true
+    @State private var showSplashScreen = true
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -29,14 +30,24 @@ struct SnipKeyApp: App {
         print("callback")
     }
     
+
+    
     var body: some Scene {
         WindowGroup {
-            if isOnboarding {
+            if showSplashScreen {
+                Splashscreen()
+                    .onAppear(){
+                        DispatchQueue.main
+                            .asyncAfter(deadline: .now() + (isOnboarding ? 2.2 : 1.8)){
+                                showSplashScreen.toggle()
+                            }
+                    }
+                
+            } else if isOnboarding {
                 WelcomeView(skipCallback: emptyCallback)
             } else {
                 SnippetView()
             }
-            
         }
         .modelContainer(sharedModelContainer)
     }

@@ -116,7 +116,7 @@ struct SnippetViewDetail: View {
       }
     }
     .toast(isPresenting: $showToast){
-        AlertToast(displayMode: .banner(.pop), type: .systemImage("doc.on.clipboard", .black), title: "Content copied!", style: .style(backgroundColor: Color.customSecondary, titleFont: .custom("IBMPlexMono-Medium", size: 14)))
+        AlertToast(displayMode: .banner(.pop), type: .systemImage("doc.on.clipboard", .black), title: "Copied!", style: .style(backgroundColor: Color.customSecondary, titleFont: .custom("IBMPlexMono-Medium", size: 14)))
     }
   }
 

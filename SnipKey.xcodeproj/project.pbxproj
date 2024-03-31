@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		060399962BB8836E00A6E818 /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 060399952BB8836E00A6E818 /* AlertToast */; };
+		066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */; };
+		066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */; };
 		066FAF0E2BB216160086F135 /* SnipKeyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066FAF0D2BB216160086F135 /* SnipKeyApp.swift */; };
 		066FAF142BB216170086F135 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 066FAF132BB216170086F135 /* Assets.xcassets */; };
 		066FAF172BB216170086F135 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 066FAF162BB216170086F135 /* Preview Assets.xcassets */; };
@@ -52,6 +54,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
+		066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Splashscreen.swift; sourceTree = "<group>"; };
 		066FAF0A2BB216160086F135 /* SnipKey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnipKey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		066FAF0D2BB216160086F135 /* SnipKeyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyApp.swift; sourceTree = "<group>"; };
 		066FAF132BB216170086F135 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -111,6 +115,7 @@
 		066FAF012BB216160086F135 = {
 			isa = PBXGroup;
 			children = (
+				066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */,
 				066FAF0C2BB216160086F135 /* SnipKey */,
 				066FAF1F2BB216170086F135 /* SnipKeyTests */,
 				066FAF292BB216170086F135 /* SnipKeyUITests */,
@@ -234,6 +239,7 @@
 			children = (
 				06F4F31E2BB71E8F00399C78 /* WelcomeView.swift */,
 				06F4F3222BB7247900399C78 /* BoardingCardView.swift */,
+				066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -354,6 +360,7 @@
 				06F4F3122BB6270F00399C78 /* IBMPlexMono-Regular.ttf in Resources */,
 				06F4F30D2BB6270F00399C78 /* IBMPlexMono-Medium.ttf in Resources */,
 				06F4F3092BB6270F00399C78 /* IBMPlexMono-Bold.ttf in Resources */,
+				066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -386,6 +393,7 @@
 				066FAF0E2BB216160086F135 /* SnipKeyApp.swift in Sources */,
 				06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */,
 				06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */,
+				066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */,
 				06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */,
 				06F4F31F2BB71E8F00399C78 /* WelcomeView.swift in Sources */,
 				068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */,
@@ -553,6 +561,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
@@ -564,7 +573,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
@@ -586,6 +595,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
@@ -597,7 +607,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;

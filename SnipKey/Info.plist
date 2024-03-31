@@ -9,5 +9,7 @@
 		<string>IBMPlexMono-Regular.ttf</string>
 		<string>IBMPlexMono-SemiBold.ttf</string>
 	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
 </dict>
 </plist>
