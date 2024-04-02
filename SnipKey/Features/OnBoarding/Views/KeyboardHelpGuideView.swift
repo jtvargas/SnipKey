@@ -7,6 +7,17 @@
 
 import SwiftUI
 
+
+func openPhoneSettings() {
+    guard let url = URL(string: UIApplication.openSettingsURLString) else {
+        return
+    }
+    
+    if UIApplication.shared.canOpenURL(url) {
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+}
+
 // MARK: - WELCOME ITEMS DATA
 let keyboardGuideItems: [BoardingItem] = [
     BoardingItem(
@@ -14,7 +25,9 @@ let keyboardGuideItems: [BoardingItem] = [
         information:
             "Head to **Settings > General > Keyboards** and find the **SnipKey Keyboard** option.",
         image: "keyboard-section-white",
-        darkImage: "keyboard-section-dark"
+        darkImage: "keyboard-section-dark",
+        action: {openPhoneSettings()},
+        actionLabel: "Go to Settings"
     ),
     BoardingItem(
         title: "➕ Add Some **Magic**",

@@ -28,6 +28,10 @@
 		068C77CD2BB4C60C0008D9A1 /* SnippetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */; };
 		068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CE2BB4C62D0008D9A1 /* SnippetView.swift */; };
 		068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */; };
+		06AE130E2BBB09B5008EAE98 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */; };
+		06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */; };
+		06AE13122BBB0D16008EAE98 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE13112BBB0D16008EAE98 /* SettingsView.swift */; };
+		06AE13132BBB0D8B008EAE98 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */; };
 		06C6FE2C2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */; };
 		06C6FE2D2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */; };
 		06C6FE2E2BB9EEAB00166AB0 /* SnippetListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */; };
@@ -90,6 +94,9 @@
 		068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewModel.swift; sourceTree = "<group>"; };
 		068C77CE2BB4C62D0008D9A1 /* SnippetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetView.swift; sourceTree = "<group>"; };
 		068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetListItem.swift; sourceTree = "<group>"; };
+		06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
+		06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		06AE13112BBB0D16008EAE98 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyDataManager.swift; sourceTree = "<group>"; };
 		06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHelpGuideView.swift; sourceTree = "<group>"; };
 		06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewDetail.swift; sourceTree = "<group>"; };
@@ -189,6 +196,7 @@
 		068C77C72BB4C5AA0008D9A1 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				06AE130C2BBB099B008EAE98 /* Settings */,
 				06F4F31C2BB71E5E00399C78 /* OnBoarding */,
 				068C77C82BB4C5C00008D9A1 /* Snippets */,
 			);
@@ -214,6 +222,24 @@
 				06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */,
 				06F4F3182BB6777E00399C78 /* SnippetListEmpty.swift */,
 				06F4F31A2BB67C9600399C78 /* KeyboardStatusView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		06AE130C2BBB099B008EAE98 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				06AE13142BBB0D97008EAE98 /* Views */,
+				06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */,
+				06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		06AE13142BBB0D97008EAE98 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				06AE13112BBB0D16008EAE98 /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -376,6 +402,7 @@
 				066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */,
 				066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */,
 				06C6FE2D2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
+				06AE13132BBB0D8B008EAE98 /* SettingsModel.swift in Sources */,
 				06C6FE2E2BB9EEAB00166AB0 /* SnippetListItem.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -385,6 +412,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				068C77CD2BB4C60C0008D9A1 /* SnippetViewModel.swift in Sources */,
+				06AE13122BBB0D16008EAE98 /* SettingsView.swift in Sources */,
 				06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */,
 				06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */,
 				06F4F3192BB6777E00399C78 /* SnippetListEmpty.swift in Sources */,
@@ -396,12 +424,14 @@
 				06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */,
 				066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */,
 				06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */,
+				06AE130E2BBB09B5008EAE98 /* SettingsModel.swift in Sources */,
 				06F4F31F2BB71E8F00399C78 /* WelcomeView.swift in Sources */,
 				068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */,
 				068C77CB2BB4C5FB0008D9A1 /* SnippetModel.swift in Sources */,
 				066E69E32BB9896400D971E8 /* KeyboardViewController.swift in Sources */,
 				068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */,
 				066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */,
+				06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */,
 				06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */,
 				06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */,
 			);

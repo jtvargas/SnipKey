@@ -138,7 +138,7 @@ struct SnippetForm: View {
         Picker(selection: $snippetItem.tag, label: Image(systemName: "tag.fill")) {
           ForEach(Tags.allCases, id: \.id) { tag in
             HStack {
-              Text(tag.rawValue)
+              Text(tag.displayText)
               Spacer()
               Image(systemName: imageForTag(tag))
             }

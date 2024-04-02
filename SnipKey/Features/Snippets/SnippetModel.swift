@@ -16,6 +16,17 @@ enum SnipType: Codable {
 enum Tags: String, CaseIterable, Identifiable, Codable   {
     case none, personal, work
     var id: String { return self.rawValue }
+    
+    var displayText: String {
+        switch self {
+        case .none:
+            return "None"
+        case .personal:
+            return "Personal"
+        case .work:
+            return "Work"
+        }
+    }
 }
 
 @Model

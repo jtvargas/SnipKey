@@ -131,6 +131,9 @@ struct KeyboardView: View {
   @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
   @State private var text: String = ""
   @State private var selectedFilter: Tags = .none
+//   TODO: Get this value from context, see settingsView to see how to inject the currentSettings model persisted
+    @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .space)
+
   let columns = [GridItem(.adaptive(minimum: 150, maximum: 175), spacing: 6)]
 
   func actionPerform() {
@@ -154,8 +157,31 @@ struct KeyboardView: View {
     return String(Character(scalar))
   }
 
+  func actionKeyboardAfterPaste(actionKey: KeyboardAfterPasteAction) {
+    switch actionKey {
+    case .rtrn:
+      // Unicode scalar value for 'Return' (Carriage Return)
+        NotificationCenter.default.post(
+          name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
+      break
+    case .changeReturn:
+        print("call on return and switch")
+      break // Placeholder, use actual value
+    case .change:
+        print("call on switch keyboard")
+      break
+    case .space:
+        NotificationCenter.default.post(
+          name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
+      break
+    }
+  }
+
   func sentValueToTextInput(value: String) {
-    NotificationCenter.default.post(name: NSNotification.Name(rawValue: "addKey"), object: value)
+    NotificationCenter.default.post(
+      name: NSNotification.Name(rawValue: "addKey"), object: value)
+      
+      actionKeyboardAfterPaste(actionKey: currentSettings.afterPasteAction)
   }
 
   var body: some View {

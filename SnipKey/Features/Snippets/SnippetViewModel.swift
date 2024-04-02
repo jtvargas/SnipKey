@@ -11,27 +11,22 @@ import SwiftUI
 @Observable
 class ViewModel {
     var modelContext: ModelContext? = nil
-
+    
     func deleteItems(offsets: IndexSet, snippets:  [SnippetItem]) {
-    withAnimation {
-      for index in offsets {
-        self.modelContext?.delete(snippets[index])
-      }
-
+        for index in offsets {
+            self.modelContext?.delete(snippets[index])
+        }
     }
-  }
-
-  func addItem(_ title: String, content: String, tag: Tags?, type: SnipType?) {
-      if (title.isEmpty && content.isEmpty){
-          print("empty, no add")
-      } else {
-          print("ADD FUNC CALLED!")
-          withAnimation {
+    
+    func addItem(_ title: String, content: String, tag: Tags?, type: SnipType?) {
+        if (title.isEmpty && content.isEmpty){
+            print("empty, no add")
+        } else {
+            print("ADD FUNC CALLED!")
             let newItem = SnippetItem(title: title, content: content, tag: tag, type: type ?? .txt)
             self.modelContext?.insert(newItem)
-
-          }
-      }
-  }
+            
+        }
+    }
 }
 

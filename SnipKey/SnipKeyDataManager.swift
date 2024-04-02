@@ -10,11 +10,18 @@ import SwiftData
 
 class SnipKeyDataManager {
     var sharedContainer: ModelContainer? = nil
+//    var settingsVideModel: SettingsViewModel = SettingsViewModel()
+    
+//    init(){
+//        settingsVideModel.setupKeyboardSettings()
+//    }
+    
     
     func makeSharedContainer() -> ModelContainer {
         let sharedModelContainer: ModelContainer = {
             let schema = Schema([
                 SnippetItem.self,
+                SettingsModel.self,
             ])
             let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, groupContainer: .identifier("group.snipkey"))
             
@@ -30,3 +37,28 @@ class SnipKeyDataManager {
         return sharedModelContainer
     }
 }
+
+//
+//class SettingsDataManager {
+//    var sharedContainer: ModelContainer? = nil
+//    
+//    func makeSharedContainer() -> ModelContainer {
+//        let sharedModelContainer: ModelContainer = {
+//            let schema = Schema([
+//                SettingsModel.self,
+//            ])
+//            
+//            let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, groupContainer: .identifier("group.snipkey"))
+//            
+//            do {
+//                return try ModelContainer(for: schema, configurations: [modelConfiguration])
+//            } catch {
+//                fatalError("Could not create ModelContainer: \(error)")
+//            }
+//        }()
+//        
+//        self.sharedContainer = sharedModelContainer
+//        
+//        return sharedModelContainer
+//    }
+//}

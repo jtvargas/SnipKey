@@ -43,8 +43,11 @@ class KeyboardViewController: UIInputViewController {
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ notification in
             if let text = notification.object as? String {
                 self.textDocumentProxy.insertText(text)
+                
             }
             
+//            Switch Keyboard
+//            self.advanceToNextInputMode()
         }
     }
     

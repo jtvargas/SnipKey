@@ -49,19 +49,19 @@ struct BoardingCardView: View {
                     AdaptiveImage(light: Image(boardingItem.image), dark: Image(darkImageName))
                         .scaledToFit()
                         .frame(width: 320, height: 320)
-                        .shadow(color: Color(red: 0, green: 0, blue: 0, opacity: 0.15), radius: 8, x: 6, y: 8)
                         .scaleEffect(isAnimating ? 1.0 : 0.6)
                         .background(Color.secondarySystemBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 25))
+                        .shadow(color: Color.label.opacity(0.1), radius: 8, x: 6, y: 8)
                 } else {
                     Image(boardingItem.image)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 320, height: 320)
-                        .shadow(color: Color(red: 0, green: 0, blue: 0, opacity: 0.15), radius: 8, x: 6, y: 8)
                         .scaleEffect(isAnimating ? 1.0 : 0.6)
                         .background(Color.secondarySystemBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 25))
+                        .shadow(color: Color.label.opacity(0.1), radius: 8, x: 6, y: 8)
                 }
                 Spacer()
                 
@@ -73,6 +73,17 @@ struct BoardingCardView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 16)
                     .frame(maxWidth: 480)
+                
+                Button(action: {
+                    boardingItem.action?()
+                }) {
+                    Text(boardingItem.actionLabel ?? "Go To Settings")
+                        .tint(Color.blue)
+                        .underline()
+                        .font(.custom("IBMPlexMono-Medium", size: 14))
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
                 Spacer()
                 //                // BUTTON: START
                 //                StartButtonView()
