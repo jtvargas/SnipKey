@@ -62,7 +62,7 @@ struct SnippetViewDetail: View {
       Section(
         header: Text("Content"),
         footer:  HStack{
-            Label("\(snippet.tag)", systemImage: imageForTag(snippet.tag))
+            Label("\(snippet.tag)", systemImage: snippet.tag.imageTag)
                 .tint(.label)
             Spacer()
             Button(action: copyToClipboard) {

@@ -278,7 +278,7 @@ struct SnippetListEmpty: View {
                             isTilted.toggle()
                         }
                     }
-//                Spacer()
+                Spacer()
                 Arrow(progress: progress)
                     .size(width: geometry.size.width, height: geometry.size.height / 4 )
                     .scale(0.9, anchor: .bottom)

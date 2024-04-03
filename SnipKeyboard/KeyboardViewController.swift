@@ -49,6 +49,25 @@ class KeyboardViewController: UIInputViewController {
 //            Switch Keyboard
 //            self.advanceToNextInputMode()
         }
+        
+        // Listen to swicthKeyboard
+        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "switchKey"), object: nil, queue: nil){ _ in      
+//            Switch Keyboard
+            self.advanceToNextInputMode()
+        }
+        
+        // Delete text
+        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "deleteKey"), object: nil, queue: nil){ _ in
+            self.textDocumentProxy.deleteBackward()
+            
+//            // Move the text insertion position forward 1 character
+//            self.textDocumentProxy.adjustTextPosition(byCharacterOffset: -40)
+
+
+            // Delete the previous character
+//            self.textDocumentProxy.deleteBackward()
+
+        }
     }
     
     override func viewWillLayoutSubviews() {

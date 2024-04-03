@@ -175,9 +175,9 @@ struct SnippetView: View {
                             Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
                                 ForEach(Tags.allCases, id: \.id) { tag in
                                     HStack {
-                                        Text(tag.rawValue)
+                                        Text(tag.displayText)
                                         Spacer()
-                                        Image(systemName: imageForTag(tag))
+                                        Image(systemName: tag.imageTag)
                                     }
                                     .tag(tag)
                                 }
@@ -246,7 +246,7 @@ struct SnippetView: View {
                                 .font(.system(size: 24))
 //                            isPresentingSettings
                         }.sheet(isPresented: $isPresentingSettings) {
-                            SettingsView()
+                            SettingsView( isPresentingSettings: $isPresentingSettings)
                         }
                         
                     }

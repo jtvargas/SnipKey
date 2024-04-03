@@ -13,6 +13,8 @@ struct SettingsView: View {
     @Query() private var settings: [SettingsModel]
     let settingsViewModel = SettingsViewModel()
     
+    @Binding  var isPresentingSettings: Bool
+    
     @State private var action: KeyboardAfterPasteAction = .rtrn
     @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .rtrn)
     
@@ -70,13 +72,24 @@ struct SettingsView: View {
                         print("Reset")
                     } label: {
                         
-                        Label("Reset Keyboard Settings", systemImage: "square.and.pencil.circle.fill")
+                        Label("Reset Keyboard Settings", systemImage: "xmark.bin.circle.fill")
                             .foregroundColor(.customError)
                     }
 
                 }
             }
             .toolbar{
+                ToolbarItem(placement: .topBarLeading){
+                    Button {
+                        isPresentingSettings.toggle()
+                    } label: {
+                        Text("close")
+                            .foregroundColor(Color.secondary)
+                            .underline()
+                            .bold()
+                    }
+                   
+                }
                 ToolbarItem(placement: .bottomBar){
                     Text("SnipKey")
                         .foregroundColor(Color.secondary)
@@ -88,6 +101,7 @@ struct SettingsView: View {
                 settingsViewModel.modelContext = modelContext
                 if let myCurrentSettings = settings.first {
                     currentSettings = myCurrentSettings
+                    action = myCurrentSettings.afterPasteAction
                 }
             }
         }
@@ -98,8 +112,9 @@ struct SettingsView: View {
 #Preview {
     let settingsViewModel = SettingsViewModel()
     let tempSettingsContainer = SnipKeyDataManager().makeSharedContainer()
+    @State  var isPresentingSettings: Bool = false
     
-    return SettingsView()
+    return SettingsView( isPresentingSettings: $isPresentingSettings)
         .onAppear {
             settingsViewModel.modelContext = tempSettingsContainer.mainContext
             settingsViewModel.setupKeyboardSettings()

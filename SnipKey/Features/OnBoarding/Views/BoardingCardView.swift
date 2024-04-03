@@ -74,16 +74,19 @@ struct BoardingCardView: View {
                     .padding(.horizontal, 16)
                     .frame(maxWidth: 480)
                 
-                Button(action: {
-                    boardingItem.action?()
-                }) {
-                    Text(boardingItem.actionLabel ?? "Go To Settings")
-                        .tint(Color.blue)
-                        .underline()
-                        .font(.custom("IBMPlexMono-Medium", size: 14))
-                        .multilineTextAlignment(.center)
+                if boardingItem.action != nil {
+                    Button(action: {
+                        boardingItem.action?()
+                    }) {
+                        Text(boardingItem.actionLabel ?? "Go To Settings")
+                            .tint(Color.blue)
+                            .underline()
+                            .font(.custom("IBMPlexMono-Medium", size: 14))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
                 }
-                .padding()
+               
                 Spacer()
                 //                // BUTTON: START
                 //                StartButtonView()

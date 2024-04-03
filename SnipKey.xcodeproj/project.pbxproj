@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		060399962BB8836E00A6E818 /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 060399952BB8836E00A6E818 /* AlertToast */; };
+		0627678B2BBCDE3000B3993B /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */; };
 		066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */; };
 		066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */; };
 		066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69D62BB9831900D971E8 /* KeyboardViewController.swift */; };
@@ -404,6 +405,7 @@
 				06C6FE2D2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
 				06AE13132BBB0D8B008EAE98 /* SettingsModel.swift in Sources */,
 				06C6FE2E2BB9EEAB00166AB0 /* SnippetListItem.swift in Sources */,
+				0627678B2BBCDE3000B3993B /* SettingsViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

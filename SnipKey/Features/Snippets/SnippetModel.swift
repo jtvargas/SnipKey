@@ -27,6 +27,17 @@ enum Tags: String, CaseIterable, Identifiable, Codable   {
             return "Work"
         }
     }
+    
+    var imageTag: String {
+        switch self {
+        case .none:
+          return "tag.slash.fill"
+        case .personal:
+          return "person.text.rectangle.fill"
+        case .work:
+          return "case.fill"
+        }
+    }
 }
 
 @Model
