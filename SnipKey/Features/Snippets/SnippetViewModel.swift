@@ -38,8 +38,8 @@ class SnippetViewModel {
     func setupTags() {
         print("SETTING UP INITIAL TAGS...")
         let newNoneTag = SnipTag(name: "None",imageTag: "tag.fill")
-        let newPersonalTag = SnipTag(name: "Personal",imageTag: "circle.fill")
-        let newWorkTag = SnipTag(name: "Work",imageTag: "circle")
+        let newPersonalTag = SnipTag(name: "Personal",imageTag: "person.fill")
+        let newWorkTag = SnipTag(name: "Work",imageTag: "suitcase.fill")
         self.modelContext?.insert(newPersonalTag)
         self.modelContext?.insert(newWorkTag)
         self.modelContext?.insert(newNoneTag)

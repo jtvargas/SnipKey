@@ -57,10 +57,7 @@ struct SnippetView: View {
     @State var isPresentedGuide: Bool = false
     @State var isPresentedWelcomeInfo: Bool = false
     @State var isKeyboardActive: Bool = false
-    
-    
-    
-    
+
     func toggleFormModal() {
         self.isPresentedFormModal.toggle()
     }
@@ -78,47 +75,21 @@ struct SnippetView: View {
     }
     
     func getSnippetItems() -> [SnippetItem] {
-//        if selectedFilter == nil {
-//            return snippets
-//        }
+        if selectedFilter == nil {
+            return snippets
+        }
         
-        return snippets
+        let snippetsFiltered = snippets.filter { snippetItem in
+            return snippetItem.customTag == selectedFilter
+        }
         
-        return []
-        
-//        Wait new SwiftData version improve the filter predicate
-//        switch selectedFilter {
-//        case .personal:
-//            return snippetsPersonal
-//        case .work:
-//            return snippetsWork
-//        default:
-//            return snippets
-//        }
-        
-//        let snippetsFiltered = snippets.filter { snippetItem in
-//            return snippetItem.tag == selectedFilter
-//        }
-        
-//        return snippetsFiltered
+        return snippetsFiltered
     }
     
     func handleDeleteSnippet(offsets: IndexSet) {
         viewModel.deleteItems(offsets: offsets, snippets: snippets)
     }
     
-    func onCreateSnippet() {
-//        if snippet.title.isEmpty || snippet.content.isEmpty {
-//            print("cant save empty")
-//        } else {
-//            viewModel.addItem(
-//                snippet.title, content: snippet.content, tag: snippet.tag, type: snippet.type, customTag: snippet.customTag)
-//            
-//            self.toggleFormModal()
-//            print("Snippet CREATED")
-//        }
-        
-    }
     
     var body: some View {
         NavigationStack {
@@ -186,27 +157,31 @@ struct SnippetView: View {
                     }
                     
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu(
-                        content: {
-                            Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
-                                ForEach(tags, id: \.id) { tag in
-                                    HStack {
-                                        Text(tag.name)
-                                        Spacer()
-                                        Image(systemName: tag.imageTag)
+                
+                if !snippets.isEmpty {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu(
+                            content: {
+                                Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
+                                    ForEach(tags, id: \.id) { tag in
+                                        HStack {
+                                            Text(tag.name)
+                                            Spacer()
+                                            Image(systemName: tag.imageTag)
+                                        }
+                                        .tag(Optional(tag))
                                     }
-                                    .tag(Optional(tag))
                                 }
-                            }
-                        },
-                        label: {
-                            Image(
-                                systemName: selectedFilter != nil
-                                ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
-                            )
-                            .tint(Color.label)
-                        })
+                            },
+                            label: {
+                                Image(
+                                    systemName: selectedFilter != nil
+                                    ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
+                                )
+                                .tint(Color.label)
+                            })
+                    }
+
                 }
                 
                 ToolbarItem(placement: .bottomBar) {
