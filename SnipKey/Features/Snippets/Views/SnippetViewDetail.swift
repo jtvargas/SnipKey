@@ -14,7 +14,7 @@ struct SnippetViewDetail: View {
   @State private var showToast = false
   @State var isEditFormVisible: Bool = false
   @State private var snippet: SnippetItem = SnippetItem(
-    title: "", content: "", tag: Tags.none, type: SnipType.txt)
+    title: "", content: "", type: SnipType.txt)
 
   func toggleEditForm() {
     self.isEditFormVisible.toggle()
@@ -32,12 +32,12 @@ struct SnippetViewDetail: View {
         HStack {
           Spacer()
           VStack {
-            SnippetImage(type: snippet.type)
+              SnippetImage(type: snippet.type)
               .font(.system(size: 44))
               .frame(width: 82, height: 82)
               .background(Color.secondarySystemBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
               .foregroundStyle(.white)
-            Text("\(snippet.type)")
+              Text("\(snippet.type)")
           }
           Spacer()
 
@@ -62,7 +62,7 @@ struct SnippetViewDetail: View {
       Section(
         header: Text("Content"),
         footer:  HStack{
-            Label("\(snippet.tag)", systemImage: snippet.tag.imageTag)
+            Label("\(snippet.customTag?.name ?? "None")", systemImage: "tag.fill")
                 .tint(.label)
             Spacer()
             Button(action: copyToClipboard) {
@@ -98,24 +98,10 @@ struct SnippetViewDetail: View {
             .underline()
             .tint(Color.label)
         }.sheet(isPresented: $isEditFormVisible) {
-          NavigationStack {
-            Label("Changes are saved automatically", systemImage: "info.square.fill")
-              .bold()
-              .font(.custom("IBMPlexMono-Medium", size: 15))
-            SnippetForm(isFormVisible: $isEditFormVisible, snippetItem: $snippet)
-              .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                  Button(action: toggleEditForm) {
-                    Text("Close")
-                      .tint(Color.label)
-                      .bold()
-                      .underline()
-                      .font(.custom("IBMPlexMono-Medium", size: 15))
-                  }
-                }
-              }
-          }
-
+            NavigationStack{
+                SnippetForm(snippet: snippet, isFormVisible: $isEditFormVisible)
+            }
+            
         }
       }
     }

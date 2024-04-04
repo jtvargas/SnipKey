@@ -38,6 +38,7 @@
 		06C6FE2E2BB9EEAB00166AB0 /* SnippetListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */; };
 		06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */; };
+		06D827FE2BBDC7DC00305E18 /* SymbolPicker in Frameworks */ = {isa = PBXBuildFile; productRef = 06D827FD2BBDC7DC00305E18 /* SymbolPicker */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
@@ -129,6 +130,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				06D827FE2BBDC7DC00305E18 /* SymbolPicker in Frameworks */,
 				060399962BB8836E00A6E818 /* AlertToast in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -319,6 +321,7 @@
 			name = SnipKey;
 			packageProductDependencies = (
 				060399952BB8836E00A6E818 /* AlertToast */,
+				06D827FD2BBDC7DC00305E18 /* SymbolPicker */,
 			);
 			productName = SnipKey;
 			productReference = 066FAF0A2BB216160086F135 /* SnipKey.app */;
@@ -353,6 +356,7 @@
 			mainGroup = 066FAF012BB216160086F135;
 			packageReferences = (
 				060399942BB8836E00A6E818 /* XCRemoteSwiftPackageReference "AlertToast" */,
+				06D827FC2BBDC7DC00305E18 /* XCRemoteSwiftPackageReference "SymbolPicker" */,
 			);
 			productRefGroup = 066FAF0B2BB216160086F135 /* Products */;
 			projectDirPath = "";
@@ -736,6 +740,14 @@
 				minimumVersion = 1.3.9;
 			};
 		};
+		06D827FC2BBDC7DC00305E18 /* XCRemoteSwiftPackageReference "SymbolPicker" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/xnth97/SymbolPicker.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -743,6 +755,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 060399942BB8836E00A6E818 /* XCRemoteSwiftPackageReference "AlertToast" */;
 			productName = AlertToast;
+		};
+		06D827FD2BBDC7DC00305E18 /* SymbolPicker */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 06D827FC2BBDC7DC00305E18 /* XCRemoteSwiftPackageReference "SymbolPicker" */;
+			productName = SymbolPicker;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

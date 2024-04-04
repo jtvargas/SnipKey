@@ -27,7 +27,8 @@ struct SnipKeyApp: App {
     @AppStorage("isOnboarding") var isOnboarding: Bool = true
     @State private var showSplashScreen = true
     private let container = SnipKeyDataManager().makeSharedContainer()
-    let settingsViewModel = SettingsViewModel()
+    private let settingsViewModel = SettingsViewModel()
+    private let snippetViewModel = SnippetViewModel()
     
     
     func emptyCallback(){
@@ -41,7 +42,9 @@ struct SnipKeyApp: App {
                 Splashscreen()
                     .onAppear(){
                         settingsViewModel.modelContext = container.mainContext
+                        snippetViewModel.modelContext = container.mainContext
                         settingsViewModel.setupKeyboardSettings()
+                        snippetViewModel.setupInitialTags()
                         DispatchQueue.main
                             .asyncAfter(deadline: .now() + (isOnboarding ? 2.2 : 1.4)){
                                 showSplashScreen.toggle()

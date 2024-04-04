@@ -33,9 +33,10 @@ struct SnippetView: View {
     @State var showSnippedDetailSheet = false
     @Environment(\.modelContext) var modelContext
     @Environment(\.scenePhase) var scenePhase
-    @State var viewModel = ViewModel()
-    @State private var selectedFilter: Tags = .none
-    @Query(sort: \SnippetItem.timestamp, order: .reverse, animation: .bouncy) private var snippets: [SnippetItem]
+    @State var viewModel = SnippetViewModel()
+    @State private var selectedFilter: SnipTag? = nil
+    @Query(sort: \SnippetItem.creationDate, order: .reverse, animation: .bouncy) private var snippets: [SnippetItem]
+    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
     
 //    For some reasons this filter predicate not work, wait until new swiftData version improves this
 //    @Query(filter: #Predicate<SnippetItem>{
@@ -55,16 +56,12 @@ struct SnippetView: View {
     @State var isPresentedFormModal: Bool = false
     @State var isPresentedGuide: Bool = false
     @State var isPresentedWelcomeInfo: Bool = false
-  
     @State var isKeyboardActive: Bool = false
     
-    @State private var snippet: SnippetItem = SnippetItem(
-        title: "", content: "", tag: Tags.none, type: SnipType.txt)
     
     
     
     func toggleFormModal() {
-        snippet = SnippetItem(title: "", content: "", tag: Tags.none, type: SnipType.txt)
         self.isPresentedFormModal.toggle()
     }
     
@@ -74,8 +71,6 @@ struct SnippetView: View {
     func toggleSettingsModal() {
         self.isPresentingSettings.toggle()
         print("toggleSettingsModal")
-//        print("KEYBOARD SETTING AFTER PASTE ACTION: \(snipKeyboardSetting.afterPasteAction) ")
-//        print("KEYBOARD SETTING BOOL TESTING: \(snipKeyboardSetting.boolTesting) ")
     }
     
     func handleOnKeyboardStatusPress() {
@@ -83,9 +78,13 @@ struct SnippetView: View {
     }
     
     func getSnippetItems() -> [SnippetItem] {
-        if selectedFilter == .none {
-            return snippets
-        }
+//        if selectedFilter == nil {
+//            return snippets
+//        }
+        
+        return snippets
+        
+        return []
         
 //        Wait new SwiftData version improve the filter predicate
 //        switch selectedFilter {
@@ -97,11 +96,11 @@ struct SnippetView: View {
 //            return snippets
 //        }
         
-        let snippetsFiltered = snippets.filter { snippetItem in
-            return snippetItem.tag == selectedFilter
-        }
+//        let snippetsFiltered = snippets.filter { snippetItem in
+//            return snippetItem.tag == selectedFilter
+//        }
         
-        return snippetsFiltered
+//        return snippetsFiltered
     }
     
     func handleDeleteSnippet(offsets: IndexSet) {
@@ -109,15 +108,15 @@ struct SnippetView: View {
     }
     
     func onCreateSnippet() {
-        if snippet.title.isEmpty || snippet.content.isEmpty {
-            print("cant save empty")
-        } else {
-            viewModel.addItem(
-                snippet.title, content: snippet.content, tag: snippet.tag, type: snippet.type)
-            
-            self.toggleFormModal()
-            print("Snippet CREATED")
-        }
+//        if snippet.title.isEmpty || snippet.content.isEmpty {
+//            print("cant save empty")
+//        } else {
+//            viewModel.addItem(
+//                snippet.title, content: snippet.content, tag: snippet.tag, type: snippet.type, customTag: snippet.customTag)
+//            
+//            self.toggleFormModal()
+//            print("Snippet CREATED")
+//        }
         
     }
     
@@ -130,7 +129,25 @@ struct SnippetView: View {
                             KeyboardHelpGuideView(isPresented: $isPresentedGuide)
                         })
                     Form {
-                        Section(header: Text("Snippets")) {
+                       
+                        Section(header:  HStack{
+                            Text("Snippets")
+                            Spacer()
+                            
+                            if selectedFilter != nil {
+                                Button{
+                                    selectedFilter = nil
+                                }label:{
+                                    HStack{
+                                        Image(systemName: "minus.circle.fill")
+                                        Text("Remove Filter")
+                                            .font(.custom("IBMPlexMono-Medium", size: 14))
+                                    }
+                                    
+                                }
+                            }
+                           
+                        }) {
                             List {
                                 ForEach(getSnippetItems(), id: \.self.id) { snippetItem in
                                     NavigationLink(destination: SnippetViewDetail(item: snippetItem)) {
@@ -173,19 +190,19 @@ struct SnippetView: View {
                     Menu(
                         content: {
                             Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
-                                ForEach(Tags.allCases, id: \.id) { tag in
+                                ForEach(tags, id: \.id) { tag in
                                     HStack {
-                                        Text(tag.displayText)
+                                        Text(tag.name)
                                         Spacer()
                                         Image(systemName: tag.imageTag)
                                     }
-                                    .tag(tag)
+                                    .tag(Optional(tag))
                                 }
                             }
                         },
                         label: {
                             Image(
-                                systemName: selectedFilter != Tags.none
+                                systemName: selectedFilter != nil
                                 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
                             )
                             .tint(Color.label)
@@ -210,32 +227,7 @@ struct SnippetView: View {
                         }
                         .sheet(isPresented: $isPresentedFormModal) {
                             NavigationStack {
-                                SnippetForm(isFormVisible: $isPresentedFormModal, snippetItem: $snippet)
-                                    .navigationTitle("New Snippet")
-                                    .font(.custom("IBMPlexMono-Bold", size: 14))
-                                    .navigationBarTitleDisplayMode(.inline)
-                                    .interactiveDismissDisabled()
-                                    .toolbar {
-                                        ToolbarItem(placement: .topBarLeading) {
-                                            Button(action: toggleFormModal) {
-                                                Text("Close")
-                                                    .tint(Color.label)
-                                                    .bold()
-                                                    .underline()
-                                                    .font(.custom("IBMPlexMono-Medium", size: 15))
-                                            }
-                                        }
-                                        
-                                        ToolbarItem(placement: .topBarTrailing) {
-                                            Button(action: onCreateSnippet) {
-                                                Text("Save")
-                                                    .tint(Color.label)
-                                                    .bold()
-                                                    .underline()
-                                                    .font(.custom("IBMPlexMono-Medium", size: 15))
-                                            }
-                                        }
-                                    }
+                                SnippetForm(snippet: nil, isFormVisible: $isPresentedFormModal)
                             }
                         }
                         
@@ -244,7 +236,6 @@ struct SnippetView: View {
                             Image(systemName: "gearshape.circle.fill")
                                 .tint(Color.label)
                                 .font(.system(size: 24))
-//                            isPresentingSettings
                         }.sheet(isPresented: $isPresentingSettings) {
                             SettingsView( isPresentingSettings: $isPresentingSettings)
                         }

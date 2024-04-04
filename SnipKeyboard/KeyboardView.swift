@@ -127,7 +127,7 @@ extension View {
 
 struct KeyboardView: View {
     @Environment(\.modelContext) var modelContext
-    @Query(sort: \SnippetItem.timestamp, order: .reverse) private var snippets: [SnippetItem]
+    @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
     @Query() private var settings: [SettingsModel]
     let settingsViewModel = SettingsViewModel()
     @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()

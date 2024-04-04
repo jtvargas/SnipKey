@@ -37,28 +37,3 @@ class SnipKeyDataManager {
         return sharedModelContainer
     }
 }
-
-//
-//class SettingsDataManager {
-//    var sharedContainer: ModelContainer? = nil
-//    
-//    func makeSharedContainer() -> ModelContainer {
-//        let sharedModelContainer: ModelContainer = {
-//            let schema = Schema([
-//                SettingsModel.self,
-//            ])
-//            
-//            let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, groupContainer: .identifier("group.snipkey"))
-//            
-//            do {
-//                return try ModelContainer(for: schema, configurations: [modelConfiguration])
-//            } catch {
-//                fatalError("Could not create ModelContainer: \(error)")
-//            }
-//        }()
-//        
-//        self.sharedContainer = sharedModelContainer
-//        
-//        return sharedModelContainer
-//    }
-//}
