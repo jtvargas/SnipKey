@@ -13,37 +13,34 @@ struct SettingsView: View {
     @Query() private var settings: [SettingsModel]
     let settingsViewModel = SettingsViewModel()
     
-    @Binding  var isPresentingSettings: Bool
+    @Binding var isPresentingSettings: Bool
     
+    @State private var showingAlert = false
     @State private var action: KeyboardAfterPasteAction = .rtrn
     @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .rtrn)
     
-    func changeKeyboardAfterAction(newAction: KeyboardAfterPasteAction ){
-        settingsViewModel.changeAfterPasteAction(action: newAction)
-    }
-    
     var body: some View {
-        NavigationStack{
+        NavigationStack {
             List {
                 Section("Keyboard Settings") {
                     Section(
                         footer:
-                        Label {
-                            Text("Keyboard action after a snippet is been pasted in your field.")
-                                .font(.custom("IBMPlexMono-Medium", size: 14))
-                        } icon: {
-                            Image(systemName: "doc.badge.arrow.up.fill")
-                                .font(.system(size: 16, weight: .light, design: .rounded))
-                            
-                        }
+                            Label {
+                                Text("Customize what happens after pasting a snippet.")
+                                    .font(.custom("IBMPlexMono-Medium", size: 14))
+                            } icon: {
+                                Image(systemName: "doc.badge.arrow.up.fill")
+                                    .font(.system(size: 16, weight: .light, design: .rounded))
+                                
+                            }
                             .font(.custom("IBMPlexMono-Medium", size: 12))
-                        .foregroundColor(.label)
+                            .foregroundColor(.label)
                     ) {
                         Picker(
                             selection: $currentSettings.afterPasteAction,
                             label:
-                                Text("After Paste Action")
-                                    .font(.custom("IBMPlexMono-Medium", size: 14))
+                                Text("Paste Action")
+                                .font(.custom("IBMPlexMono-Medium", size: 14))
                         ) {
                             ForEach(KeyboardAfterPasteAction.allCases, id: \.id) { keyboardAction in
                                 Text("\(keyboardAction.displayText)").tag(keyboardAction)
@@ -67,19 +64,18 @@ struct SettingsView: View {
                         Label("Give Feedback", systemImage: "square.and.pencil.circle.fill")
                     }
                     
-                    
                     Button {
-                        print("Reset")
+                        showingAlert.toggle()
                     } label: {
                         
                         Label("Reset Keyboard Settings", systemImage: "xmark.bin.circle.fill")
                             .foregroundColor(.customError)
                     }
-
+                    
                 }
             }
-            .toolbar{
-                ToolbarItem(placement: .topBarLeading){
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
                     Button {
                         isPresentingSettings.toggle()
                     } label: {
@@ -88,9 +84,9 @@ struct SettingsView: View {
                             .underline()
                             .bold()
                     }
-                   
+                    
                 }
-                ToolbarItem(placement: .bottomBar){
+                ToolbarItem(placement: .bottomBar) {
                     Text("SnipKey")
                         .foregroundColor(Color.secondary)
                 }
@@ -105,16 +101,31 @@ struct SettingsView: View {
                 }
             }
         }
+        .alert("Important message", isPresented: $showingAlert) {
+            Button("Reset Settings", role: .destructive) {
+                resetKeyboardSettings()
+            }
+            Button("Cancel", role: .cancel) { }
+        }
         
+        
+    }
+    
+    func changeKeyboardAfterAction(newAction: KeyboardAfterPasteAction) {
+        settingsViewModel.changeAfterPasteAction(action: newAction)
+    }
+    
+    func resetKeyboardSettings(){
+        changeKeyboardAfterAction(newAction: .space)
     }
 }
 
 #Preview {
     let settingsViewModel = SettingsViewModel()
     let tempSettingsContainer = SnipKeyDataManager().makeSharedContainer()
-    @State  var isPresentingSettings: Bool = false
+    @State var isPresentingSettings: Bool = false
     
-    return SettingsView( isPresentingSettings: $isPresentingSettings)
+    return SettingsView(isPresentingSettings: $isPresentingSettings)
         .onAppear {
             settingsViewModel.modelContext = tempSettingsContainer.mainContext
             settingsViewModel.setupKeyboardSettings()

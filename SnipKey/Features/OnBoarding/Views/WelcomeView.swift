@@ -11,6 +11,12 @@ import SwiftUI
 
 let welcomeItems: [BoardingItem] = [
   BoardingItem(
+    title: "Welcome to\n**SnipKey!**",
+    information:
+      "Unlock the power of **quick**, **organized snippets**. **Save time** and boost productivity with **easy shortcuts** **fr**om **your keyboard.**",
+    image: "welcome-snipkey2"
+  ),
+  BoardingItem(
     title: "Your Data Stays Yours",
     information:
       "All your **snippets** are fully **encrypted** and **stored locally**. Your information **never leaves** your **device**.",
@@ -36,25 +42,6 @@ struct WelcomeView: View {
   @State private var viewId: Int = 0
   @AppStorage("isOnboarding") var isOnboarding: Bool?
   var skipCallback: () -> Void
-
-  func nextItem() {
-    let tempViewId = viewId + 1
-    withAnimation {
-      if tempViewId > boardingItems.count - 1 {
-        closeWelcome()
-      } else {
-        viewId = tempViewId
-      }
-    }
-
-  }
-
-  func closeWelcome() {
-    print("Skip")
-    isOnboarding = false
-    skipCallback()
-    viewId = 0
-  }
   // MARK: - BODY
 
   var body: some View {
@@ -95,6 +82,25 @@ struct WelcomeView: View {
     .padding()
     .background(Color.systemBackground)
 
+  }
+
+  func nextItem() {
+    let tempViewId = viewId + 1
+    withAnimation {
+      if tempViewId > boardingItems.count - 1 {
+        closeWelcome()
+      } else {
+        viewId = tempViewId
+      }
+    }
+
+  }
+
+  func closeWelcome() {
+    print("Skip")
+    isOnboarding = false
+    skipCallback()
+    viewId = 0
   }
 }
 

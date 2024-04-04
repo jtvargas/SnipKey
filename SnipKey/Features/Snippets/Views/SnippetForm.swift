@@ -168,48 +168,6 @@ struct SnippetForm: View {
   @Environment(\.modelContext) var modelContext
   //    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
 
-  func toggleFormVisibility() {
-    isFormVisible.toggle()
-
-  }
-
-  func onClosePress() {
-    self.toggleFormVisibility()
-  }
-
-  func addTagToSnippet(item: SnippetItem) {
-    let tagCreated = snippetViewModel.findTagCreated(tagName: customTagName)
-
-    if tagCreated != nil {
-      tagCreated?.snippets?.append(item)
-    } else {
-      let newTagCreated = snippetViewModel.createTag(
-        name: customTagName, iconName: customTagIconName)
-      newTagCreated.snippets?.append(item)
-    }
-  }
-
-  private func save() {
-    print("customTagName: \(customTagName)")
-    if title.isEmpty || content.isEmpty {
-      print("cant save empty")
-    } else {
-      if let snippet {
-        // Edit
-        snippet.title = title
-        snippet.content = content
-        snippet.type = type
-        addTagToSnippet(item: snippet)
-      } else {
-        // Create
-        let newSnippetCreated = snippetViewModel.createSnippet(title, content: content, type: type)
-        addTagToSnippet(item: newSnippetCreated)
-      }
-      toggleFormVisibility()
-    }
-
-  }
-
   var body: some View {
 
     let disableSaveAction =
@@ -325,6 +283,49 @@ struct SnippetForm: View {
       }
     }
   }
+
+  func toggleFormVisibility() {
+    isFormVisible.toggle()
+
+  }
+
+  func onClosePress() {
+    self.toggleFormVisibility()
+  }
+
+  func addTagToSnippet(item: SnippetItem) {
+    let tagCreated = snippetViewModel.findTagCreated(tagName: customTagName)
+
+    if tagCreated != nil {
+      tagCreated?.snippets?.append(item)
+    } else {
+      let newTagCreated = snippetViewModel.createTag(
+        name: customTagName, iconName: customTagIconName)
+      newTagCreated.snippets?.append(item)
+    }
+  }
+
+  private func save() {
+    print("customTagName: \(customTagName)")
+    if title.isEmpty || content.isEmpty {
+      print("cant save empty")
+    } else {
+      if let snippet {
+        // Edit
+        snippet.title = title
+        snippet.content = content
+        snippet.type = type
+        addTagToSnippet(item: snippet)
+      } else {
+        // Create
+        let newSnippetCreated = snippetViewModel.createSnippet(title, content: content, type: type)
+        addTagToSnippet(item: newSnippetCreated)
+      }
+      toggleFormVisibility()
+    }
+
+  }
+
 }
 
 struct SnippetFormBindingPreview: View {

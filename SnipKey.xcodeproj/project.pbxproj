@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		060399962BB8836E00A6E818 /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 060399952BB8836E00A6E818 /* AlertToast */; };
 		0627678B2BBCDE3000B3993B /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */; };
+		065B05C22BBF2A0F00C1E3E0 /* ArrowSVG.swift in Sources */ = {isa = PBXBuildFile; fileRef = 065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */; };
 		066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */; };
 		066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */; };
 		066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69D62BB9831900D971E8 /* KeyboardViewController.swift */; };
@@ -80,6 +81,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowSVG.swift; sourceTree = "<group>"; };
 		0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKey.entitlements; sourceTree = "<group>"; };
 		0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKeyboard.entitlements; sourceTree = "<group>"; };
 		066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 				06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */,
 				06F4F3182BB6777E00399C78 /* SnippetListEmpty.swift */,
 				06F4F31A2BB67C9600399C78 /* KeyboardStatusView.swift */,
+				065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -425,6 +428,7 @@
 				06F4F2FA2BB5F3BD00399C78 /* Strings.swift in Sources */,
 				06F4F3252BB7484000399C78 /* Views.swift in Sources */,
 				06C6FE2C2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
+				065B05C22BBF2A0F00C1E3E0 /* ArrowSVG.swift in Sources */,
 				066FAF0E2BB216160086F135 /* SnipKeyApp.swift in Sources */,
 				06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */,
 				06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */,

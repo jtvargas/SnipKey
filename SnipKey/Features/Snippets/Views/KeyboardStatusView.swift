@@ -20,11 +20,11 @@ struct KeyboardStatusView: View {
           VStack(alignment: .leading) {
             Text("Keyboard Status:")
             HStack {
-                Image(systemName: "circle.fill")
-                    .foregroundColor(isActive ? Color.customSuccess : Color.customError)
-                    .symbolEffect(.pulse)
-            
-                Text(isActive ? "Ready to use" :"Not Active - Press here to activate")
+              Image(systemName: "circle.fill")
+                .foregroundColor(isActive ? Color.customSuccess : Color.customError)
+                .symbolEffect(.pulse)
+
+              Text(isActive ? "Ready to use" : "Not Active - Press here to activate")
                 .font(.custom("IBMPlexMono-Bold", size: 12))
             }
           }

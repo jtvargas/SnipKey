@@ -13,7 +13,9 @@ func isKeyboardExtensionEnabled() -> Bool {
         fatalError("isKeyboardExtensionEnabled(): Cannot retrieve bundle identifier.")
     }
     
-    guard let keyboards = UserDefaults.standard.dictionaryRepresentation()["AppleKeyboards"] as? [String] else {
+    guard
+        let keyboards = UserDefaults.standard.dictionaryRepresentation()["AppleKeyboards"] as? [String]
+    else {
         // There is no key `AppleKeyboards` in NSUserDefaults. That happens sometimes.
         return false
     }
@@ -35,90 +37,64 @@ struct SnippetView: View {
     @Environment(\.scenePhase) var scenePhase
     @State var viewModel = SnippetViewModel()
     @State private var selectedFilter: SnipTag? = nil
-    @Query(sort: \SnippetItem.creationDate, order: .reverse, animation: .bouncy) private var snippets: [SnippetItem]
+    @Query(sort: \SnippetItem.creationDate, order: .reverse, animation: .bouncy) private var snippets:
+    [SnippetItem]
     @Query(sort: \SnipTag.name) private var tags: [SnipTag]
     
-//    For some reasons this filter predicate not work, wait until new swiftData version improves this
-//    @Query(filter: #Predicate<SnippetItem>{
-//        $0.tag == .personal
-//    }, sort: \SnippetItem.timestamp, order: .reverse, animation: .bouncy) private var snippetsPersonal: [SnippetItem]
-//    
-//    @Query(filter: #Predicate<SnippetItem>{
-//        $0.tag == .work
-//    }, sort: \SnippetItem.timestamp, order: .reverse, animation: .bouncy) private var snippetsWork: [SnippetItem]
+    //    For some reasons this filter predicate not work, wait until new swiftData version improves this
+    //    @Query(filter: #Predicate<SnippetItem>{
+    //        $0.tag == .personal
+    //    }, sort: \SnippetItem.timestamp, order: .reverse, animation: .bouncy) private var snippetsPersonal: [SnippetItem]
+    //
+    //    @Query(filter: #Predicate<SnippetItem>{
+    //        $0.tag == .work
+    //    }, sort: \SnippetItem.timestamp, order: .reverse, animation: .bouncy) private var snippetsWork: [SnippetItem]
     
-//    @Query(filter: #Predicate<SnippetItem> {$0.tag == selectedFilter}) private var snippetsFiltered: [SnippetItem]
+    //    @Query(filter: #Predicate<SnippetItem> {$0.tag == selectedFilter}) private var snippetsFiltered: [SnippetItem]
     
-//    @Query() private var snipKeyboardSetting: [SnipKeyboardSettings]
-//    
+    //    @Query() private var snipKeyboardSetting: [SnipKeyboardSettings]
+    //
     @State private var showModal = false
     @State var isPresentingSettings: Bool = false
     @State var isPresentedFormModal: Bool = false
     @State var isPresentedGuide: Bool = false
     @State var isPresentedWelcomeInfo: Bool = false
     @State var isKeyboardActive: Bool = false
-
-    func toggleFormModal() {
-        self.isPresentedFormModal.toggle()
-    }
-    
-    func toggleWelcomeInfo() {
-        self.isPresentedWelcomeInfo.toggle()
-    }
-    func toggleSettingsModal() {
-        self.isPresentingSettings.toggle()
-        print("toggleSettingsModal")
-    }
-    
-    func handleOnKeyboardStatusPress() {
-        isPresentedGuide = true
-    }
-    
-    func getSnippetItems() -> [SnippetItem] {
-        if selectedFilter == nil {
-            return snippets
-        }
-        
-        let snippetsFiltered = snippets.filter { snippetItem in
-            return snippetItem.customTag == selectedFilter
-        }
-        
-        return snippetsFiltered
-    }
-    
-    func handleDeleteSnippet(offsets: IndexSet) {
-        viewModel.deleteItems(offsets: offsets, snippets: snippets)
-    }
-    
     
     var body: some View {
         NavigationStack {
             VStack {
                 if !snippets.isEmpty {
-                    KeyboardStatusView(isActive: isKeyboardActive, onKeyboardStatusPress: handleOnKeyboardStatusPress)
-                        .sheet(isPresented: $isPresentedGuide, content: {
+                    KeyboardStatusView(
+                        isActive: isKeyboardActive, onKeyboardStatusPress: handleOnKeyboardStatusPress
+                    )
+                    .sheet(
+                        isPresented: $isPresentedGuide,
+                        content: {
                             KeyboardHelpGuideView(isPresented: $isPresentedGuide)
                         })
                     Form {
-                       
-                        Section(header:  HStack{
-                            Text("Snippets")
-                            Spacer()
-                            
-                            if selectedFilter != nil {
-                                Button{
-                                    selectedFilter = nil
-                                }label:{
-                                    HStack{
-                                        Image(systemName: "minus.circle.fill")
-                                        Text("Remove Filter")
-                                            .font(.custom("IBMPlexMono-Medium", size: 14))
+                        
+                        Section(
+                            header: HStack {
+                                Text("Snippets")
+                                Spacer()
+                                
+                                if selectedFilter != nil {
+                                    Button {
+                                        selectedFilter = nil
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "minus.circle.fill")
+                                            Text("Remove Filter")
+                                                .font(.custom("IBMPlexMono-Medium", size: 14))
+                                        }
+                                        
                                     }
-                                    
                                 }
+                                
                             }
-                           
-                        }) {
+                        ) {
                             List {
                                 ForEach(getSnippetItems(), id: \.self.id) { snippetItem in
                                     NavigationLink(destination: SnippetViewDetail(item: snippetItem)) {
@@ -138,14 +114,14 @@ struct SnippetView: View {
             .navigationTitle(snippets.isEmpty ? "" : "SnipKey")
             .font(.custom("IBMPlexMono-Medium", size: 16))
             .tint(Color.label)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
                 if snippets.isEmpty {
                     SnippetListEmpty()
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     if !snippets.isEmpty {
                         EditButton()
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -181,7 +157,7 @@ struct SnippetView: View {
                                 .tint(Color.label)
                             })
                     }
-
+                    
                 }
                 
                 ToolbarItem(placement: .bottomBar) {
@@ -212,7 +188,7 @@ struct SnippetView: View {
                                 .tint(Color.label)
                                 .font(.system(size: 24))
                         }.sheet(isPresented: $isPresentingSettings) {
-                            SettingsView( isPresentingSettings: $isPresentingSettings)
+                            SettingsView(isPresentingSettings: $isPresentingSettings)
                         }
                         
                     }
@@ -245,6 +221,38 @@ struct SnippetView: View {
             .font: UIFont(name: "IBMPlexMono-Bold", size: 20)!
         ]
         
+    }
+    
+    func toggleFormModal() {
+        self.isPresentedFormModal.toggle()
+    }
+    
+    func toggleWelcomeInfo() {
+        self.isPresentedWelcomeInfo.toggle()
+    }
+    func toggleSettingsModal() {
+        self.isPresentingSettings.toggle()
+        print("toggleSettingsModal")
+    }
+    
+    func handleOnKeyboardStatusPress() {
+        isPresentedGuide = true
+    }
+    
+    func getSnippetItems() -> [SnippetItem] {
+        if selectedFilter == nil {
+            return snippets
+        }
+        
+        let snippetsFiltered = snippets.filter { snippetItem in
+            return snippetItem.customTag == selectedFilter
+        }
+        
+        return snippetsFiltered
+    }
+    
+    func handleDeleteSnippet(offsets: IndexSet) {
+        viewModel.deleteItems(offsets: offsets, snippets: snippets)
     }
 }
 
