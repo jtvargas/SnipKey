@@ -46,10 +46,10 @@ class SnippetViewModel {
         print("INITIAL TAGS SETUP!")
     }
     
-//    func createNewTagAndRelationship(tag: SnipTag, item: SnippetItem){
-////        self.modelContext?.insert(tag)
-////        item.customTag = tag
-//    }
+    //    func createNewTagAndRelationship(tag: SnipTag, item: SnippetItem){
+    ////        self.modelContext?.insert(tag)
+    ////        item.customTag = tag
+    //    }
     
     func deleteItems(offsets: IndexSet, snippets:  [SnippetItem]) {
         for index in offsets {
@@ -63,7 +63,7 @@ class SnippetViewModel {
         self.modelContext?.insert(newTag)
         print("TAG CREATED: \(name)")
         return newTag
-   
+        
     }
     
     func findTagCreated(tagName: String) -> SnipTag? {
@@ -88,33 +88,33 @@ class SnippetViewModel {
     }
     
     func createSnippet(_ title: String, content: String, type: SnipType?) -> SnippetItem {
-            print("ADD FUNC CALLED!")
-            let newItem = SnippetItem(title: title, content: content, type: type ?? .txt)
-            self.modelContext?.insert(newItem)
-            return newItem
-           
-//            
-//            if validateTagAlreadyExist(tagName: customTag!.name) {
-//                print("TAG ALREADY EXIST")
-//                customTag?.snippets?.append(newItem)
-//            }else {
-//                print("CREATING TAG...")
-//                createTag(name: customTag!.name, iconName: customTag!.imageTag)
-//                customTag?.snippets?.append(newItem)
-//            }
-            
-            
+        print("ADD FUNC CALLED!")
+        let newItem = SnippetItem(title: title, content: content, type: type ?? .txt)
+        self.modelContext?.insert(newItem)
+        return newItem
+        
+        //
+        //            if validateTagAlreadyExist(tagName: customTag!.name) {
+        //                print("TAG ALREADY EXIST")
+        //                customTag?.snippets?.append(newItem)
+        //            }else {
+        //                print("CREATING TAG...")
+        //                createTag(name: customTag!.name, iconName: customTag!.imageTag)
+        //                customTag?.snippets?.append(newItem)
+        //            }
+        
+        
     }
     
-//    func addItem(_ title: String, content: String, tag: Tags?, type: SnipType?, customTag: SnipTag?) {
-//        if (title.isEmpty && content.isEmpty){
-//            print("empty, no add")
-//        } else {
-//            print("ADD FUNC CALLED!")
-//            let newItem = SnippetItem(title: title, content: content, tag: tag, type: type ?? .txt)
-//            self.modelContext?.insert(newItem)
-//            
-//        }
-//    }
+    //    func addItem(_ title: String, content: String, tag: Tags?, type: SnipType?, customTag: SnipTag?) {
+    //        if (title.isEmpty && content.isEmpty){
+    //            print("empty, no add")
+    //        } else {
+    //            print("ADD FUNC CALLED!")
+    //            let newItem = SnippetItem(title: title, content: content, tag: tag, type: type ?? .txt)
+    //            self.modelContext?.insert(newItem)
+    //
+    //        }
+    //    }
 }
 

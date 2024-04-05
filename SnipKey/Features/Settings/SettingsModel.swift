@@ -32,9 +32,9 @@ final class SettingsModel {
 
   var testString: String = "Hello there"
 
-  var afterPasteAction: KeyboardAfterPasteAction = KeyboardAfterPasteAction.rtrn
+  var afterPasteAction: KeyboardAfterPasteAction = KeyboardAfterPasteAction.space
 
-  init(afterPasteAction: KeyboardAfterPasteAction = .rtrn) {
+  init(afterPasteAction: KeyboardAfterPasteAction = .space) {
     self.settingsId = "SnipKey-Settings"
     self.afterPasteAction = afterPasteAction
   }

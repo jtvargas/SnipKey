@@ -23,7 +23,7 @@ struct SnippetListItem: View {
     HStack {
       SnippetImage(type: item.type)
             .frame(width: 35, height: 35)
-            .background(Color.secondarySystemBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .foregroundStyle(.white)
     
       VStack {

@@ -7,6 +7,7 @@
 
 import Foundation
 import CommonCrypto
+import UIKit
 
 extension String {
     func hmac(key: String) -> String {
@@ -15,5 +16,40 @@ extension String {
         let data = Data()
         return data.map { String(format: "%02hhx", $0) }.joined()
     }
-
+    
+    func isValidURL() -> Bool {
+        var urlString = self
+        
+        if urlString.isEmpty {
+            return false
+        }
+        
+        if !urlString.lowercased().hasPrefix("https://") {
+            urlString = "https://" + urlString
+        }
+        
+        guard let url = URL(string: urlString) else {
+            return false
+        }
+        
+        return UIApplication.shared.canOpenURL(url)
+    }
+    
+    func getValidURLString() -> String {
+        var urlString = self
+        
+        if urlString.isEmpty {
+            return ""
+        }
+        
+        if !urlString.lowercased().hasPrefix("https://") {
+            urlString = "https://" + urlString
+        }
+        
+        guard let url = URL(string: urlString) else {
+            return ""
+        }
+        
+        return  UIApplication.shared.canOpenURL(url) ? urlString : ""
+    }
 }

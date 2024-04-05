@@ -26,7 +26,6 @@ struct AdaptiveImage: View {
 struct BoardingCardView: View {
   // MARK: - PROPERTIES
   var boardingItem: BoardingItem
-  @State private var isAnimating: Bool = false
   var onRightActionPress: () -> Void
 
   // MARK: - BODY
@@ -48,19 +47,11 @@ struct BoardingCardView: View {
           AdaptiveImage(light: Image(boardingItem.image), dark: Image(darkImageName))
             .scaledToFit()
             .frame(width: 320, height: 320)
-            .scaleEffect(isAnimating ? 1.0 : 0.6)
-            .background(Color.secondarySystemBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 25))
-            .shadow(color: Color.label.opacity(0.1), radius: 8, x: 6, y: 8)
         } else {
           Image(boardingItem.image)
             .resizable()
             .scaledToFit()
             .frame(width: 320, height: 320)
-            .scaleEffect(isAnimating ? 1.0 : 0.6)
-            .background(Color.secondarySystemBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 25))
-            .shadow(color: Color.label.opacity(0.1), radius: 8, x: 6, y: 8)
         }
         Spacer()
 
@@ -87,15 +78,8 @@ struct BoardingCardView: View {
         }
 
         Spacer()
-        //                // BUTTON: START
-        //                StartButtonView()
       }  //: VSTACK
     }  //: ZSTACK
-    .onAppear {
-      withAnimation(.easeOut(duration: 0.5)) {
-        isAnimating = true
-      }
-    }
     .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .center)
     .background(Color.systemBackground)
     .cornerRadius(20)
