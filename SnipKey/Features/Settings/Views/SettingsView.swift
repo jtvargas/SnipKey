@@ -10,6 +10,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.modelContext) var modelContext
+    @Environment(\.openURL) private var openURL
+    
     @Query() private var settings: [SettingsModel]
     let settingsViewModel = SettingsViewModel()
     
@@ -55,13 +57,21 @@ struct SettingsView: View {
                 Section("More") {
                     Button {
                         print("Policy")
+                        if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
+                                       openURL(url)
+                                   }
                     } label: {
+                       
                         Label("Privacy Policy", systemImage: "hand.raised.circle.fill")
                     }
                     Button {
-                        print("Feedback")
+                        let urlString = "https://snipkey.jrtv.online/feedback-login?companyID=6611dc80cc35d4304dff22cd&redirect=https%3A%2F%2Fsnipkey.canny.io"
+                        print("url: \(urlString)")
+                        if let url = URL(string: urlString) {
+                                       openURL(url)
+                                   }
                     } label: {
-                        Label("Give Feedback", systemImage: "square.and.pencil.circle.fill")
+                        Label("Suggest Feature", systemImage: "square.and.pencil.circle.fill")
                     }
                     
                     Button {
