@@ -87,34 +87,13 @@ class SnippetViewModel {
         }
     }
     
-    func createSnippet(_ title: String, content: String, type: SnipType?) -> SnippetItem {
+    func createSnippet(_ title: String, content: String, type: SnipType?, isSecure: Bool) -> SnippetItem {
         print("ADD FUNC CALLED!")
-        let newItem = SnippetItem(title: title, content: content, type: type ?? .txt)
+        let newItem = SnippetItem(title: title, content: content, type: type ?? .txt, isSecure: isSecure)
         self.modelContext?.insert(newItem)
         return newItem
         
-        //
-        //            if validateTagAlreadyExist(tagName: customTag!.name) {
-        //                print("TAG ALREADY EXIST")
-        //                customTag?.snippets?.append(newItem)
-        //            }else {
-        //                print("CREATING TAG...")
-        //                createTag(name: customTag!.name, iconName: customTag!.imageTag)
-        //                customTag?.snippets?.append(newItem)
-        //            }
-        
-        
     }
-    
-    //    func addItem(_ title: String, content: String, tag: Tags?, type: SnipType?, customTag: SnipTag?) {
-    //        if (title.isEmpty && content.isEmpty){
-    //            print("empty, no add")
-    //        } else {
-    //            print("ADD FUNC CALLED!")
-    //            let newItem = SnippetItem(title: title, content: content, tag: tag, type: type ?? .txt)
-    //            self.modelContext?.insert(newItem)
-    //
-    //        }
-    //    }
+
 }
 

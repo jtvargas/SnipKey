@@ -26,17 +26,25 @@ struct SnippetListItem: View {
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .foregroundStyle(.white)
     
-      VStack {
-        Text("\(item.title)")
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .tint(Color.label)
-          .bold()
-          .font(.custom("IBMPlexMono-Medium", size: 16))
+      Group {
+          VStack{
+              Text("\(item.title)")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .tint(Color.label)
+                .bold()
+                .font(.custom("IBMPlexMono-Medium", size: 16))
 
-          Text("#\(item.customTag?.name ?? "None")")
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .foregroundColor(Color.secondaryLabel)
-          .font(.subheadline)
+                Text("#\(item.customTag?.name ?? "None")")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundColor(Color.secondaryLabel)
+                .font(.subheadline)
+          }
+
+          if item.isSecure {
+              Image(systemName: "lock")
+                  .foregroundStyle(Color.label)
+          }
+         
       }
 
     }

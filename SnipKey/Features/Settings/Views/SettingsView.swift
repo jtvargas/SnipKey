@@ -14,6 +14,7 @@ struct SettingsView: View {
     
     @Query() private var settings: [SettingsModel]
     let settingsViewModel = SettingsViewModel()
+    let snippetViewModel = SnippetViewModel()
     
     @Binding var isPresentingSettings: Bool
     
@@ -21,19 +22,23 @@ struct SettingsView: View {
     @State private var action: KeyboardAfterPasteAction = .rtrn
     @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .rtrn)
     
+    @State private var keyboardValueTest: String = ""
+    
     var body: some View {
         NavigationStack {
             List {
                 Section("Keyboard Settings") {
                     Section(
                         footer:
-                            Label {
-                                Text("Customize what happens after pasting a snippet.")
-                                    .font(.custom("IBMPlexMono-Medium", size: 14))
-                            } icon: {
-                                Image(systemName: "doc.badge.arrow.up.fill")
-                                    .font(.system(size: 16, weight: .light, design: .rounded))
-                                
+                            Group{
+                                Label {
+                                    Text("Customize what happens after pasting a snippet.")
+                                        .font(.custom("IBMPlexMono-Medium", size: 14))
+                                } icon: {
+                                    Image(systemName: "doc.badge.arrow.up.fill")
+                                        .font(.system(size: 16, weight: .light, design: .rounded))
+                                    
+                                }
                             }
                             .font(.custom("IBMPlexMono-Medium", size: 12))
                             .foregroundColor(.label)
@@ -54,26 +59,35 @@ struct SettingsView: View {
                     }
                 }
                 
-                Section("More") {
+                Section("About") {
                     Button {
-                        print("Policy")
                         if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
-                                       openURL(url)
-                                   }
+                            openURL(url)
+                        }
                     } label: {
-                       
+                        
+                        Label("SnipKey Website", systemImage: "network")
+                    }
+                    Button {
+                        if let url = URL(string: "https://snipkey.jrtv.online") {
+                            openURL(url)
+                        }
+                    } label: {
+                        
                         Label("Privacy Policy", systemImage: "hand.raised.circle.fill")
                     }
                     Button {
                         let urlString = "https://snipkey.jrtv.online/feedback-login?companyID=6611dc80cc35d4304dff22cd&redirect=https%3A%2F%2Fsnipkey.canny.io"
                         print("url: \(urlString)")
                         if let url = URL(string: urlString) {
-                                       openURL(url)
-                                   }
+                            openURL(url)
+                        }
                     } label: {
                         Label("Suggest Feature", systemImage: "square.and.pencil.circle.fill")
                     }
-                    
+                }
+                
+                Section(footer: Text("Reset to default settings")) {
                     Button {
                         showingAlert.toggle()
                     } label: {
@@ -81,7 +95,13 @@ struct SettingsView: View {
                         Label("Reset Keyboard Settings", systemImage: "xmark.bin.circle.fill")
                             .foregroundColor(.customError)
                     }
-                    
+//                    Button {
+//                        snippetViewModel.deleteAllSnippets()
+//                    } label: {
+//                        
+//                        Label("Delete all Snippets", systemImage: "xmark.bin.circle.fill")
+//                            .foregroundColor(.customError)
+//                    }
                 }
             }
             .toolbar {

@@ -154,6 +154,7 @@ struct CreateOrSelectTag: View {
 
 struct SnippetForm: View {
     let snippet: SnippetItem?
+    let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
     
     private var editorTitle: String {
         snippet == nil ? "Add Snippet" : "Edit Snippet"
@@ -170,6 +171,8 @@ struct SnippetForm: View {
     @State var isCreatingNewTag: Bool = false
     @State var snippetViewModel = SnippetViewModel()
     
+    @State var isSecure: Bool = false
+    
     @Environment(\.modelContext) var modelContext
     //    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
     
@@ -180,11 +183,27 @@ struct SnippetForm: View {
         ? (customTagName.isEmpty || title.isEmpty || content.isEmpty)
         : title.isEmpty || content.isEmpty
         
+        
         NavigationStack {
+           
             Label("Don't forget to click Save!", systemImage: "info.square.fill")
                 .bold()
                 .font(.custom("IBMPlexMono-Medium", size: 15))
+           
             Form {
+                
+                Section(header: Text("Access"), footer: Text("Snippet store sensitive data, and requires FaceID/TouchID to use them")) {
+                    Toggle("Sensitive Data", isOn: $isSecure)
+                        .disabled(!deviceBiometrics.hasBiometricsCapability)
+                }
+//                .onChange(of: isSecure){ _, state in
+//                    if state {
+//                      handleSecureSnippet()
+//                    }
+//                }
+                .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+                
+               
                 Section(header: Text("snippet type")) {
                     CustomRadioButtonGroup(items: options, selection: $type, labels: labels)
                     
@@ -321,6 +340,7 @@ struct SnippetForm: View {
                 title = snippet.title
                 content = snippet.content
                 type = snippet.type
+                isSecure = snippet.isSecure
                 customTagName = snippet.customTag?.name ?? "None"
                 customTagIconName = snippet.customTag?.imageTag ?? "tag.fill"
             }
@@ -335,7 +355,6 @@ struct SnippetForm: View {
     
     func toggleFormVisibility() {
         isFormVisible.toggle()
-        
     }
     
     func pasteContentFromClipboard(){
@@ -351,6 +370,22 @@ struct SnippetForm: View {
     
     func onClosePress() {
         self.toggleFormVisibility()
+    }
+    
+    func handleSecureSnippet(){
+        deviceBiometrics.authenticate(successHandler: {
+            // Handle successful authentication
+            isSecure = true
+            print("Biometrics successfull!")
+        }, unSuccessHandler: { error in
+            // Handle unsuccessful authentication or error
+            isSecure = false
+            if let error = error {
+                print("Authentication failed with error: \(error.localizedDescription)")
+            } else {
+                print("Authentication failed")
+            }
+        })
     }
     
     func addTagToSnippet(item: SnippetItem) {
@@ -376,10 +411,11 @@ struct SnippetForm: View {
                 snippet.content = content
                 snippet.type = type
                 snippet.updatedDate = Date.now
+                snippet.isSecure = isSecure
                 addTagToSnippet(item: snippet)
             } else {
                 // Create
-                let newSnippetCreated = snippetViewModel.createSnippet(title, content: content, type: type)
+                let newSnippetCreated = snippetViewModel.createSnippet(title, content: content, type: type, isSecure: isSecure)
                 addTagToSnippet(item: newSnippetCreated)
             }
             toggleFormVisibility()
@@ -393,7 +429,7 @@ struct SnippetForm: View {
 struct SnippetFormBindingPreview: View {
     @State private var value = false
     @State private var tempSnippet: SnippetItem = SnippetItem(
-        title: "", content: "", type: SnipType.txt)
+        title: "", content: "", type: SnipType.txt, isSecure: false)
     
     var body: some View {
         SnippetForm(snippet: nil, isFormVisible: $value)

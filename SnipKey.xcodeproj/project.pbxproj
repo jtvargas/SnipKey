@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		060399962BB8836E00A6E818 /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 060399952BB8836E00A6E818 /* AlertToast */; };
+		061ED3CE2BC43611006A6E47 /* Biometrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061ED3CD2BC43611006A6E47 /* Biometrics.swift */; };
+		061ED3CF2BC44384006A6E47 /* Biometrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061ED3CD2BC43611006A6E47 /* Biometrics.swift */; };
 		0627678B2BBCDE3000B3993B /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */; };
 		065B05C22BBF2A0F00C1E3E0 /* ArrowSVG.swift in Sources */ = {isa = PBXBuildFile; fileRef = 065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */; };
 		066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */; };
@@ -81,6 +83,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		061ED3CD2BC43611006A6E47 /* Biometrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Biometrics.swift; sourceTree = "<group>"; };
 		065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowSVG.swift; sourceTree = "<group>"; };
 		0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKey.entitlements; sourceTree = "<group>"; };
 		0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKeyboard.entitlements; sourceTree = "<group>"; };
@@ -263,6 +266,7 @@
 			children = (
 				06F4F2F92BB5F3BD00399C78 /* Strings.swift */,
 				06F4F3242BB7484000399C78 /* Views.swift */,
+				061ED3CD2BC43611006A6E47 /* Biometrics.swift */,
 			);
 			path = Helper;
 			sourceTree = "<group>";
@@ -408,6 +412,7 @@
 				066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */,
 				06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */,
 				066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */,
+				061ED3CF2BC44384006A6E47 /* Biometrics.swift in Sources */,
 				066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */,
 				06C6FE2D2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
 				06AE13132BBB0D8B008EAE98 /* SettingsModel.swift in Sources */,
@@ -439,6 +444,7 @@
 				068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */,
 				068C77CB2BB4C5FB0008D9A1 /* SnippetModel.swift in Sources */,
 				066E69E32BB9896400D971E8 /* KeyboardViewController.swift in Sources */,
+				061ED3CE2BC43611006A6E47 /* Biometrics.swift in Sources */,
 				068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */,
 				066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */,
 				06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */,
@@ -648,6 +654,7 @@
 				INFOPLIST_FILE = SnipKey/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SnipKey;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "We need to unlock your data";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
@@ -684,6 +691,7 @@
 				INFOPLIST_FILE = SnipKey/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SnipKey;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "We need to unlock your data";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";

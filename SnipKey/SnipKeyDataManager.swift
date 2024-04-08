@@ -10,12 +10,6 @@ import SwiftData
 
 class SnipKeyDataManager {
     var sharedContainer: ModelContainer? = nil
-//    var settingsVideModel: SettingsViewModel = SettingsViewModel()
-    
-//    init(){
-//        settingsVideModel.setupKeyboardSettings()
-//    }
-    
     
     func makeSharedContainer() -> ModelContainer {
         let sharedModelContainer: ModelContainer = {
