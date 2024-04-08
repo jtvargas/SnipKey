@@ -191,19 +191,6 @@ struct SnippetForm: View {
                 .font(.custom("IBMPlexMono-Medium", size: 15))
            
             Form {
-                
-                Section(header: Text("Access"), footer: Text("Snippet store sensitive data, and requires FaceID/TouchID to use them")) {
-                    Toggle("Sensitive Data", isOn: $isSecure)
-                        .disabled(!deviceBiometrics.hasBiometricsCapability)
-                }
-//                .onChange(of: isSecure){ _, state in
-//                    if state {
-//                      handleSecureSnippet()
-//                    }
-//                }
-                .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-                
-               
                 Section(header: Text("snippet type")) {
                     CustomRadioButtonGroup(items: options, selection: $type, labels: labels)
                     
@@ -284,6 +271,12 @@ struct SnippetForm: View {
                         isCreatingNewTag: $isCreatingNewTag, tagName: $customTagName,
                         tagIcon: $customTagIconName)
                     
+                }
+                .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+                
+                Section(header: Label("Security", systemImage: "lock.fill"), footer: Text("Enabling this will safeguard your snippet with FaceID/TouchID for secure access.")) {
+                    Toggle("Sensitive Data", isOn: $isSecure)
+                        .disabled(!deviceBiometrics.hasBiometricsCapability)
                 }
                 .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
                 

@@ -52,8 +52,6 @@ struct SettingsView: View {
                             ForEach(KeyboardAfterPasteAction.allCases, id: \.id) { keyboardAction in
                                 Text("\(keyboardAction.displayText)").tag(keyboardAction)
                             }
-                        }.onChange(of: action) { _, newAction in
-                            changeKeyboardAfterAction(newAction: newAction)
                         }
                         
                     }
@@ -61,7 +59,7 @@ struct SettingsView: View {
                 
                 Section("About") {
                     Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
+                        if let url = URL(string: "https://snipkey.jrtv.online") {
                             openURL(url)
                         }
                     } label: {
@@ -95,13 +93,7 @@ struct SettingsView: View {
                         Label("Reset Keyboard Settings", systemImage: "xmark.bin.circle.fill")
                             .foregroundColor(.customError)
                     }
-//                    Button {
-//                        snippetViewModel.deleteAllSnippets()
-//                    } label: {
-//                        
-//                        Label("Delete all Snippets", systemImage: "xmark.bin.circle.fill")
-//                            .foregroundColor(.customError)
-//                    }
+
                 }
             }
             .toolbar {
@@ -131,7 +123,7 @@ struct SettingsView: View {
                 }
             }
         }
-        .alert("Important message", isPresented: $showingAlert) {
+        .alert("Are you sure you want to reset the keyboard settings?", isPresented: $showingAlert) {
             Button("Reset Settings", role: .destructive) {
                 resetKeyboardSettings()
             }
@@ -141,12 +133,8 @@ struct SettingsView: View {
         
     }
     
-    func changeKeyboardAfterAction(newAction: KeyboardAfterPasteAction) {
-        settingsViewModel.changeAfterPasteAction(action: newAction)
-    }
-    
     func resetKeyboardSettings(){
-        changeKeyboardAfterAction(newAction: .space)
+        currentSettings.afterPasteAction = .space
     }
 }
 

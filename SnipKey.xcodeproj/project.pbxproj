@@ -56,6 +56,7 @@
 		06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3202BB720AF00399C78 /* OnBoardingModel.swift */; };
 		06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3222BB7247900399C78 /* BoardingCardView.swift */; };
 		06F4F3252BB7484000399C78 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3242BB7484000399C78 /* Views.swift */; };
+		06FC79732BC489D900382400 /* OnBoardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FC79722BC489D900382400 /* OnBoardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -121,6 +122,7 @@
 		06F4F3202BB720AF00399C78 /* OnBoardingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnBoardingModel.swift; sourceTree = "<group>"; };
 		06F4F3222BB7247900399C78 /* BoardingCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardingCardView.swift; sourceTree = "<group>"; };
 		06F4F3242BB7484000399C78 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
+		06FC79722BC489D900382400 /* OnBoardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnBoardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -287,6 +289,7 @@
 				06F4F3222BB7247900399C78 /* BoardingCardView.swift */,
 				066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */,
 				06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */,
+				06FC79722BC489D900382400 /* OnBoardingView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -450,6 +453,7 @@
 				06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */,
 				06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */,
 				06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */,
+				06FC79732BC489D900382400 /* OnBoardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

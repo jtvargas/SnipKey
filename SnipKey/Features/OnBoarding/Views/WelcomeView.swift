@@ -43,12 +43,16 @@ struct WelcomeView: View {
   @AppStorage("isOnboarding") var isOnboarding: Bool?
   var skipCallback: () -> Void
   // MARK: - BODY
+    
+    
 
   var body: some View {
+      
     TabView(selection: $viewId) {
-      ForEach(boardingItems.indices) { index in
-        BoardingCardView(boardingItem: boardingItems[index], onRightActionPress: nextItem)
-          .tag(index)
+        ForEach(boardingItems.indices) { index in
+            BoardingCardView(boardingItem: boardingItems[index], onRightActionPress: nextItem)
+                .tag(index)
+
       }  //: LOOP
 
     }  //: TAB

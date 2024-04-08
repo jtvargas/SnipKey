@@ -39,7 +39,7 @@ struct SnippetView: View {
     @State private var selectedFilter: SnipTag? = nil
     @Query(sort: \SnippetItem.creationDate, order: .reverse, animation: .bouncy) private var snippets:
     [SnippetItem]
-    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
+    @Query(sort: \SnipTag.creationDate) private var tags: [SnipTag]
     
     //    For some reasons this filter predicate not work, wait until new swiftData version improves this
     //    @Query(filter: #Predicate<SnippetItem>{
@@ -167,7 +167,12 @@ struct SnippetView: View {
                                 .tint(Color.label)
                                 .font(.system(size: 24))
                         }.sheet(isPresented: $isPresentedWelcomeInfo) {
-                            WelcomeView(skipCallback: toggleWelcomeInfo)
+                            OnboardingView(appName: "SnipKey",showOnboarding: $isPresentedWelcomeInfo, features: [
+                                Feature(title: "Create Snippets/Shortcuts", description: "Craft and instantly use snippets across any apps.", icon: "doc.on.doc.fill"),
+                                Feature(title: "Tag & Organize", description: "Sort snippets swiftly with tags.", icon: "tag.fill"),
+                                Feature(title: "Keyboard Quick-Use", description: "Access all snippets directly through the keyboard extension..", icon: "keyboard.fill"),
+                                Feature(title: "Lock Snippets", description: "Secure sensitive data with encryption and biometrics.", icon: "lock.fill"),
+                            ], color: Color.label)
                         }
                         Spacer()
                         Button(action: toggleFormModal) {

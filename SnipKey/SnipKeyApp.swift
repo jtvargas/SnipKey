@@ -52,9 +52,10 @@ struct SnipKeyApp: App {
                     }
                 
             } else if isOnboarding {
-                WelcomeView(skipCallback: emptyCallback)
+                    WelcomeView(skipCallback: emptyCallback)
             } else {
                 SnippetView()
+                
             }
         }
         .modelContainer(container)
