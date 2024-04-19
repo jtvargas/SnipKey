@@ -34,6 +34,7 @@ struct SnippetContentView: View {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFit()
+                Text("\(snippet.file?.fileFormatType ?? "")")
             }
         }
     }

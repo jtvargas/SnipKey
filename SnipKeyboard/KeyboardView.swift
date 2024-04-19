@@ -7,6 +7,7 @@
 
 import SwiftData
 import SwiftUI
+import AlertToast
 
 class KeyboardObserver: ObservableObject {
     @Published var isShowing = false
@@ -126,6 +127,7 @@ extension View {
 }
 
 struct KeyboardView: View {
+    @State private var showToast = false
     @Environment(\.modelContext) var modelContext
     @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
     @Query(sort: \SnipTag.name) private var tags: [SnipTag]
@@ -191,17 +193,42 @@ struct KeyboardView: View {
     
     func sentValue(snippet: SnippetItem){
         if snippet.isSecure {
-            sentSecureValue(value: snippet.content)
+            sentSecureValue(snippet: snippet)
         }else {
-            sentValueToTextInput(value: snippet.content)
+            sentValueToKeyboard(snippet: snippet)
         }
     }
     
-    func sentSecureValue(value: String) {
+    func checkFullAccess() -> Bool
+    {
+        var hasFullAccess = false
+        if #available(iOSApplicationExtension 10.0, *) {
+            let pasty = UIPasteboard.general
+            if pasty.hasURLs || pasty.hasColors || pasty.hasStrings || pasty.hasImages {
+                hasFullAccess = true
+            } else {
+                pasty.string = "TEST"
+                if pasty.hasStrings {
+                    hasFullAccess = true
+                    pasty.string = ""
+                }
+            }
+        } else {
+            // Fallback on earlier versions
+            var clippy : UIPasteboard?
+            clippy = UIPasteboard.general
+            if clippy != nil {
+                hasFullAccess = true
+            }
+        }
+        return hasFullAccess
+    }
+    
+    func sentSecureValue(snippet: SnippetItem) {
         deviceBiometrics.authenticate(successHandler: {
             isUnlocked = true
             
-            sentValueToTextInput(value: value)
+            sentValueToKeyboard(snippet: snippet)
         }, unSuccessHandler: { error in
             isUnlocked = false
             print("Can't access")
@@ -209,11 +236,17 @@ struct KeyboardView: View {
         })
     }
     
-    func sentValueToTextInput(value: String) {
+    func sentValueToKeyboard(snippet: SnippetItem) {
         NotificationCenter.default.post(
-            name: NSNotification.Name(rawValue: "addKey"), object: value)
+            name: NSNotification.Name(rawValue: "addKey"), object: snippet)
         
-        actionKeyboardAfterPaste(actionKey: currentSettings.afterPasteAction)
+        if snippet.type == .image{
+            showToast.toggle()
+        } else {
+            actionKeyboardAfterPaste(actionKey: currentSettings.afterPasteAction)
+        }
+        
+       
     }
     
     func deleteCharacter() {
@@ -284,8 +317,6 @@ struct KeyboardView: View {
                     .pickerStyle(.segmented)
                 }
                 
-                //                .padding(.bottom, 10)
-                //                .padding(.horizontal, 10)
                 
                 Button {
                     deleteCharacter()
@@ -316,6 +347,25 @@ struct KeyboardView: View {
             if let myCurrentSettings = settings.first {
                 currentSettings = myCurrentSettings
             }
+        }
+        .toast(isPresenting: $showToast) {
+            AlertToast(
+                displayMode: .banner(
+                    .pop
+                ),
+                type: .systemImage(
+                    "doc.on.clipboard",
+                    .label
+                ),
+                title: !checkFullAccess() ? "Enable full keyboard access to copy/paste images." : "Image copied to your clipboard. Paste to use it.",
+                style: .style(
+                    backgroundColor: Color.tertiarySystemBackground,
+                    titleFont: .custom(
+                        "IBMPlexMono-Medium",
+                        size: 14
+                    )
+                )
+            )
         }
         
     }

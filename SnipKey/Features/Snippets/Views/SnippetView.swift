@@ -13,6 +13,8 @@ func isKeyboardExtensionEnabled() -> Bool {
         fatalError("isKeyboardExtensionEnabled(): Cannot retrieve bundle identifier.")
     }
     
+    UserDefaults.standard.dictionaryRepresentation()
+    
     guard
         let keyboards = UserDefaults.standard.dictionaryRepresentation()["AppleKeyboards"] as? [String]
     else {

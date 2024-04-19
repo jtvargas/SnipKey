@@ -159,6 +159,7 @@ struct SnippetContent: View {
     @Binding var contentValue: String
     @Binding var contentData: Data?
     @Binding var selectedImage: PhotosPickerItem?
+    @Binding var selectedImageMimeType: String?
     @Binding var selectedImageData: Data?
     
     
@@ -193,6 +194,7 @@ struct SnippetContent: View {
                 PhotosPicker(
                     selection: $selectedImage,
                     matching: .images,
+                    preferredItemEncoding: .compatible,
                     photoLibrary: .shared(),
                     label: {
                         Group {
@@ -228,10 +230,32 @@ struct SnippetContent: View {
                         }
                     }
                 )
+                
+                
+                Label {
+                    VStack{
+                        Text("To use image snippets, please enable full access for the keyboard in your device's keyboard settings.")
+                            .foregroundColor(.yellow)
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                if UIApplication.shared.canOpenURL(url) {
+                                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                                }
+                            }
+                        } label: {
+                            Text("Go to Settings")
+                        }
+                    }
+                   
+                } icon: {
+                    Image(systemName: "info")
+                        .foregroundColor(.yellow)
+                }
             }
             .task(id: selectedImage) {
                 if let data = try? await selectedImage?.loadTransferable(type: Data.self)  {
                     selectedImageData = data
+                    selectedImageMimeType = selectedImage?.supportedContentTypes.first?.preferredMIMEType
                 }
             }
         }
@@ -260,8 +284,14 @@ struct SnippetForm: View {
     @State private var content = ""
     @State private var customTagName: String = "None"
     @State private var customTagIconName: String = "tag.fill"
+    
+//    Image File State
     @State var selectedImage: PhotosPickerItem?
+
+    
+//    File State
     @State var contentFileData: Data?
+    @State var contentFileFormatType: String?
     
     @FocusState private var focusedField: Field?
     @Binding var isFormVisible: Bool
@@ -274,13 +304,6 @@ struct SnippetForm: View {
     //    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
     
     var body: some View {
-        
-        let disableSaveAction =
-        isCreatingNewTag
-        ? (customTagName.isEmpty || title.isEmpty || content.isEmpty)
-        : title.isEmpty || content.isEmpty
-        
-        
         NavigationStack {
            
             Label("Don't forget to click Save!", systemImage: "info.square.fill")
@@ -332,6 +355,7 @@ struct SnippetForm: View {
                         contentValue: $content,
                         contentData: $contentFileData,
                         selectedImage: $selectedImage,
+                        selectedImageMimeType: $contentFileFormatType,
                         selectedImageData: $contentFileData
                     )
                     
@@ -500,7 +524,7 @@ struct SnippetForm: View {
     
     func addFileToSnippeet(item: SnippetItem) {
         if contentFileData != nil {
-            let newFile = snippetViewModel.createData(type: .image, data: contentFileData!)
+            let newFile = snippetViewModel.createData(type: .image, data: contentFileData!, fileFormatType: contentFileFormatType!)
             newFile.snippet?.append(item)
         }
        

@@ -112,18 +112,22 @@ final class SnipTag {
     }
 }
 
+//TODO: clean code, separate files, models, and fns...
+//TODO: Implement TextField remaining with circle
 @Model
 final class SnippetFile {
     var id: String
     var fileType: FileType?
+    var fileFormatType: String?
     @Attribute(.externalStorage) var fileData: Data?
     
     @Relationship(deleteRule: .cascade, inverse: \SnippetItem.file)
     var snippet: [SnippetItem]?
     
-    init(type: FileType = .image) {
+    init(type: FileType = .image, formatType: String) {
         self.id = UUID().uuidString
         self.fileType = type
+        self.fileFormatType = formatType
     }
     
 }

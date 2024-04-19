@@ -42,6 +42,7 @@
 		06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */; };
 		06D827FE2BBDC7DC00305E18 /* SymbolPicker in Frameworks */ = {isa = PBXBuildFile; productRef = 06D827FD2BBDC7DC00305E18 /* SymbolPicker */; };
+		06E7E2B72BD30A610058D11E /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 06E7E2B62BD30A610058D11E /* AlertToast */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
@@ -130,6 +131,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				06E7E2B72BD30A610058D11E /* AlertToast in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -163,6 +165,7 @@
 				066FAF0C2BB216160086F135 /* SnipKey */,
 				066E69D52BB9831900D971E8 /* SnipKeyboard */,
 				066FAF0B2BB216160086F135 /* Products */,
+				06E7E2B52BD30A610058D11E /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -255,6 +258,13 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		06E7E2B52BD30A610058D11E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		06EA76922BB4DEBE00E3E1F0 /* Core */ = {
 			isa = PBXGroup;
 			children = (
@@ -310,6 +320,9 @@
 			dependencies = (
 			);
 			name = SnipKeyboard;
+			packageProductDependencies = (
+				06E7E2B62BD30A610058D11E /* AlertToast */,
+			);
 			productName = SnipKeyboard;
 			productReference = 066E69D42BB9831900D971E8 /* SnipKeyboard.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -776,6 +789,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 06D827FC2BBDC7DC00305E18 /* XCRemoteSwiftPackageReference "SymbolPicker" */;
 			productName = SymbolPicker;
+		};
+		06E7E2B62BD30A610058D11E /* AlertToast */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 060399942BB8836E00A6E818 /* XCRemoteSwiftPackageReference "AlertToast" */;
+			productName = AlertToast;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

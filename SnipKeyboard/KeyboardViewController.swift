@@ -8,6 +8,9 @@
 import UIKit
 import SwiftUI
 
+import MobileCoreServices
+import UniformTypeIdentifiers
+
 class KeyboardViewController: UIInputViewController {
 
     @IBOutlet var nextKeyboardButton: UIButton!
@@ -18,6 +21,28 @@ class KeyboardViewController: UIInputViewController {
         super.updateViewConstraints()
         
         // Add custom view sizing constraints here
+    }
+    
+    func sendImageData(snippet: SnippetItem) {
+        if self.hasFullAccess {
+            guard
+                let newImage = UIImage(data: (snippet.file?.fileData)!)
+            else { return }
+            
+            var imageData: Data?
+            
+            if snippet.file?.fileFormatType == "image/png"{
+                imageData = newImage.pngData()
+            }
+            
+            if snippet.file?.fileFormatType == "image/jpeg"{
+                imageData = newImage.jpegData(compressionQuality: 0.5)
+            }
+            
+            
+            let clipboard = UIPasteboard.general
+            clipboard.setValue(imageData!, forPasteboardType: UTType.png.identifier)
+        }
     }
     
     override func viewDidLoad() {
@@ -41,13 +66,20 @@ class KeyboardViewController: UIInputViewController {
         
         // insert text to textInput
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ notification in
-            if let text = notification.object as? String {
-                self.textDocumentProxy.insertText(text)
-                
+            
+            if let snippet = notification.object as? SnippetItem {
+                switch snippet.type {
+                case .image:
+                    self.sendImageData(snippet: snippet)
+                default:
+                    self.textDocumentProxy.insertText(snippet.content)
+                }
+              
             }
             
-//            Switch Keyboard
-//            self.advanceToNextInputMode()
+            if let text = notification.object as? String {
+                self.textDocumentProxy.insertText(text)
+            }
         }
         
         // Listen to swicthKeyboard
