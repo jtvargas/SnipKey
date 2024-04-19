@@ -9,6 +9,7 @@ import SwiftData
 import SwiftUI
 import SymbolPicker
 import UIKit
+import PhotosUI
 
 func pasteFromClipboard() -> String {
     UIPasteboard.general.string ?? ""
@@ -67,8 +68,8 @@ struct CustomRadioButtonGroup<T: Hashable>: View {
     }
 }
 
-let options: [SnipType] = [.txt, .url]
-let labels: [SnipType: String] = [.txt: "text", .url: "url"]
+let options: [SnipType] = [.txt, .url, .image]
+let labels: [SnipType: String] = [.txt: "text", .url: "url", .file: "file", .image: "image"]
 let charLimit = 12
 let tagCharLimit = 10
 enum Field {
@@ -152,6 +153,100 @@ struct CreateOrSelectTag: View {
     }
 }
 
+struct SnippetContent: View {
+    let type: SnipType
+    
+    @Binding var contentValue: String
+    @Binding var contentData: Data?
+    @Binding var selectedImage: PhotosPickerItem?
+    @Binding var selectedImageData: Data?
+    
+    
+    var body: some View {
+        if type == .url {
+            Group {
+                TextField("yoursite.com", text: $contentValue, axis: .vertical)
+                    .keyboardType(.URL)
+                    .textContentType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.return)
+                    .tint(Color.label)
+               
+                if contentValue.isValidURL() {
+                    Button {
+                        openURLContent()
+                    } label:{
+                        Text("Open URL")
+                            .tint(Color.blue)
+                    }
+                }
+               
+            }
+           
+        } else if type == .txt{
+            TextField("Content", text: $contentValue, axis: .vertical)
+                .textInputAutocapitalization(.never)
+                .lineLimit(5...10)
+                .submitLabel(.return)
+        } else if type == .image {
+            Group{
+                PhotosPicker(
+                    selection: $selectedImage,
+                    matching: .images,
+                    photoLibrary: .shared(),
+                    label: {
+                        Group {
+                            if let selectedImageData , let uiImage = UIImage(data: selectedImageData) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFit()
+                            } else {
+                                Label {
+                                    Text("Select Photo")
+                                        .font(.system(size: 16, weight: .light, design: .rounded))
+                                        .multilineTextAlignment(.center)
+                                        .tint(.label)
+                                        .underline()
+                                } icon: {
+                                    Image(systemName: "photo.badge.plus")
+                                        .foregroundColor(.label)
+                                }
+                            }
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            if selectedImageData != nil {
+                                Button {
+                                    selectedImage = nil
+                                    selectedImageData = nil
+                                } label: {
+                                    Image(systemName: "x.circle.fill")
+                                        .foregroundStyle(.red)
+                                        .font(.system(size: 24, weight: .light, design: .rounded))
+                                }
+                                .padding()
+                            }
+                        }
+                    }
+                )
+            }
+            .task(id: selectedImage) {
+                if let data = try? await selectedImage?.loadTransferable(type: Data.self)  {
+                    selectedImageData = data
+                }
+            }
+        }
+           
+        
+    }
+    
+    func openURLContent() {
+        if !contentValue.isEmpty  && contentValue.isValidURL(){
+            UIApplication.shared.open(URL(string: contentValue.getValidURLString())!)
+        }
+       
+    }
+}
+
 struct SnippetForm: View {
     let snippet: SnippetItem?
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
@@ -165,6 +260,8 @@ struct SnippetForm: View {
     @State private var content = ""
     @State private var customTagName: String = "None"
     @State private var customTagIconName: String = "tag.fill"
+    @State var selectedImage: PhotosPickerItem?
+    @State var contentFileData: Data?
     
     @FocusState private var focusedField: Field?
     @Binding var isFormVisible: Bool
@@ -215,47 +312,28 @@ struct SnippetForm: View {
                         Text("snippet content")
                         
                         Spacer()
-                        Button(action: pasteContentFromClipboard) {
-                            Label("Paste", systemImage: "doc.on.clipboard.fill")
-                                .tint(.label)
-                                .bold()
-                                .font(.custom("IBMPlexMono-Medium", size: 14))
-                                .underline()
-                                .tint(Color.label)
+                        if type != .image {
+                            Button(action: pasteContentFromClipboard) {
+                                Label("Paste", systemImage: "doc.on.clipboard.fill")
+                                    .tint(.label)
+                                    .bold()
+                                    .font(.custom("IBMPlexMono-Medium", size: 14))
+                                    .underline()
+                                    .tint(Color.label)
+                            }
                         }
+                       
                         
                         
                     }
                 }) {
-                    if type == .url {
-                        Group {
-                            TextField("yoursite.com", text: $content, axis: .vertical)
-                                .keyboardType(.URL)
-                                .textContentType(.URL)
-                                .textInputAutocapitalization(.never)
-                                .focused($focusedField, equals: .snippetContent)
-                                .submitLabel(.return)
-                                .tint(Color.label)
-                           
-                            if content.isValidURL() {
-                                Button {
-                                    openURLContent()
-                                } label:{
-                                    Text("Open URL")
-                                        .tint(Color.blue)
-                                }
-                            }
-                           
-                        }
-                       
-                    } else {
-                        TextField("Content", text: $content, axis: .vertical)
-                            .textInputAutocapitalization(.never)
-                            .lineLimit(5...10)
-                            .focused($focusedField, equals: .snippetContent)
-                            .submitLabel(.return)
-                    }
-                    
+                    SnippetContent(
+                        type: type,
+                        contentValue: $content,
+                        contentData: $contentFileData,
+                        selectedImage: $selectedImage,
+                        selectedImageData: $contentFileData
+                    )
                     
                 }
                 .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
@@ -268,24 +346,32 @@ struct SnippetForm: View {
                 ) {
                     
                     CreateOrSelectTag(
-                        isCreatingNewTag: $isCreatingNewTag, tagName: $customTagName,
-                        tagIcon: $customTagIconName)
+                        isCreatingNewTag: $isCreatingNewTag,
+                        tagName: $customTagName,
+                        tagIcon: $customTagIconName
+                    )
                     
                 }
                 .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
                 
-                Section(header: Label("Security", systemImage: "lock.fill"), footer: Text("Enabling this will safeguard your snippet with FaceID/TouchID for secure access.")) {
-                    Toggle("Sensitive Data", isOn: $isSecure)
-                        .disabled(!deviceBiometrics.hasBiometricsCapability)
+                Section(
+                    header: Label(
+                        "Security",
+                        systemImage: "lock.fill"
+                    ),
+                    footer: Text(
+                        "Enabling this will safeguard your snippet with FaceID/TouchID for secure access."
+                    )
+                ) {
+                    Toggle(
+                        "Sensitive Data",
+                        isOn: $isSecure
+                    )
+                    .disabled(
+                        !deviceBiometrics.hasBiometricsCapability
+                    )
                 }
                 .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-                
-                .onSubmit {
-                    switch focusedField {
-                    default:
-                        print("SnippetContent")
-                    }
-                }
             }
         }
         .navigationTitle(editorTitle)
@@ -298,7 +384,7 @@ struct SnippetForm: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") {
-                    focusedField = nil
+                    hideKeyboard()
                 }
                 .font(.custom("IBMPlexMono-Bold", size: 14))
                 .tint(Color.black)
@@ -324,7 +410,7 @@ struct SnippetForm: View {
                     
                         .font(.custom("IBMPlexMono-Medium", size: 15))
                 }
-                .disabled(disableSaveAction)
+                .disabled(getDisabledSaveAction())
             }
         }
         .onAppear {
@@ -334,6 +420,7 @@ struct SnippetForm: View {
                 content = snippet.content
                 type = snippet.type
                 isSecure = snippet.isSecure
+                contentFileData = snippet.file?.fileData
                 customTagName = snippet.customTag?.name ?? "None"
                 customTagIconName = snippet.customTag?.imageTag ?? "tag.fill"
             }
@@ -341,6 +428,10 @@ struct SnippetForm: View {
         .onChange(of: type) {_, _ in
             if type == .txt {
                 content = ""
+            }
+            
+            if type != .image {
+                contentFileData = nil
             }
           
         }
@@ -352,6 +443,20 @@ struct SnippetForm: View {
     
     func pasteContentFromClipboard(){
         content = "\(content)\(pasteFromClipboard())"
+    }
+    
+    func getDisabledSaveAction() -> Bool {
+        let needNewTagName = isCreatingNewTag ? customTagName.isEmpty : false
+        
+        switch type {
+        case .image:
+            return title.isEmpty || ((contentFileData?.isEmpty) != false) || needNewTagName
+        case .txt, .url:
+            return title.isEmpty || content.isEmpty || needNewTagName
+        default:
+            return false
+        }
+     
     }
     
     func openURLContent() {
@@ -393,9 +498,16 @@ struct SnippetForm: View {
         }
     }
     
+    func addFileToSnippeet(item: SnippetItem) {
+        if contentFileData != nil {
+            let newFile = snippetViewModel.createData(type: .image, data: contentFileData!)
+            newFile.snippet?.append(item)
+        }
+       
+    }
+    
     private func save() {
-        print("customTagName: \(customTagName)")
-        if title.isEmpty || content.isEmpty {
+        if getDisabledSaveAction() {
             print("cant save empty")
         } else {
             if let snippet {
@@ -406,10 +518,18 @@ struct SnippetForm: View {
                 snippet.updatedDate = Date.now
                 snippet.isSecure = isSecure
                 addTagToSnippet(item: snippet)
+                
+                if type == .image {
+                    addFileToSnippeet(item: snippet)
+                }
             } else {
                 // Create
                 let newSnippetCreated = snippetViewModel.createSnippet(title, content: content, type: type, isSecure: isSecure)
                 addTagToSnippet(item: newSnippetCreated)
+                
+                if type == .image {
+                    addFileToSnippeet(item: newSnippetCreated)
+                }
             }
             toggleFormVisibility()
         }

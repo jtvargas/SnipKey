@@ -66,6 +66,16 @@ class SnippetViewModel {
         
     }
     
+    func createData(type: FileType, data: Data) -> SnippetFile {
+        print("CREATING NEW FILE-DOCUMENT: \(type)")
+        let newFile = SnippetFile(type: type)
+        newFile.fileData = data;
+        self.modelContext?.insert(newFile)
+        print("FILE CREATED: \(type)")
+        return newFile
+        
+    }
+    
     func findTagCreated(tagName: String) -> SnipTag? {
         let fetchDescriptor = FetchDescriptor<SnipTag>()
         
@@ -86,6 +96,8 @@ class SnippetViewModel {
             return nil
         }
     }
+    
+  
     
     func createSnippet(_ title: String, content: String, type: SnipType?, isSecure: Bool) -> SnippetItem {
         print("ADD FUNC CALLED!")

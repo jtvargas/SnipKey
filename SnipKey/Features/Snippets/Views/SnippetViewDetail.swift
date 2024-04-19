@@ -10,6 +10,35 @@ import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
 
+
+struct SnippetContentView: View {
+    let snippet: SnippetItem
+    
+    var body: some View {
+        if snippet.type == .txt {
+            ScrollView {
+                Text("\(snippet.content)")
+                    .multilineTextAlignment(.leading)
+                    .padding(.top, 8)
+                    .tint(Color.label)
+            }.frame(height: 180)
+        }
+        
+        if snippet.type == .url {
+            Text("\(snippet.content)")
+                .tint(Color.label)
+        }
+        
+        if snippet.type == .image && snippet.file?.fileData != nil {
+            if let uiImage = UIImage(data: (snippet.file?.fileData)!) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFit()
+            }
+        }
+    }
+}
+
 struct SnippetViewDetail: View {
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
     
@@ -104,19 +133,7 @@ struct SnippetViewDetail: View {
                             }
                         }
                     ) {
-                        if snippet.type == .url {
-                            Text("\(snippet.content)")
-                                .tint(Color.label)
-                        } else {
-                            ScrollView {
-                                Text("\(snippet.content)")
-                                    .multilineTextAlignment(.leading)
-                                    .padding(.top, 8)
-                                    .tint(Color.label)
-                            }.frame(height: 180)
-                        }
-                       
-                        
+                        SnippetContentView(snippet: snippet)
                     }
                     .listRowBackground(Color.tertiarySystemBackground)
                 }
