@@ -7,6 +7,7 @@
 
 import SwiftData
 import SwiftUI
+import StoreKit
 
 func isKeyboardExtensionEnabled() -> Bool {
     guard let appBundleIdentifier = Bundle.main.bundleIdentifier else {
@@ -34,11 +35,16 @@ func isKeyboardExtensionEnabled() -> Bool {
 }
 
 struct SnippetView: View {
-    @State var showSnippedDetailSheet = false
+    @AppStorage("isRequestedRating") var isRequestedRating: Bool = false
+    
+    @Environment(\.requestReview) var requestReview
     @Environment(\.modelContext) var modelContext
     @Environment(\.scenePhase) var scenePhase
+    
     @State var viewModel = SnippetViewModel()
     @State private var selectedFilter: SnipTag? = nil
+    @State var showSnippedDetailSheet = false
+    
     @Query(sort: \SnippetItem.creationDate, order: .reverse, animation: .bouncy) private var snippets:
     [SnippetItem]
     @Query(sort: \SnipTag.creationDate) private var tags: [SnipTag]
@@ -208,6 +214,19 @@ struct SnippetView: View {
         .onAppear {
             viewModel.modelContext = modelContext
             isKeyboardActive = isKeyboardExtensionEnabled()
+        }
+        .onChange(of: snippets) { oldPhase, newPhase in
+            if newPhase.count % 2 == 0 && !isRequestedRating {
+                print("ASK RATING")
+                requestReview()
+                isRequestedRating = true
+            }
+            
+            if newPhase.count % 10 == 0 && isRequestedRating {
+                print("RESET RATING")
+                isRequestedRating = false
+            }
+            
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             if newPhase == .active {
