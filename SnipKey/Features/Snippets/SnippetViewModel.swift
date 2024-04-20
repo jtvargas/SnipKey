@@ -71,7 +71,7 @@ class SnippetViewModel {
         let newFile = SnippetFile(type: type, formatType: fileFormatType)
         newFile.fileData = data;
         self.modelContext?.insert(newFile)
-        print("FILE CREATED: \(type)")
+        print("FILE CREATED: \(type) with ID: \(newFile.id)")
         return newFile
         
     }
@@ -97,7 +97,33 @@ class SnippetViewModel {
         }
     }
     
+    func findFileCreated(fileId: String) -> SnippetFile? {
+        let fetchDescriptor = FetchDescriptor<SnippetFile>()
+        
+        do {
+            let snippetFiles = try modelContext?.fetch(fetchDescriptor)
+            
+            
+            let snippetFileFilteredById = snippetFiles?.filter{ $0.id == fileId } ?? []
+            
+            if !snippetFileFilteredById.isEmpty {
+                return snippetFileFilteredById.first
+            } else {
+                return nil
+            }
+            
+        } catch {
+            print("FAILED TO FIND FILE CREATED")
+            return nil
+        }
+    }
+    
   
+    func deleteFile(fileId: String) {
+        if let snippetFile = findFileCreated(fileId: fileId) {
+            self.modelContext?.delete(snippetFile)
+        }
+    }
     
     func createSnippet(_ title: String, content: String, type: SnipType?, isSecure: Bool) -> SnippetItem {
         print("ADD FUNC CALLED!")

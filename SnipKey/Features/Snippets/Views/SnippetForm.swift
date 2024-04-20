@@ -456,6 +456,12 @@ struct SnippetForm: View {
             
             if type != .image {
                 contentFileData = nil
+                
+                if let snippetFileId = snippet?.file?.id {
+                    print("Delete Snippet FILE ID: \(snippetFileId)")
+                    snippetViewModel.deleteFile(fileId: snippetFileId)
+                }
+               
             }
           
         }
@@ -523,7 +529,13 @@ struct SnippetForm: View {
     }
     
     func addFileToSnippeet(item: SnippetItem) {
-        if contentFileData != nil {
+        if contentFileData != nil &&  contentFileFormatType != nil {
+            
+            if let snippetFileId = item.file?.id {
+                print("Delete previous snippet file: \(snippetFileId) with snippet relationship: \(item.id)")
+                snippetViewModel.deleteFile(fileId: snippetFileId)
+            }
+            
             let newFile = snippetViewModel.createData(type: .image, data: contentFileData!, fileFormatType: contentFileFormatType!)
             newFile.snippet?.append(item)
         }

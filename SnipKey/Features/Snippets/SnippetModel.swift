@@ -121,7 +121,7 @@ final class SnippetFile {
     var fileFormatType: String?
     @Attribute(.externalStorage) var fileData: Data?
     
-    @Relationship(deleteRule: .cascade, inverse: \SnippetItem.file)
+    @Relationship(inverse: \SnippetItem.file)
     var snippet: [SnippetItem]?
     
     init(type: FileType = .image, formatType: String) {
