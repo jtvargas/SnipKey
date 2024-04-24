@@ -11,10 +11,6 @@ import SymbolPicker
 import UIKit
 import PhotosUI
 
-func pasteFromClipboard() -> String {
-    UIPasteboard.general.string ?? ""
-}
-
 struct CustomRadioButtonGroup<T: Hashable>: View {
     let items: [T]
     @Binding var selection: T
@@ -70,7 +66,7 @@ struct CustomRadioButtonGroup<T: Hashable>: View {
 
 let options: [SnipType] = [.txt, .url, .image]
 let labels: [SnipType: String] = [.txt: "text", .url: "url", .file: "file", .image: "image"]
-let charLimit = 12
+let titleCharLimit = 18
 let tagCharLimit = 10
 enum Field {
     case snippetTitle
@@ -172,7 +168,7 @@ struct SnippetContent: View {
                     .textInputAutocapitalization(.never)
                     .submitLabel(.return)
                     .tint(Color.label)
-               
+                
                 if contentValue.isValidURL() {
                     Button {
                         openURLContent()
@@ -181,9 +177,9 @@ struct SnippetContent: View {
                             .tint(Color.blue)
                     }
                 }
-               
+                
             }
-           
+            
         } else if type == .txt{
             TextField("Content", text: $contentValue, axis: .vertical)
                 .textInputAutocapitalization(.never)
@@ -246,7 +242,7 @@ struct SnippetContent: View {
                             Text("Go to Settings")
                         }
                     }
-                   
+                    
                 } icon: {
                     Image(systemName: "info")
                         .foregroundColor(.yellow)
@@ -259,7 +255,7 @@ struct SnippetContent: View {
                 }
             }
         }
-           
+        
         
     }
     
@@ -267,7 +263,7 @@ struct SnippetContent: View {
         if !contentValue.isEmpty  && contentValue.isValidURL(){
             UIApplication.shared.open(URL(string: contentValue.getValidURLString())!)
         }
-       
+        
     }
 }
 
@@ -285,11 +281,11 @@ struct SnippetForm: View {
     @State private var customTagName: String = "None"
     @State private var customTagIconName: String = "tag.fill"
     
-//    Image File State
+    //    Image File State
     @State var selectedImage: PhotosPickerItem?
-
     
-//    File State
+    
+    //    File State
     @State var contentFileData: Data?
     @State var contentFileFormatType: String?
     
@@ -305,11 +301,11 @@ struct SnippetForm: View {
     
     var body: some View {
         NavigationStack {
-           
+            
             Label("Don't forget to click Save!", systemImage: "info.square.fill")
                 .bold()
                 .font(.custom("IBMPlexMono-Medium", size: 15))
-           
+            
             Form {
                 Section(header: Text("snippet type")) {
                     CustomRadioButtonGroup(items: options, selection: $type, labels: labels)
@@ -319,13 +315,27 @@ struct SnippetForm: View {
                 
                 Section(
                     header: Text("snippet title *"),
-                    footer: Text("Remaining: \(charLimit - title.count)")
+                    footer: HStack{
+                        Text("Remaining: ")
+                        ZStack {
+                            Circle()
+                                .stroke(Color.tertiaryLabel, lineWidth: 5)
+                            Text("\(titleCharLimit - title.count)")
+                                .font(.custom("IBMPlexMono-Medium", size: 10))
+                            Circle()
+                                .trim(from: 0, to: progress)
+                                .stroke( (titleCharLimit - title.count) < titleCharLimit/4 ? Color.red: Color.label, lineWidth: 5)
+                                .rotationEffect(.init(degrees: -90))
+                        }
+                        .frame(width: 20, height: 20)
+                    }
                 ) {
                     TextField("Title", text: $title)
                         .disableAutocorrection(true)
                         .focused($focusedField, equals: .snippetTitle)
                         .submitLabel(.return)
-                        .limitText($title, to: charLimit)
+                        .limitText($title, to: titleCharLimit)
+                    
                     
                 }
                 .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
@@ -345,7 +355,7 @@ struct SnippetForm: View {
                                     .tint(Color.label)
                             }
                         }
-                       
+                        
                         
                         
                     }
@@ -461,10 +471,14 @@ struct SnippetForm: View {
                     print("Delete Snippet FILE ID: \(snippetFileId)")
                     snippetViewModel.deleteFile(fileId: snippetFileId)
                 }
-               
+                
             }
-          
+            
         }
+    }
+    
+    var progress: CGFloat {
+        return max(min(CGFloat(title.count) / CGFloat(titleCharLimit), 1), 0)
     }
     
     func toggleFormVisibility() {
@@ -486,14 +500,14 @@ struct SnippetForm: View {
         default:
             return false
         }
-     
+        
     }
     
     func openURLContent() {
         if !content.isEmpty  && content.isValidURL(){
             UIApplication.shared.open(URL(string: content.getValidURLString())!)
         }
-       
+        
     }
     
     func onClosePress() {
@@ -539,7 +553,7 @@ struct SnippetForm: View {
             let newFile = snippetViewModel.createData(type: .image, data: contentFileData!, fileFormatType: contentFileFormatType!)
             newFile.snippet?.append(item)
         }
-       
+        
     }
     
     private func save() {

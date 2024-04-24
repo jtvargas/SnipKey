@@ -43,6 +43,8 @@
 		06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */; };
 		06D827FE2BBDC7DC00305E18 /* SymbolPicker in Frameworks */ = {isa = PBXBuildFile; productRef = 06D827FD2BBDC7DC00305E18 /* SymbolPicker */; };
 		06E7E2B72BD30A610058D11E /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 06E7E2B62BD30A610058D11E /* AlertToast */; };
+		06E7E2B92BD97FB40058D11E /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E7E2B82BD97FB40058D11E /* Keyboard.swift */; };
+		06E7E2BA2BD97FB40058D11E /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E7E2B82BD97FB40058D11E /* Keyboard.swift */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
@@ -108,6 +110,7 @@
 		06AE13112BBB0D16008EAE98 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyDataManager.swift; sourceTree = "<group>"; };
 		06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHelpGuideView.swift; sourceTree = "<group>"; };
+		06E7E2B82BD97FB40058D11E /* Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keyboard.swift; sourceTree = "<group>"; };
 		06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewDetail.swift; sourceTree = "<group>"; };
 		06EA76932BB4DED000E3E1F0 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetForm.swift; sourceTree = "<group>"; };
@@ -279,6 +282,7 @@
 				06F4F2F92BB5F3BD00399C78 /* Strings.swift */,
 				06F4F3242BB7484000399C78 /* Views.swift */,
 				061ED3CD2BC43611006A6E47 /* Biometrics.swift */,
+				06E7E2B82BD97FB40058D11E /* Keyboard.swift */,
 			);
 			path = Helper;
 			sourceTree = "<group>";
@@ -427,6 +431,7 @@
 			files = (
 				066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */,
 				06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */,
+				06E7E2BA2BD97FB40058D11E /* Keyboard.swift in Sources */,
 				066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */,
 				061ED3CF2BC44384006A6E47 /* Biometrics.swift in Sources */,
 				066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */,
@@ -454,6 +459,7 @@
 				06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */,
 				06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */,
 				066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */,
+				06E7E2B92BD97FB40058D11E /* Keyboard.swift in Sources */,
 				06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */,
 				06AE130E2BBB09B5008EAE98 /* SettingsModel.swift in Sources */,
 				06F4F31F2BB71E8F00399C78 /* WelcomeView.swift in Sources */,

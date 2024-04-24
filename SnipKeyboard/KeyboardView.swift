@@ -126,6 +126,7 @@ extension View {
     }
 }
 
+
 struct KeyboardView: View {
     @State private var showToast = false
     @Environment(\.modelContext) var modelContext
@@ -199,30 +200,7 @@ struct KeyboardView: View {
         }
     }
     
-    func checkFullAccess() -> Bool
-    {
-        var hasFullAccess = false
-        if #available(iOSApplicationExtension 10.0, *) {
-            let pasty = UIPasteboard.general
-            if pasty.hasURLs || pasty.hasColors || pasty.hasStrings || pasty.hasImages {
-                hasFullAccess = true
-            } else {
-                pasty.string = "TEST"
-                if pasty.hasStrings {
-                    hasFullAccess = true
-                    pasty.string = ""
-                }
-            }
-        } else {
-            // Fallback on earlier versions
-            var clippy : UIPasteboard?
-            clippy = UIPasteboard.general
-            if clippy != nil {
-                hasFullAccess = true
-            }
-        }
-        return hasFullAccess
-    }
+   
     
     func sentSecureValue(snippet: SnippetItem) {
         deviceBiometrics.authenticate(successHandler: {
