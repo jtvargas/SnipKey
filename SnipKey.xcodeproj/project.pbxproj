@@ -45,6 +45,8 @@
 		06E7E2B72BD30A610058D11E /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 06E7E2B62BD30A610058D11E /* AlertToast */; };
 		06E7E2B92BD97FB40058D11E /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E7E2B82BD97FB40058D11E /* Keyboard.swift */; };
 		06E7E2BA2BD97FB40058D11E /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E7E2B82BD97FB40058D11E /* Keyboard.swift */; };
+		06E7E2BE2BD998390058D11E /* SubscriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E7E2BD2BD998390058D11E /* SubscriptionView.swift */; };
+		06E7E2C02BD998860058D11E /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06E7E2BF2BD998860058D11E /* StoreKit.framework */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
@@ -111,6 +113,8 @@
 		06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyDataManager.swift; sourceTree = "<group>"; };
 		06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHelpGuideView.swift; sourceTree = "<group>"; };
 		06E7E2B82BD97FB40058D11E /* Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keyboard.swift; sourceTree = "<group>"; };
+		06E7E2BD2BD998390058D11E /* SubscriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionView.swift; sourceTree = "<group>"; };
+		06E7E2BF2BD998860058D11E /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewDetail.swift; sourceTree = "<group>"; };
 		06EA76932BB4DED000E3E1F0 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetForm.swift; sourceTree = "<group>"; };
@@ -142,6 +146,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				06E7E2C02BD998860058D11E /* StoreKit.framework in Frameworks */,
 				06D827FE2BBDC7DC00305E18 /* SymbolPicker in Frameworks */,
 				060399962BB8836E00A6E818 /* AlertToast in Frameworks */,
 			);
@@ -212,6 +217,7 @@
 		068C77C72BB4C5AA0008D9A1 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				06E7E2BB2BD997FC0058D11E /* Subscription */,
 				06AE130C2BBB099B008EAE98 /* Settings */,
 				06F4F31C2BB71E5E00399C78 /* OnBoarding */,
 				068C77C82BB4C5C00008D9A1 /* Snippets */,
@@ -264,8 +270,25 @@
 		06E7E2B52BD30A610058D11E /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				06E7E2BF2BD998860058D11E /* StoreKit.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		06E7E2BB2BD997FC0058D11E /* Subscription */ = {
+			isa = PBXGroup;
+			children = (
+				06E7E2BC2BD998150058D11E /* Views */,
+			);
+			path = Subscription;
+			sourceTree = "<group>";
+		};
+		06E7E2BC2BD998150058D11E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				06E7E2BD2BD998390058D11E /* SubscriptionView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		06EA76922BB4DEBE00E3E1F0 /* Core */ = {
@@ -451,6 +474,7 @@
 				06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */,
 				06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */,
 				06F4F3192BB6777E00399C78 /* SnippetListEmpty.swift in Sources */,
+				06E7E2BE2BD998390058D11E /* SubscriptionView.swift in Sources */,
 				06F4F2FA2BB5F3BD00399C78 /* Strings.swift in Sources */,
 				06F4F3252BB7484000399C78 /* Views.swift in Sources */,
 				06C6FE2C2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
@@ -681,8 +705,9 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -691,9 +716,13 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -718,8 +747,9 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -728,9 +758,13 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

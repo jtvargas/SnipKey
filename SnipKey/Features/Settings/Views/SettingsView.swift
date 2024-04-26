@@ -67,7 +67,7 @@ struct SettingsView: View {
                         Label("SnipKey Website", systemImage: "network")
                     }
                     Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online") {
+                        if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
                             openURL(url)
                         }
                     } label: {

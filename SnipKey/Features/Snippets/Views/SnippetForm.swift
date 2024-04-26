@@ -240,6 +240,8 @@ struct SnippetContent: View {
                             }
                         } label: {
                             Text("Go to Settings")
+                                .underline()
+                                .padding(.top, 4)
                         }
                     }
                     

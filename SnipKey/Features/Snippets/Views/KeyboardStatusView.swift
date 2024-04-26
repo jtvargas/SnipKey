@@ -30,17 +30,10 @@ struct KeyboardStatusView: View {
                            
                         }
                         
-                        if checkFullAccess() {
-                            Label("Everything setup!", systemImage: "info.square.fill")
-                                .padding(.top)
-                                .foregroundColor(Color.secondaryLabel)
-                                .symbolEffect(.pulse)
-                        } else {
                             Label("Images need Full Access enabled", systemImage: "info.square.fill")
                                 .padding(.top)
                                 .foregroundColor(Color.secondaryLabel)
                                 .symbolEffect(.pulse)
-                        }
                         
                        
                     }
@@ -60,5 +53,5 @@ struct KeyboardStatusView: View {
     func handleOnKeyboardStatusPress() {
         print("Keyboard Status press")
     }
-    return KeyboardStatusView(isActive: false, onKeyboardStatusPress: handleOnKeyboardStatusPress)
+    return KeyboardStatusView(isActive: false,  onKeyboardStatusPress: handleOnKeyboardStatusPress)
 }

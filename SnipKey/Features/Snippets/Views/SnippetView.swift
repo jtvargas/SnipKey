@@ -68,13 +68,14 @@ struct SnippetView: View {
     @State var isPresentedGuide: Bool = false
     @State var isPresentedWelcomeInfo: Bool = false
     @State var isKeyboardActive: Bool = false
+    @State var isKeyboardFullAccess: Bool = false
     
     var body: some View {
         NavigationStack {
             VStack {
                 if !snippets.isEmpty {
                     KeyboardStatusView(
-                        isActive: isKeyboardActive, onKeyboardStatusPress: handleOnKeyboardStatusPress
+                        isActive: isKeyboardActive,onKeyboardStatusPress: handleOnKeyboardStatusPress
                     )
                     .sheet(
                         isPresented: $isPresentedGuide,
@@ -214,6 +215,7 @@ struct SnippetView: View {
         .onAppear {
             viewModel.modelContext = modelContext
             isKeyboardActive = isKeyboardExtensionEnabled()
+            isKeyboardActive = checkFullAccess()
         }
         .onChange(of: snippets) { oldPhase, newPhase in
             if newPhase.count % 2 == 0 && !isRequestedRating {
