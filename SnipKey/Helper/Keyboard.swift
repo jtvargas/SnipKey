@@ -6,10 +6,36 @@
 //
 
 import SwiftUI
+import UIKit
+import UniformTypeIdentifiers
 
 func pasteFromClipboard() -> String {
     UIPasteboard.general.string ?? ""
 }
+
+func copyImageToClipboard(snippet: SnippetItem) -> Bool? {
+    guard
+        let newImage = UIImage(data: (snippet.file?.fileData)!)
+    else { return nil }
+    
+    var imageData: Data?
+    
+    if snippet.file?.fileFormatType == "image/png"{
+        imageData = newImage.pngData()
+    }
+    
+    if snippet.file?.fileFormatType == "image/jpeg"{
+        imageData = newImage.jpegData(compressionQuality: 0.5)
+    }
+    
+    
+    let clipboard = UIPasteboard.general
+    clipboard.setValue(imageData!, forPasteboardType: UTType.png.identifier)
+    
+    return true
+}
+
+
 
 func checkFullAccess() -> Bool
 {

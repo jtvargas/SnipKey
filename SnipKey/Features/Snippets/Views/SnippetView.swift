@@ -45,9 +45,12 @@ struct SnippetView: View {
     @State private var selectedFilter: SnipTag? = nil
     @State var showSnippedDetailSheet = false
     
+    
     @Query(sort: \SnippetItem.creationDate, order: .reverse, animation: .bouncy) private var snippets:
     [SnippetItem]
     @Query(sort: \SnipTag.creationDate) private var tags: [SnipTag]
+    @Query(sort: \SnippetFile.id, order: .reverse, animation: .bouncy) private var files:
+    [SnippetFile]
     
     //    For some reasons this filter predicate not work, wait until new swiftData version improves this
     //    @Query(filter: #Predicate<SnippetItem>{
@@ -69,6 +72,7 @@ struct SnippetView: View {
     @State var isPresentedWelcomeInfo: Bool = false
     @State var isKeyboardActive: Bool = false
     @State var isKeyboardFullAccess: Bool = false
+    @State var isPresentingSnippetFiles: Bool = false
     
     var body: some View {
         NavigationStack {
@@ -104,6 +108,7 @@ struct SnippetView: View {
                                 
                             }
                         ) {
+                            
                             List {
                                 ForEach(getSnippetItems(), id: \.self.id) { snippetItem in
                                     NavigationLink(destination: SnippetViewDetail(item: snippetItem)) {
@@ -144,6 +149,18 @@ struct SnippetView: View {
                 }
                 
                 if !snippets.isEmpty {
+                    if !files.isEmpty {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button(action: toggleSnippetFiles) {
+                                Image(systemName: "rectangle.grid.3x2.fill")
+                            }.sheet(isPresented: $isPresentingSnippetFiles){
+                                SnippetFilesView()
+                            }
+                           
+                        }
+                    }
+                   
+                    
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu(
                             content: {
@@ -166,7 +183,6 @@ struct SnippetView: View {
                                 .tint(Color.label)
                             })
                     }
-                    
                 }
                 
                 ToolbarItem(placement: .bottomBar) {
@@ -253,6 +269,10 @@ struct SnippetView: View {
     
     func toggleFormModal() {
         self.isPresentedFormModal.toggle()
+    }
+    
+    func toggleSnippetFiles() {
+        self.isPresentingSnippetFiles.toggle()
     }
     
     func toggleWelcomeInfo() {

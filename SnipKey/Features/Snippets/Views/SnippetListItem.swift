@@ -13,6 +13,7 @@ struct SnippetImage: View {
   var body: some View {
       Image(systemName: type.snipTypeImage)
           .foregroundStyle(Color.label)
+          
   }
 }
 
