@@ -71,7 +71,6 @@ struct SnippetView: View {
     @State var isPresentedGuide: Bool = false
     @State var isPresentedWelcomeInfo: Bool = false
     @State var isKeyboardActive: Bool = false
-    @State var isKeyboardFullAccess: Bool = false
     @State var isPresentingSnippetFiles: Bool = false
     
     var body: some View {
@@ -79,7 +78,8 @@ struct SnippetView: View {
             VStack {
                 if !snippets.isEmpty {
                     KeyboardStatusView(
-                        isActive: isKeyboardActive,onKeyboardStatusPress: handleOnKeyboardStatusPress
+                        isActive: isKeyboardActive,
+                        onKeyboardStatusPress: handleOnKeyboardStatusPress
                     )
                     .sheet(
                         isPresented: $isPresentedGuide,
@@ -230,8 +230,8 @@ struct SnippetView: View {
         .tint(Color.label)
         .onAppear {
             viewModel.modelContext = modelContext
-            isKeyboardActive = isKeyboardExtensionEnabled()
-            isKeyboardActive = checkFullAccess()
+//            isKeyboardActive = isKeyboardExtensionEnabled()
+//            isKeyboardActive = checkFullAccess()
         }
         .onChange(of: snippets) { oldPhase, newPhase in
             if newPhase.count % 2 == 0 && !isRequestedRating {
@@ -264,6 +264,8 @@ struct SnippetView: View {
         UINavigationBar.appearance().titleTextAttributes = [
             .font: UIFont(name: "IBMPlexMono-Bold", size: 20)!
         ]
+        
+        _isKeyboardActive = State(initialValue: isKeyboardExtensionEnabled())
         
     }
     
