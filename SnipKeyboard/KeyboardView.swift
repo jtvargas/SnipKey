@@ -51,7 +51,6 @@ class KeyboardObserver: ObservableObject {
 
 let layout = [
     GridItem(.adaptive(minimum: 140, maximum: 200))
-    //    GridItem(.adaptive(minimum: 80, maximum: 120)),
 ]
 
 struct SnippetImageKeyboard: View {
@@ -107,6 +106,15 @@ struct OverflowContentViewModifier: ViewModifier {
     }
 }
 
+func firstFourteenCharacters(of inputString: String) -> String {
+    if inputString.count >= 14 {
+        let index = inputString.index(inputString.startIndex, offsetBy: 14)
+        return String(inputString[..<index])
+    } else {
+        return inputString
+    }
+}
+
 extension View {
     @ViewBuilder
     func wrappedInScrollView(when condition: Bool) -> some View {
@@ -128,22 +136,199 @@ extension View {
 
 
 struct KeyboardView: View {
-    @State private var showToast = false
     @Environment(\.modelContext) var modelContext
+    @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
     @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
     @Query(sort: \SnipTag.name) private var tags: [SnipTag]
     @Query() private var settings: [SettingsModel]
-    let settingsViewModel = SettingsViewModel()
-    @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
-    @State private var text: String = ""
-    @State private var selectedFilter: SnipTag? = nil
-    
-    @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .space)
-    
+  
     let columns = [GridItem(.adaptive(minimum: 150, maximum: 175), spacing: 6)]
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
+    let settingsViewModel = SettingsViewModel()
     
     @State private var isUnlocked: Bool = false
+    @State private var showCreateSnippetCTA = false
+    @State private var showCreatedToast = false
+    @State private var showToast = false
+    @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .space)
+    @State var snippetViewModel = SnippetViewModel()
+    @State private var text: String = ""
+    @State private var selectedFilter: SnipTag? = nil
+    @State private var selectedText: String = ""
+
+    var body: some View {
+        
+        VStack {
+            //            For multiple/custom tags use this style, or a toggle list button
+            if selectedFilter != nil {
+                Label("\(selectedFilter?.name ?? "")", systemImage: selectedFilter?.imageTag ?? "circle")
+                    .padding(.top, 10)
+                    .padding(.horizontal)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .tint(Color.label)
+                    .bold()
+            }
+            Label("Access Private Snippets: \(isUnlocked ? "Open":"Closed")", systemImage: "\(isUnlocked ? "lock.open":"lock")")
+                .padding(.top, 6)
+            
+        
+         
+            ScrollView {
+                if showCreateSnippetCTA {
+                    floatingButton
+                        .transition(.scale.combined(with: .opacity))
+                        .animation(.easeInOut, value: showCreateSnippetCTA)
+                }
+              
+                LazyVGrid(columns: layout, spacing: 20) {
+                    ForEach(getSnippetItems(), id: \.self.id) { snippet in
+                        Button {
+                            sentValue(snippet: snippet)
+                        } label: {
+                            SnippetListItem(item: snippet)
+                                .lineLimit(1) // Limit text to a single line
+                                .truncationMode(.tail)
+                                .padding(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color.tertiarySystemBackground, lineWidth: 4)
+                                )
+                        }
+                        
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+            }
+            
+            if selectedFilter != nil {
+                Button {
+                    selectedFilter = nil
+                } label: {
+                    HStack {
+                        Image(systemName: "minus.circle.fill")
+                        Text("Remove Filter")
+                            .font(.custom("IBMPlexMono-Medium", size: 12))
+                    }.tint(Color.label).underline()
+                    
+                }
+            }
+            HStack(alignment: .center) {
+                
+                if !tags.isEmpty {
+                    Picker("", selection: $selectedFilter) {
+                        ForEach(tags, id: \.id) { tag in
+                            HStack {
+                                Image(systemName: tag.imageTag)
+                            }
+                            .tag(Optional(tag))
+                        }
+                        
+                    }
+                    .pickerStyle(.segmented)
+                }
+                
+                
+                Button {
+                    deleteCharacter()
+                } label: {
+                    // Using a system image to represent the delete key
+                    Image(systemName: "delete.left")
+                        .resizable()  // Make the image resizable
+                        .aspectRatio(contentMode: .fit)  // Keep the aspect ratio of the image
+                        .frame(width: 20, height: 20)  // Set the frame of the image to 35x35
+                        .foregroundColor(.white)  // Set the icon color to white
+                        .padding(10)  // Add padding around the image, adjust as needed
+                        .background(Color.tertiaryLabel)  // Use a red background to mimic the delete key
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))  // Clip the background to a circle shape
+                        .shadow(radius: 5)
+                }
+                
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 10)
+            
+           
+            
+        }
+        .frame(height: 260)
+        .background(Color.secondarySystemBackground)
+        .sensoryFeedback(.increase, trigger: selectedFilter)
+        .onAppear {
+            settingsViewModel.modelContext = modelContext
+            snippetViewModel.modelContext = modelContext
+
+            if let myCurrentSettings = settings.first {
+                currentSettings = myCurrentSettings
+            }
+            
+//            setupSelectTextObserver()
+            
+        }
+        .toast(isPresenting: $showToast) {
+            AlertToast(
+                displayMode: .banner(
+                    .pop
+                ),
+                type: .systemImage(
+                    "doc.on.clipboard",
+                    .label
+                ),
+                title: !checkFullAccess() ? "Enable full keyboard access to copy/paste images." : "Image copied to your clipboard. Paste to use it.",
+                style: .style(
+                    backgroundColor: Color.tertiarySystemBackground,
+                    titleFont: .custom(
+                        "IBMPlexMono-Medium",
+                        size: 14
+                    )
+                )
+            )
+        }
+        .toast(isPresenting: $showCreatedToast) {
+            AlertToast(
+                displayMode: .banner(
+                    .pop
+                ),
+                type: .systemImage(
+                    "checkmark.circle.fill",
+                    .label
+                ),
+                title: "New Snippet created!",
+                style: .style(
+                    backgroundColor: Color.tertiarySystemBackground,
+                    titleFont: .custom(
+                        "IBMPlexMono-Medium",
+                        size: 14
+                    )
+                )
+            )
+            
+        }
+        
+    }
+    
+    private var floatingButton: some View {
+           Button(action: {
+               createNewSnippetFromKeyboard(content: selectedText)
+           }) {
+               VStack{
+                   Text("Create New Snippet")
+                       .foregroundColor(.white)
+                       .padding()
+                       .frame(width: 220, height: 50)
+                       .background(Color.blue)
+                       .cornerRadius(25)
+                       .shadow(radius: 10)
+                       .font(.custom("IBMPlexMono-Medium", size: 16))
+                   Text("(with value selected)")
+                       .font(.custom("IBMPlexMono-Medium", size: 10))
+               }
+             
+              
+           }
+           .fixedSize()
+           .padding(.top)
+       }
     
     func actionPerform() {
         print("snippets: \(snippets)")
@@ -232,120 +417,39 @@ struct KeyboardView: View {
             name: NSNotification.Name(rawValue: "deleteKey"), object: nil)
     }
     
-    var body: some View {
+    
+    //    TODO: For some reason manipulating swiftdata from keyboard/extension the DB is not updating correctly
+    func createNewSnippetFromKeyboard(content: String) {
+        let title = firstFourteenCharacters(of: content)
+        let content = content
         
-        VStack {
-            //            For multiple/custom tags use this style, or a toggle list button
-            if selectedFilter != nil {
-                Label("\(selectedFilter?.name ?? "")", systemImage: selectedFilter?.imageTag ?? "circle")
-                    .padding(.top, 10)
-                    .padding(.horizontal)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .tint(Color.label)
-                    .bold()
-            }
+        snippetViewModel.createSnippet(title, content: content, type: .txt, isSecure: false)
+        showCreatedToast.toggle()
+    }
+    
+    
+
+    func setupSelectTextObserver() {
+        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectText"), object: nil, queue: nil){ notification in
+           
             
-            Label("Access Private Snippets: \(isUnlocked ? "Open":"Closed")", systemImage: "\(isUnlocked ? "lock.open":"lock")")
-                .padding(.top, 6)
-            ScrollView {
+            if let text = notification.object as? String {
                 
-                LazyVGrid(columns: layout, spacing: 20) {
-                    ForEach(getSnippetItems(), id: \.self.id) { snippet in
-                        Button {
-                            sentValue(snippet: snippet)
-                        } label: {
-                            SnippetListItem(item: snippet)
-                                .padding(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .stroke(Color.tertiarySystemBackground, lineWidth: 4)
-                                )
-                        }
-                        
-                    }
+                if !text.isEmpty {
+                    showCreateSnippetCTA = true
+                    selectedText = text
+                    print("TEXT VALUE: \(text)")
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
+               
             }
-            
-            if selectedFilter != nil {
-                Button {
-                    selectedFilter = nil
-                } label: {
-                    HStack {
-                        Image(systemName: "minus.circle.fill")
-                        Text("Remove Filter")
-                            .font(.custom("IBMPlexMono-Medium", size: 12))
-                    }.tint(Color.label).underline()
-                    
-                }
-            }
-            HStack(alignment: .center) {
-                
-                if !tags.isEmpty {
-                    Picker("", selection: $selectedFilter) {
-                        ForEach(tags, id: \.id) { tag in
-                            HStack {
-                                Image(systemName: tag.imageTag)
-                            }
-                            .tag(Optional(tag))
-                        }
-                        
-                    }
-                    .pickerStyle(.segmented)
-                }
-                
-                
-                Button {
-                    deleteCharacter()
-                } label: {
-                    // Using a system image to represent the delete key
-                    Image(systemName: "delete.left")
-                        .resizable()  // Make the image resizable
-                        .aspectRatio(contentMode: .fit)  // Keep the aspect ratio of the image
-                        .frame(width: 20, height: 20)  // Set the frame of the image to 35x35
-                        .foregroundColor(.white)  // Set the icon color to white
-                        .padding(10)  // Add padding around the image, adjust as needed
-                        .background(Color.tertiaryLabel)  // Use a red background to mimic the delete key
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))  // Clip the background to a circle shape
-                        .shadow(radius: 5)
-                }
-                
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 10)
-            
-        }
-        .frame(height: 260)
-        .background(Color.secondarySystemBackground)
-        .sensoryFeedback(.increase, trigger: selectedFilter)
-        .onAppear {
-            settingsViewModel.modelContext = modelContext
-            //            settingsViewModel.
-            if let myCurrentSettings = settings.first {
-                currentSettings = myCurrentSettings
-            }
-        }
-        .toast(isPresenting: $showToast) {
-            AlertToast(
-                displayMode: .banner(
-                    .pop
-                ),
-                type: .systemImage(
-                    "doc.on.clipboard",
-                    .label
-                ),
-                title: !checkFullAccess() ? "Enable full keyboard access to copy/paste images." : "Image copied to your clipboard. Paste to use it.",
-                style: .style(
-                    backgroundColor: Color.tertiarySystemBackground,
-                    titleFont: .custom(
-                        "IBMPlexMono-Medium",
-                        size: 14
-                    )
-                )
-            )
+         
         }
         
+        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil, queue: nil){ notification in
+           
+            showCreateSnippetCTA = false
+         
+        }
     }
 }
 

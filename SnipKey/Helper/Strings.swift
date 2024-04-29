@@ -52,4 +52,5 @@ extension String {
         
         return  UIApplication.shared.canOpenURL(url) ? urlString : ""
     }
+    
 }

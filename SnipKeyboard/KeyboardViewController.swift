@@ -45,6 +45,16 @@ class KeyboardViewController: UIInputViewController {
         }
     }
     
+    func getSelectedText() -> String {
+        if self.textDocumentProxy.hasText {
+            let selectedText = self.textDocumentProxy.selectedText ?? ""
+            print("has text selected \(selectedText)")
+            return selectedText
+        }
+        
+        return ""
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -100,6 +110,8 @@ class KeyboardViewController: UIInputViewController {
 //            self.textDocumentProxy.deleteBackward()
 
         }
+        
+//        hasAnyTextSelected()
     }
     
     override func viewWillLayoutSubviews() {
@@ -109,6 +121,7 @@ class KeyboardViewController: UIInputViewController {
     
     override func textWillChange(_ textInput: UITextInput?) {
         // The app is about to change the document's contents. Perform any preparation here.
+    
     }
     
     override func textDidChange(_ textInput: UITextInput?) {
@@ -122,6 +135,18 @@ class KeyboardViewController: UIInputViewController {
             textColor = UIColor.black
         }
         self.nextKeyboardButton.setTitleColor(textColor, for: [])
+        
+        let selectedText = getSelectedText()
+        
+        if !selectedText.isEmpty{
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "selectText"), object: selectedText)
+        }
+        
+        if selectedText.isEmpty{
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil)
+        }
     }
 
 }
