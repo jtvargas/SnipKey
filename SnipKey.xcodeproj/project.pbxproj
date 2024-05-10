@@ -47,7 +47,7 @@
 		06C6FE2E2BB9EEAB00166AB0 /* SnippetListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */; };
 		06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
 		06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */; };
-		06D454512BEE757500D34782 /* TestSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D454502BEE757500D34782 /* TestSplitView.swift */; };
+		06D454532BEE8E4C00D34782 /* TagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D454522BEE8E4C00D34782 /* TagsView.swift */; };
 		06D827FE2BBDC7DC00305E18 /* SymbolPicker in Frameworks */ = {isa = PBXBuildFile; productRef = 06D827FD2BBDC7DC00305E18 /* SymbolPicker */; };
 		06E7E2B72BD30A610058D11E /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 06E7E2B62BD30A610058D11E /* AlertToast */; };
 		06E7E2B92BD97FB40058D11E /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E7E2B82BD97FB40058D11E /* Keyboard.swift */; };
@@ -123,7 +123,7 @@
 		06AE13112BBB0D16008EAE98 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		06C6FE2B2BB9E00900166AB0 /* SnipKeyDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyDataManager.swift; sourceTree = "<group>"; };
 		06C6FE302BBA060B00166AB0 /* KeyboardHelpGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHelpGuideView.swift; sourceTree = "<group>"; };
-		06D454502BEE757500D34782 /* TestSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestSplitView.swift; sourceTree = "<group>"; };
+		06D454522BEE8E4C00D34782 /* TagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagsView.swift; sourceTree = "<group>"; };
 		06E7E2B82BD97FB40058D11E /* Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keyboard.swift; sourceTree = "<group>"; };
 		06E7E2BD2BD998390058D11E /* SubscriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionView.swift; sourceTree = "<group>"; };
 		06E7E2BF2BD998860058D11E /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
@@ -271,7 +271,7 @@
 				065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */,
 				064D8A132BDC1F0100B9B65F /* SnippetFilesView.swift */,
 				0663720A2BED4E0900226EE4 /* SnippetHomeView.swift */,
-				06D454502BEE757500D34782 /* TestSplitView.swift */,
+				06D454522BEE8E4C00D34782 /* TagsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -507,6 +507,7 @@
 			files = (
 				068C77CD2BB4C60C0008D9A1 /* SnippetViewModel.swift in Sources */,
 				06AE13122BBB0D16008EAE98 /* SettingsView.swift in Sources */,
+				06D454532BEE8E4C00D34782 /* TagsView.swift in Sources */,
 				06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */,
 				06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */,
 				06F4F3192BB6777E00399C78 /* SnippetListEmpty.swift in Sources */,
@@ -533,7 +534,6 @@
 				06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */,
 				06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */,
 				0663720B2BED4E0900226EE4 /* SnippetHomeView.swift in Sources */,
-				06D454512BEE757500D34782 /* TestSplitView.swift in Sources */,
 				06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */,
 				06FC79732BC489D900382400 /* OnBoardingView.swift in Sources */,
 			);

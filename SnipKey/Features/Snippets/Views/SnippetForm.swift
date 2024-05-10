@@ -75,6 +75,7 @@ enum Field {
 
 struct CreateOrSelectTag: View {
     @Binding var isCreatingNewTag: Bool
+    @Binding var snippetTag: SnipTag
     
     @State private var tempTagName = ""
     @Binding var tagName: String
@@ -84,9 +85,18 @@ struct CreateOrSelectTag: View {
     @State private var iconPickerPresented = false
     
     @Environment(\.modelContext) var modelContext
-    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
+    @Query( sort: \SnipTag.name) private var tags: [SnipTag]
     
     var body: some View {
+        let customTagNameBinding = Binding(
+            get: { snippetTag.name ?? "" }, // Default to false if nil
+            set: { newValue in snippetTag.name = newValue }
+        )
+        let customTagIconBinding = Binding(
+            get: { snippetTag.imageTag ?? "tag.fill" }, // Default to false if nil
+            set: { newValue in snippetTag.imageTag = newValue }
+        )
+        
         Toggle("Create New Tag", isOn: $isCreatingNewTag)
         
         if isCreatingNewTag {
@@ -95,7 +105,7 @@ struct CreateOrSelectTag: View {
                     iconPickerPresented = true
                 } label: {
                     HStack {
-                        Image(systemName: tagIcon)
+                        Image(systemName: snippetTag.imageTag!)
                             .tint(Color.label)
                             .frame(width: 24, height: 24)
                             .padding(10)  // Apply padding before the overlay and background to include it in the rounded shape
@@ -108,13 +118,13 @@ struct CreateOrSelectTag: View {
                     }
                 }
                 .sheet(isPresented: $iconPickerPresented) {
-                    SymbolPicker(symbol: $tagIcon)
+                    SymbolPicker(symbol: customTagIconBinding)
                 }
                 Spacer()
                 
                 VStack(alignment: .leading) {
-                    TextField("Your Tag Name Here", text: $tagName)
-                        .limitText($tagName, to: tagCharLimit)
+                    TextField("Your Tag Name Here", text: customTagNameBinding)
+                        .limitText(customTagNameBinding, to: tagCharLimit)
                     Text("Remaining: \(tagCharLimit - tagName.count)")
                         .font(.custom("IBMPlexMono-Regular", size: 10))
                 }
@@ -129,22 +139,29 @@ struct CreateOrSelectTag: View {
             }
             
         } else {
-            Picker(selection: $tagName, label: Image(systemName: "tag.fill")) {
-                ForEach(tags, id: \.id) { tag in
-                    HStack {
-                        Text(tag.name!)
-                        Spacer()
-                        Image(systemName: tag.imageTag!)
+            if tags.isEmpty {
+                Text("No tags available, create a new one")
+                    .foregroundColor(.secondary)
+                    .font(.custom("IBMPlexMono-Regular", size: 12))
+            } else {
+                Picker(selection: $snippetTag, label: Image(systemName: "tag.fill")) {
+                    ForEach(tags, id: \.id) { tag in
+                        HStack {
+                            Text(tag.name ?? "")
+                            Spacer()
+                            Image(systemName: tag.imageTag ?? "tag.fill")
+                        }
+                        .tag(tag)
                     }
-                    .tag(tag.name)
+                }
+                .pickerStyle(.menu)
+                .tint(Color.label)
+                .onTapGesture {
+                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                    impactMed.impactOccurred()
                 }
             }
-            .pickerStyle(.menu)
-            .tint(Color.label)
-            .onTapGesture {
-                let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                impactMed.impactOccurred()
-            }
+          
         }
     }
 }
@@ -282,8 +299,10 @@ struct SnippetForm: View {
     @State private var type = SnipType.txt
     @State private var title = ""
     @State private var content = ""
-    @State private var customTagName: String = "None"
+    @State private var customTagName: String = ""
     @State private var customTagIconName: String = "tag.fill"
+    
+    @State private var snippetTag: SnipTag = SnipTag(name: "", imageTag: "tag.fill")
     
     //    Image File State
     @State var selectedImage: PhotosPickerItem?
@@ -391,12 +410,14 @@ struct SnippetForm: View {
                     
                     CreateOrSelectTag(
                         isCreatingNewTag: $isCreatingNewTag,
+                        snippetTag: $snippetTag,
                         tagName: $customTagName,
                         tagIcon: $customTagIconName
                     )
                     
                 }
                 .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+                
                 
                 Section(
                     header: Label(
@@ -468,8 +489,9 @@ struct SnippetForm: View {
                 type = snippet.type!
                 isSecure = snippet.isSecure
                 contentFileData = snippet.file?.fileData
-                customTagName = snippet.customTag?.name ?? "None"
+                customTagName = snippet.customTag?.name ?? ""
                 customTagIconName = snippet.customTag?.imageTag ?? "tag.fill"
+                snippetTag = snippet.customTag ?? SnipTag(name: "", imageTag: "tag.fill")
             }
         }
         .onChange(of: type) {_, _ in
@@ -503,7 +525,7 @@ struct SnippetForm: View {
     }
     
     func getDisabledSaveAction() -> Bool {
-        let needNewTagName = isCreatingNewTag ? customTagName.isEmpty : false
+        let needNewTagName = isCreatingNewTag ? snippetTag.name!.isEmpty : false
         
         switch type {
         case .image:
@@ -544,13 +566,13 @@ struct SnippetForm: View {
     }
     
     func addTagToSnippet(item: SnippetItem) {
-        let tagCreated = snippetViewModel.findTagCreated(tagName: customTagName)
+        let tagCreated = snippetViewModel.findTagCreated(tagName: snippetTag.name!)
         
         if tagCreated != nil {
             tagCreated?.snippets?.append(item)
         } else {
             let newTagCreated = snippetViewModel.createTag(
-                name: customTagName, iconName: customTagIconName)
+                name: snippetTag.name!, iconName: snippetTag.imageTag!)
             newTagCreated.snippets?.append(item)
         }
     }
@@ -609,10 +631,10 @@ struct SnippetFormBindingPreview: View {
         title: "", content: "", type: SnipType.txt, isSecure: false)
     
     var body: some View {
-        SnippetForm(snippet: nil, isFormVisible: $value)
+        SnippetForm(snippet: tempSnippet, isFormVisible: $value)
     }
 }
 
-#Preview {
-    return SnippetFormBindingPreview()
-}
+//#Preview {
+//    return SnippetFormBindingPreview()
+//}

@@ -117,7 +117,7 @@ struct SnippetHomeView: View {
                                     Feature(title: "Tag & Organize", description: "Sort snippets swiftly with tags.", icon: "tag.fill"),
                                     Feature(title: "Keyboard Quick-Use", description: "Access all snippets directly through the keyboard extension..", icon: "keyboard.fill"),
                                     Feature(title: "Lock Snippets", description: "Secure sensitive data with encryption and biometrics.", icon: "lock.fill"),
-                                    Feature(title: "iCloud Sync", description: "Your data stay secure across your devices with iCloud sync.", icon: "cloud.fill"),
+                                    Feature(title: "Access Everywhere", description: "Sync and secure data across devices with iCloud.", icon: "cloud.fill"),
                                 ], color: Color.label)
                             }
                             
@@ -211,28 +211,31 @@ struct SnippetHomeView: View {
                     }
                     
                     
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu(
-                            content: {
-                                Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
-                                    ForEach(tags, id: \.id) { tag in
-                                        HStack {
-                                            Text(tag.name!)
-                                            Spacer()
-                                            Image(systemName: tag.imageTag!)
+                    if !tags.isEmpty {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Menu(
+                                content: {
+                                    Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
+                                        ForEach(tags, id: \.id) { tag in
+                                            HStack {
+                                                Text(tag.name!)
+                                                Spacer()
+                                                Image(systemName: tag.imageTag!)
+                                            }
+                                            .tag(Optional(tag))
                                         }
-                                        .tag(Optional(tag))
                                     }
-                                }
-                            },
-                            label: {
-                                Image(
-                                    systemName: selectedFilter != nil
-                                    ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
-                                )
-                                .tint(Color.label)
-                            })
+                                },
+                                label: {
+                                    Image(
+                                        systemName: selectedFilter != nil
+                                        ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
+                                    )
+                                    .tint(Color.label)
+                                })
+                        }
                     }
+             
                 }
             }
             

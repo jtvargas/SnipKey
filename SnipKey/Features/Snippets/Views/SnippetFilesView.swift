@@ -25,7 +25,11 @@ struct SnippetFilesView: View {
             Label("Images", systemImage: "rectangle.grid.3x2.fill")
         })
         .padding(.top)
+        .padding(.bottom)
         
+        Text("Tap an image to copy it to your clipboard.")
+            .foregroundColor(.secondary)
+            .font(.custom("IBMPlexMono-Regular", size: 12))
         
         
         ScrollView(.vertical) {
@@ -56,7 +60,7 @@ struct SnippetFilesView: View {
                                                 .cornerRadius(5),
                                             alignment: .bottom
                                         )
-                                        .overlay(      Image(systemName: snippetItem.customTag!.imageTag!)
+                                        .overlay(      Image(systemName: snippetItem.customTag?.imageTag ?? "tag.fill")
                                             .padding(6)
                                             .background(Color.black.opacity(0.5))
                                             .foregroundColor(.white)

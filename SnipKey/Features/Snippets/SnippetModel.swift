@@ -132,7 +132,7 @@ final class SnippetFile {
 
 
 @Model
-final class SnippetItem: Identifiable, Hashable {
+final class SnippetItem {
     var creationDate: Date?
     var updatedDate: Date?
     var id: String?

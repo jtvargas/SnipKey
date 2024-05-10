@@ -43,13 +43,12 @@ struct KeyboardStatusView: View {
                             
                             Text(isActive ? "Ready to use" : "Not Active - Press here")
                                 .font(.custom("IBMPlexMono-Bold", size: 12))
-                            
-                            
+  
                         }
                         
                         
                         Label("Images need Full Access enabled", systemImage: "info.square.fill")
-                            .padding(.top)
+                            .padding(.top, 4)
                             .foregroundColor(Color.secondaryLabel)
                             .symbolEffect(.pulse)
                         
@@ -71,7 +70,7 @@ struct KeyboardStatusView: View {
             
             .repeat(
                 
-                .glow(color: colorBox, radius: 50),
+                .glow(color: colorBox, radius: 6),
                 
                 every: 1.5
                 

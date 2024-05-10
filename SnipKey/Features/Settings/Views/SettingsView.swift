@@ -14,6 +14,8 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     
     @Query() private var settings: [SettingsModel]
+    @Query() private var tags: [SnipTag]
+    
     let settingsViewModel = SettingsViewModel()
     let snippetViewModel = SnippetViewModel()
     
@@ -31,6 +33,10 @@ struct SettingsView: View {
                 .edgesIgnoringSafeArea(.all)
             NavigationStack {
                 List {
+                    Section("Snippets") {
+                        NavigationLink("Tags (\(tags.count))", destination: TagsView())
+                    }
+                    
                     Section("Keyboard Settings") {
                         Section(
                             footer:
@@ -60,6 +66,8 @@ struct SettingsView: View {
                             
                         }
                     }
+                    
+                   
                     
                     Section("About") {
                         Button {

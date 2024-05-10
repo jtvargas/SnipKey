@@ -173,14 +173,13 @@ struct KeyboardView: View {
         VStack {
             //            For multiple/custom tags use this style, or a toggle list button
             HStack(alignment: .center) {
-//                if selectedFilter != nil {
                     Label("\(selectedFilter?.name ?? "All")", systemImage: selectedFilter?.imageTag ?? "circle")
                         .tint(Color.label)
-//                }
                 EmptyView()
                 Spacer()
                 
                 Label("Private Snippets: \(isUnlocked ? "Unlocked":"Locked")", systemImage: "\(isUnlocked ? "lock.open":"lock")")
+
                   
                 Spacer()
                 Button {
@@ -256,6 +255,12 @@ struct KeyboardView: View {
                         
                     }
                     .pickerStyle(.segmented)
+                }else {
+                    Text("Add tags for quick snippet search.")
+                        .foregroundColor(.secondary)
+                        .font(.custom("IBMPlexMono-Regular", size: 12))
+                    
+                   Spacer()
                 }
                 
                 

@@ -57,6 +57,12 @@ class SnippetViewModel {
         }
     }
     
+    func deleteTag(offsets: IndexSet, tags:  [SnipTag]) {
+        for index in offsets {
+            self.modelContext?.delete(tags[index])
+        }
+    }
+    
     func createTag(name: String, iconName: String) -> SnipTag {
         print("CREATING NEW TAG: \(name)")
         let newTag = SnipTag(name: name,imageTag: iconName)
