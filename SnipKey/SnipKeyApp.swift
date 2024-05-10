@@ -45,7 +45,6 @@ struct SnipKeyApp: App {
             } else {
                 SnippetHomeView()
                     .onAppear() {
-                        snippetViewModel.setupInitialTags()
                         settingsViewModel.setupKeyboardSettings()
                     }
                 
