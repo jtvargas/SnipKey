@@ -7,20 +7,7 @@
 
 import SwiftUI
 import SwiftData
-
-
-//var sharedModelContainer: ModelContainer = {
-//    let schema = Schema([
-//        SnippetItem.self,
-//    ])
-//    let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-//    
-//    do {
-//        return try ModelContainer(for: schema, configurations: [modelConfiguration])
-//    } catch {
-//        fatalError("Could not create ModelContainer: \(error)")
-//    }
-//}()
+import TipKit
 
 @main
 struct SnipKeyApp: App {
@@ -30,11 +17,15 @@ struct SnipKeyApp: App {
     private let settingsViewModel = SettingsViewModel()
     private let snippetViewModel = SnippetViewModel()
     
+    init() {
+        try? Tips.configure()
+        
+    }
     
     func emptyCallback(){
         print("callback")
     }
-
+    
     
     var body: some Scene {
         WindowGroup {
@@ -52,9 +43,9 @@ struct SnipKeyApp: App {
                     }
                 
             } else if isOnboarding {
-                    WelcomeView(skipCallback: emptyCallback)
+                WelcomeView(skipCallback: emptyCallback)
             } else {
-                SnippetView()
+                SnippetHomeView()
                 
             }
         }

@@ -44,17 +44,17 @@ struct SnippetListEmpty: View {
                 //        Spacer()
                 Group{
                     
-                    Arrow(progress: progress)
-                        .size(width: geometry.size.width, height: geometry.size.height / 2)
-                        .scale(0.9, anchor: .bottom)
-                        .rotation(.degrees(145))
-                        .padding()
-                        .rotation3DEffect(.degrees(isTilted ? -10 : 10), axis: (x: 0, y: 1, z: 0))
-                        .onAppear {
-                            withAnimation(.easeInOut(duration: 3)) {
-                                progress = 1
-                            }
-                        }
+//                    Arrow(progress: progress)
+//                        .size(width: geometry.size.width, height: geometry.size.height / 2)
+//                        .scale(0.9, anchor: .bottom)
+//                        .rotation(.degrees(145))
+//                        .padding()
+//                        .rotation3DEffect(.degrees(isTilted ? -10 : 10), axis: (x: 0, y: 1, z: 0))
+//                        .onAppear {
+//                            withAnimation(.easeInOut(duration: 3)) {
+//                                progress = 1
+//                            }
+//                        }
                     
                     TypewriterTextView(text: "No Snippets?\n Let's create one!")
                         .multilineTextAlignment(.center)

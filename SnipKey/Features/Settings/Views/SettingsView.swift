@@ -9,6 +9,7 @@ import SwiftData
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
     @Environment(\.openURL) private var openURL
     
@@ -25,101 +26,105 @@ struct SettingsView: View {
     @State private var keyboardValueTest: String = ""
     
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Keyboard Settings") {
-                    Section(
-                        footer:
-                            Group{
-                                Label {
-                                    Text("Customize what happens after pasting a snippet.")
-                                        .font(.custom("IBMPlexMono-Medium", size: 14))
-                                } icon: {
-                                    Image(systemName: "doc.badge.arrow.up.fill")
-                                        .font(.system(size: 16, weight: .light, design: .rounded))
-                                    
+        ZStack {
+            VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                .edgesIgnoringSafeArea(.all)
+            NavigationStack {
+                List {
+                    Section("Keyboard Settings") {
+                        Section(
+                            footer:
+                                Group{
+                                    Label {
+                                        Text("Customize what happens after pasting a snippet.")
+                                            .font(.custom("IBMPlexMono-Medium", size: 14))
+                                    } icon: {
+                                        Image(systemName: "doc.badge.arrow.up.fill")
+                                            .font(.system(size: 16, weight: .light, design: .rounded))
+                                        
+                                    }
+                                }
+                                .font(.custom("IBMPlexMono-Medium", size: 12))
+                                .foregroundColor(.label)
+                        ) {
+                            Picker(
+                                selection: $currentSettings.afterPasteAction,
+                                label:
+                                    Text("Paste Action")
+                                    .font(.custom("IBMPlexMono-Medium", size: 14))
+                            ) {
+                                ForEach(KeyboardAfterPasteAction.allCases, id: \.id) { keyboardAction in
+                                    Text("\(keyboardAction.displayText)").tag(keyboardAction)
                                 }
                             }
-                            .font(.custom("IBMPlexMono-Medium", size: 12))
-                            .foregroundColor(.label)
-                    ) {
-                        Picker(
-                            selection: $currentSettings.afterPasteAction,
-                            label:
-                                Text("Paste Action")
-                                .font(.custom("IBMPlexMono-Medium", size: 14))
-                        ) {
-                            ForEach(KeyboardAfterPasteAction.allCases, id: \.id) { keyboardAction in
-                                Text("\(keyboardAction.displayText)").tag(keyboardAction)
-                            }
+                            
                         }
-                        
-                    }
-                }
-                
-                Section("About") {
-                    Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online") {
-                            openURL(url)
-                        }
-                    } label: {
-                        
-                        Label("SnipKey Website", systemImage: "network")
-                    }
-                    Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
-                            openURL(url)
-                        }
-                    } label: {
-                        
-                        Label("Privacy Policy", systemImage: "hand.raised.circle.fill")
-                    }
-                    Button {
-                        let urlString = "https://snipkey.jrtv.online/feedback-login?companyID=6611dc80cc35d4304dff22cd&redirect=https%3A%2F%2Fsnipkey.canny.io"
-                        print("url: \(urlString)")
-                        if let url = URL(string: urlString) {
-                            openURL(url)
-                        }
-                    } label: {
-                        Label("Suggest Feature", systemImage: "square.and.pencil.circle.fill")
-                    }
-                }
-                
-                Section(footer: Text("Reset to default settings")) {
-                    Button {
-                        showingAlert.toggle()
-                    } label: {
-                        
-                        Label("Reset Keyboard Settings", systemImage: "xmark.bin.circle.fill")
-                            .foregroundColor(.customError)
-                    }
-
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        isPresentingSettings.toggle()
-                    } label: {
-                        Text("close")
-                            .foregroundColor(Color.secondary)
-                            .underline()
-                            .bold()
                     }
                     
+                    Section("About") {
+                        Button {
+                            if let url = URL(string: "https://snipkey.jrtv.online") {
+                                openURL(url)
+                            }
+                        } label: {
+                            
+                            Label("SnipKey Website", systemImage: "network")
+                        }
+                        Button {
+                            if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
+                                openURL(url)
+                            }
+                        } label: {
+                            
+                            Label("Privacy Policy", systemImage: "hand.raised.circle.fill")
+                        }
+                        Button {
+                            let urlString = "https://snipkey.jrtv.online/feedback-login?companyID=6611dc80cc35d4304dff22cd&redirect=https%3A%2F%2Fsnipkey.canny.io"
+                            print("url: \(urlString)")
+                            if let url = URL(string: urlString) {
+                                openURL(url)
+                            }
+                        } label: {
+                            Label("Suggest Feature", systemImage: "square.and.pencil.circle.fill")
+                        }
+                    }
+                    
+                    Section(footer: Text("Reset to default settings")) {
+                        Button {
+                            showingAlert.toggle()
+                        } label: {
+                            
+                            Label("Reset Keyboard Settings", systemImage: "xmark.bin.circle.fill")
+                                .foregroundColor(.customError)
+                        }
+                        
+                    }
                 }
-                ToolbarItem(placement: .bottomBar) {
-                    Text("SnipKey")
-                        .foregroundColor(Color.secondary)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            isPresentingSettings.toggle()
+                        } label: {
+                            Text("close")
+                                .foregroundColor(Color.secondary)
+                                .underline()
+                                .bold()
+                        }
+                        
+                    }
+                    ToolbarItem(placement: .bottomBar) {
+                        Text("SnipKey")
+                            .foregroundColor(Color.secondary)
+                    }
                 }
-            }
-            .navigationTitle("Settings")
-            .font(.custom("IBMPlexMono-Bold", size: 16))
-            .onAppear {
-                settingsViewModel.modelContext = modelContext
-                if let myCurrentSettings = settings.first {
-                    currentSettings = myCurrentSettings
-                    action = myCurrentSettings.afterPasteAction
+                .navigationTitle("Settings")
+                .font(.custom("IBMPlexMono-Bold", size: 16))
+                .onAppear {
+                    settingsViewModel.modelContext = modelContext
+                    if let myCurrentSettings = settings.first {
+                        currentSettings = myCurrentSettings
+                        action = myCurrentSettings.afterPasteAction
+                    }
                 }
             }
         }

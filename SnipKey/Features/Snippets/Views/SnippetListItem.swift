@@ -25,7 +25,7 @@ struct SnippetListItem: View {
       SnippetImage(type: item.type)
             .frame(width: 35, height: 35)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .foregroundStyle(.white)
+            .foregroundStyle(.white.gradient)
     
       Group {
           VStack{
@@ -43,7 +43,7 @@ struct SnippetListItem: View {
 
           if item.isSecure {
               Image(systemName: "lock")
-                  .foregroundStyle(Color.label)
+                  .foregroundStyle(Color.label.gradient)
           }
          
       }

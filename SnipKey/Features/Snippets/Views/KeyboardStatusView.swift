@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Pow
 
 struct KeyboardStatusView: View {
     var isActive: Bool = false
@@ -27,6 +28,7 @@ struct KeyboardStatusView: View {
     )
     
     var body: some View {
+        let colorBox = isActive ? Color.customSuccess : Color.customError
         
         Button(
             action: onKeyboardStatusPress,
@@ -36,10 +38,10 @@ struct KeyboardStatusView: View {
                         Text("Keyboard Status:")
                         HStack {
                             Image(systemName: "circle.fill")
-                                .foregroundColor(isActive ? Color.customSuccess : Color.customError)
+                                .foregroundColor(colorBox)
                                 .symbolEffect(.pulse)
                             
-                            Text(isActive ? "Ready to use" : "Not Active - Press here to activate")
+                            Text(isActive ? "Ready to use" : "Not Active - Press here")
                                 .font(.custom("IBMPlexMono-Bold", size: 12))
                             
                             
@@ -62,15 +64,22 @@ struct KeyboardStatusView: View {
                         lineWidth: $lineWidth
                     )
                 )
-                .padding()
                 .font(.custom("IBMPlexMono-Bold", size: 14))
                 .tint(Color.label)
             })
-        .onAppear {
-            withAnimation(Animation.easeInOut(duration: 1).repeatForever(autoreverses: true)) {
-                lineWidth = 2.0
-            }
-        }
+        .conditionalEffect(
+            
+            .repeat(
+                
+                .glow(color: colorBox, radius: 50),
+                
+                every: 1.5
+                
+            ),
+            
+            condition: true
+            
+        )
     }
 }
 

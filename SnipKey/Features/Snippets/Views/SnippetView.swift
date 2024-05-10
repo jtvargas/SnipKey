@@ -9,30 +9,30 @@ import SwiftData
 import SwiftUI
 import StoreKit
 
-func isKeyboardExtensionEnabled() -> Bool {
-    guard let appBundleIdentifier = Bundle.main.bundleIdentifier else {
-        fatalError("isKeyboardExtensionEnabled(): Cannot retrieve bundle identifier.")
-    }
-    
-    UserDefaults.standard.dictionaryRepresentation()
-    
-    guard
-        let keyboards = UserDefaults.standard.dictionaryRepresentation()["AppleKeyboards"] as? [String]
-    else {
-        // There is no key `AppleKeyboards` in NSUserDefaults. That happens sometimes.
-        return false
-    }
-    
-    let keyboardExtensionBundleIdentifierPrefix = appBundleIdentifier + ".SnipKeyboard"
-    
-    for keyboard in keyboards {
-        if keyboard.hasPrefix(keyboardExtensionBundleIdentifierPrefix) {
-            return true
-        }
-    }
-    
-    return false
-}
+//func isKeyboardExtensionEnabled() -> Bool {
+//    guard let appBundleIdentifier = Bundle.main.bundleIdentifier else {
+//        fatalError("isKeyboardExtensionEnabled(): Cannot retrieve bundle identifier.")
+//    }
+//    
+//    UserDefaults.standard.dictionaryRepresentation()
+//    
+//    guard
+//        let keyboards = UserDefaults.standard.dictionaryRepresentation()["AppleKeyboards"] as? [String]
+//    else {
+//        // There is no key `AppleKeyboards` in NSUserDefaults. That happens sometimes.
+//        return false
+//    }
+//    
+//    let keyboardExtensionBundleIdentifierPrefix = appBundleIdentifier + ".SnipKeyboard"
+//    
+//    for keyboard in keyboards {
+//        if keyboard.hasPrefix(keyboardExtensionBundleIdentifierPrefix) {
+//            return true
+//        }
+//    }
+//    
+//    return false
+//}
 
 struct SnippetView: View {
     @AppStorage("isRequestedRating") var isRequestedRating: Bool = false
@@ -114,7 +114,6 @@ struct SnippetView: View {
                                     NavigationLink(destination: SnippetViewDetail(item: snippetItem)) {
                                         SnippetListItem(item: snippetItem)
                                     }
-                                    .listRowBackground(Color.tertiarySystemBackground)
                                 }
                                 .onDelete(perform: { indexSet in
                                     self.handleDeleteSnippet(offsets: indexSet)
@@ -189,7 +188,7 @@ struct SnippetView: View {
                     HStack(alignment: .center) {
                         Button(action: toggleWelcomeInfo) {
                             Image(systemName: "info.circle.fill")
-                                .tint(Color.label)
+                                .tint(Color.label.gradient)
                                 .font(.system(size: 24))
                         }.sheet(isPresented: $isPresentedWelcomeInfo) {
                             OnboardingView(appName: "SnipKey",showOnboarding: $isPresentedWelcomeInfo, features: [
@@ -202,7 +201,7 @@ struct SnippetView: View {
                         Spacer()
                         Button(action: toggleFormModal) {
                             Image(systemName: "plus.app.fill")
-                                .tint(Color.label)
+                                .tint(Color.label.gradient)
                                 .font(.system(size: 28))
                             
                         }
@@ -210,15 +209,17 @@ struct SnippetView: View {
                             NavigationStack {
                                 SnippetForm(snippet: nil, isFormVisible: $isPresentedFormModal)
                             }
+                            .presentationBackground(Color.clear)
                         }
                         
                         Spacer()
                         Button(action: toggleSettingsModal) {
                             Image(systemName: "gearshape.circle.fill")
-                                .tint(Color.label)
+                                .tint(Color.label.gradient)
                                 .font(.system(size: 24))
                         }.sheet(isPresented: $isPresentingSettings) {
                             SettingsView(isPresentingSettings: $isPresentingSettings)
+                                
                         }
                         
                     }
@@ -227,7 +228,7 @@ struct SnippetView: View {
                 }
             }
         }
-        .tint(Color.label)
+        .tint(Color.label.gradient)
         .onAppear {
             viewModel.modelContext = modelContext
 //            isKeyboardActive = isKeyboardExtensionEnabled()

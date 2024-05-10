@@ -101,17 +101,7 @@ class KeyboardViewController: UIInputViewController {
         // Delete text
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "deleteKey"), object: nil, queue: nil){ _ in
             self.textDocumentProxy.deleteBackward()
-            
-//            // Move the text insertion position forward 1 character
-//            self.textDocumentProxy.adjustTextPosition(byCharacterOffset: -40)
-
-
-            // Delete the previous character
-//            self.textDocumentProxy.deleteBackward()
-
         }
-        
-//        hasAnyTextSelected()
     }
     
     override func viewWillLayoutSubviews() {

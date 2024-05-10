@@ -26,6 +26,8 @@ struct Feature: Identifiable {
 }
 
 struct OnboardingView: View {
+    @Environment(\.colorScheme) var colorScheme
+    
     @State var appName: String
     
     @Binding var showOnboarding: Bool
@@ -33,6 +35,9 @@ struct OnboardingView: View {
     let features: [Feature]
     let color: Color?
     var body: some View {
+        ZStack{
+        VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                     .edgesIgnoringSafeArea(.all)
         VStack {
             Group{
                 HStack{
@@ -44,7 +49,6 @@ struct OnboardingView: View {
                     Text("\(appName)")
                         .font(.custom("IBMPlexMono-Medium", size: 28))
                         .fontWeight(.bold)
-                        
                         .multilineTextAlignment(.leading)
                         
                 }
@@ -69,7 +73,7 @@ struct OnboardingView: View {
                                     .aspectRatio(contentMode: .fit)
                                     .frame(width: 30, alignment: .center)
                                     .clipped()
-                                    .foregroundColor(color ?? Color.blue)
+                                    .foregroundStyle(color ?? Color.blue)
                                     .padding(.trailing, 15)
                                     .padding(.vertical, 10)
                             }
@@ -111,7 +115,10 @@ struct OnboardingView: View {
             .padding(.bottom, 50)
             .padding(.horizontal,15)
         }
+            
         .padding()
+        }
+        .presentationBackground(Color.clear)
     }
     
 }

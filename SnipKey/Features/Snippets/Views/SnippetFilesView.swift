@@ -74,7 +74,6 @@ struct SnippetFilesView: View {
             }
         }
         .padding()
-        .parallax(amount: 28)
         .toast(isPresenting: $showToast) {
             AlertToast(
                 displayMode: .banner(

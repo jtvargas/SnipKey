@@ -135,7 +135,14 @@ extension View {
 }
 
 
+struct VisualEffectViewKeyboard: UIViewRepresentable {
+    var effect: UIVisualEffect?
+    func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
+    func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
+}
+
 struct KeyboardView: View {
+    @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
     @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
     @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
@@ -155,21 +162,42 @@ struct KeyboardView: View {
     @State private var text: String = ""
     @State private var selectedFilter: SnipTag? = nil
     @State private var selectedText: String = ""
+    
 
     var body: some View {
-        
+        ZStack {
+            
+      
+        VisualEffectViewKeyboard(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                     .edgesIgnoringSafeArea(.all)
         VStack {
             //            For multiple/custom tags use this style, or a toggle list button
-            if selectedFilter != nil {
-                Label("\(selectedFilter?.name ?? "")", systemImage: selectedFilter?.imageTag ?? "circle")
-                    .padding(.top, 10)
-                    .padding(.horizontal)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .tint(Color.label)
-                    .bold()
+            HStack(alignment: .center) {
+//                if selectedFilter != nil {
+                    Label("\(selectedFilter?.name ?? "All")", systemImage: selectedFilter?.imageTag ?? "circle")
+                        .tint(Color.label)
+//                }
+                EmptyView()
+                Spacer()
+                
+                Label("Private Snippets: \(isUnlocked ? "Unlocked":"Locked")", systemImage: "\(isUnlocked ? "lock.open":"lock")")
+                  
+                Spacer()
+                Button {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name(rawValue: "switchKey"), object: nil)
+                } label: {
+                    Label("Keyboard", systemImage: "keyboard.fill")
+                        .underline()
+                        .foregroundStyle(.blue.gradient)
+                        .font(.custom("IBMPlexMono-Bold", size: 14))
+                }
+               
             }
-            Label("Access Private Snippets: \(isUnlocked ? "Open":"Closed")", systemImage: "\(isUnlocked ? "lock.open":"lock")")
-                .padding(.top, 6)
+            .font(.custom("IBMPlexMono-Medium", size: 14))
+            .padding(.top, 4)
+            .padding(.horizontal)
+           
             
         
          
@@ -186,6 +214,7 @@ struct KeyboardView: View {
                             sentValue(snippet: snippet)
                         } label: {
                             SnippetListItem(item: snippet)
+                               
                                 .lineLimit(1) // Limit text to a single line
                                 .truncationMode(.tail)
                                 .padding(8)
@@ -194,6 +223,7 @@ struct KeyboardView: View {
                                         .stroke(Color.tertiarySystemBackground, lineWidth: 4)
                                 )
                         }
+                        .shadow(color: .tertiaryLabel, radius: 1, x: 0, y: 0)
                         
                     }
                 }
@@ -243,16 +273,18 @@ struct KeyboardView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))  // Clip the background to a circle shape
                         .shadow(radius: 5)
                 }
+               
+               
                 
             }
             .padding(.horizontal)
             .padding(.bottom, 10)
             
            
-            
         }
-        .frame(height: 260)
-        .background(Color.secondarySystemBackground)
+        }
+        .frame(width: .infinity, height: 260)
+        .background(Color.tertiaryLabel)
         .sensoryFeedback(.increase, trigger: selectedFilter)
         .onAppear {
             settingsViewModel.modelContext = modelContext

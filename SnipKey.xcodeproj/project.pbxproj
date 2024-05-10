@@ -14,6 +14,10 @@
 		064D8A122BDC1E3200B9B65F /* SwiftUIMasonry in Frameworks */ = {isa = PBXBuildFile; productRef = 064D8A112BDC1E3200B9B65F /* SwiftUIMasonry */; };
 		064D8A142BDC1F0100B9B65F /* SnippetFilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 064D8A132BDC1F0100B9B65F /* SnippetFilesView.swift */; };
 		065B05C22BBF2A0F00C1E3E0 /* ArrowSVG.swift in Sources */ = {isa = PBXBuildFile; fileRef = 065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */; };
+		0663720B2BED4E0900226EE4 /* SnippetHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0663720A2BED4E0900226EE4 /* SnippetHomeView.swift */; };
+		0663720E2BED5DED00226EE4 /* HomeTips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0663720D2BED5DED00226EE4 /* HomeTips.swift */; };
+		066372112BED855C00226EE4 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = 066372102BED855C00226EE4 /* Pow */; };
+		066372132BED86E300226EE4 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = 066372122BED86E300226EE4 /* Pow */; };
 		066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */; };
 		066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */; };
 		066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69D62BB9831900D971E8 /* KeyboardViewController.swift */; };
@@ -98,6 +102,8 @@
 		065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowSVG.swift; sourceTree = "<group>"; };
 		0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKey.entitlements; sourceTree = "<group>"; };
 		0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKeyboard.entitlements; sourceTree = "<group>"; };
+		0663720A2BED4E0900226EE4 /* SnippetHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetHomeView.swift; sourceTree = "<group>"; };
+		0663720D2BED5DED00226EE4 /* HomeTips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTips.swift; sourceTree = "<group>"; };
 		066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
 		066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Splashscreen.swift; sourceTree = "<group>"; };
 		066E69D42BB9831900D971E8 /* SnipKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SnipKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -144,6 +150,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				06E7E2B72BD30A610058D11E /* AlertToast in Frameworks */,
+				066372132BED86E300226EE4 /* Pow in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -151,6 +158,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				066372112BED855C00226EE4 /* Pow in Frameworks */,
 				06E7E2C02BD998860058D11E /* StoreKit.framework in Frameworks */,
 				06D827FE2BBDC7DC00305E18 /* SymbolPicker in Frameworks */,
 				064D8A122BDC1E3200B9B65F /* SwiftUIMasonry in Frameworks */,
@@ -161,6 +169,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0663720C2BED5DD500226EE4 /* Tips */ = {
+			isa = PBXGroup;
+			children = (
+				0663720D2BED5DED00226EE4 /* HomeTips.swift */,
+			);
+			path = Tips;
+			sourceTree = "<group>";
+		};
 		066E69D52BB9831900D971E8 /* SnipKeyboard */ = {
 			isa = PBXGroup;
 			children = (
@@ -195,6 +211,7 @@
 		066FAF0C2BB216160086F135 /* SnipKey */ = {
 			isa = PBXGroup;
 			children = (
+				0663720C2BED5DD500226EE4 /* Tips */,
 				0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */,
 				06F4F3172BB6275600399C78 /* Info.plist */,
 				06F4F2F82BB5F3AF00399C78 /* Helper */,
@@ -252,6 +269,7 @@
 				06F4F31A2BB67C9600399C78 /* KeyboardStatusView.swift */,
 				065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */,
 				064D8A132BDC1F0100B9B65F /* SnippetFilesView.swift */,
+				0663720A2BED4E0900226EE4 /* SnippetHomeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -356,6 +374,7 @@
 			name = SnipKeyboard;
 			packageProductDependencies = (
 				06E7E2B62BD30A610058D11E /* AlertToast */,
+				066372122BED86E300226EE4 /* Pow */,
 			);
 			productName = SnipKeyboard;
 			productReference = 066E69D42BB9831900D971E8 /* SnipKeyboard.appex */;
@@ -380,6 +399,7 @@
 				060399952BB8836E00A6E818 /* AlertToast */,
 				06D827FD2BBDC7DC00305E18 /* SymbolPicker */,
 				064D8A112BDC1E3200B9B65F /* SwiftUIMasonry */,
+				066372102BED855C00226EE4 /* Pow */,
 			);
 			productName = SnipKey;
 			productReference = 066FAF0A2BB216160086F135 /* SnipKey.app */;
@@ -416,6 +436,7 @@
 				060399942BB8836E00A6E818 /* XCRemoteSwiftPackageReference "AlertToast" */,
 				06D827FC2BBDC7DC00305E18 /* XCRemoteSwiftPackageReference "SymbolPicker" */,
 				064D8A102BDC1E3200B9B65F /* XCRemoteSwiftPackageReference "SwiftUIMasonry" */,
+				0663720F2BED855C00226EE4 /* XCRemoteSwiftPackageReference "Pow" */,
 			);
 			productRefGroup = 066FAF0B2BB216160086F135 /* Products */;
 			projectDirPath = "";
@@ -498,6 +519,7 @@
 				06E7E2B92BD97FB40058D11E /* Keyboard.swift in Sources */,
 				06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */,
 				06AE130E2BBB09B5008EAE98 /* SettingsModel.swift in Sources */,
+				0663720E2BED5DED00226EE4 /* HomeTips.swift in Sources */,
 				06F4F31F2BB71E8F00399C78 /* WelcomeView.swift in Sources */,
 				068C77CF2BB4C62D0008D9A1 /* SnippetView.swift in Sources */,
 				068C77CB2BB4C5FB0008D9A1 /* SnippetModel.swift in Sources */,
@@ -507,6 +529,7 @@
 				066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */,
 				06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */,
 				06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */,
+				0663720B2BED4E0900226EE4 /* SnippetHomeView.swift in Sources */,
 				06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */,
 				06FC79732BC489D900382400 /* OnBoardingView.swift in Sources */,
 			);
@@ -829,6 +852,14 @@
 				kind = branch;
 			};
 		};
+		0663720F2BED855C00226EE4 /* XCRemoteSwiftPackageReference "Pow" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/EmergeTools/Pow";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.3;
+			};
+		};
 		06D827FC2BBDC7DC00305E18 /* XCRemoteSwiftPackageReference "SymbolPicker" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/xnth97/SymbolPicker.git";
@@ -849,6 +880,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 064D8A102BDC1E3200B9B65F /* XCRemoteSwiftPackageReference "SwiftUIMasonry" */;
 			productName = SwiftUIMasonry;
+		};
+		066372102BED855C00226EE4 /* Pow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0663720F2BED855C00226EE4 /* XCRemoteSwiftPackageReference "Pow" */;
+			productName = Pow;
+		};
+		066372122BED86E300226EE4 /* Pow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0663720F2BED855C00226EE4 /* XCRemoteSwiftPackageReference "Pow" */;
+			productName = Pow;
 		};
 		06D827FD2BBDC7DC00305E18 /* SymbolPicker */ = {
 			isa = XCSwiftPackageProductDependency;

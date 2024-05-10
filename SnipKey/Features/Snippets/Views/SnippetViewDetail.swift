@@ -150,6 +150,7 @@ struct SnippetViewDetail: View {
                             NavigationStack {
                                 SnippetForm(snippet: snippet, isFormVisible: $isEditFormVisible)
                             }
+                            .presentationBackground(Color.clear)
                             
                         }
                     }

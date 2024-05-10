@@ -270,6 +270,8 @@ struct SnippetContent: View {
 }
 
 struct SnippetForm: View {
+    @Environment(\.colorScheme) var colorScheme
+    
     let snippet: SnippetItem?
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
     
@@ -303,7 +305,13 @@ struct SnippetForm: View {
     
     var body: some View {
         NavigationStack {
-            
+            ZStack {
+                VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                             .edgesIgnoringSafeArea(.all)
+     
+                VStack {
+                    
+           
             Label("Don't forget to click Save!", systemImage: "info.square.fill")
                 .bold()
                 .font(.custom("IBMPlexMono-Medium", size: 15))
@@ -326,7 +334,7 @@ struct SnippetForm: View {
                                 .font(.custom("IBMPlexMono-Medium", size: 10))
                             Circle()
                                 .trim(from: 0, to: progress)
-                                .stroke( (titleCharLimit - title.count) < titleCharLimit/4 ? Color.red: Color.label, lineWidth: 5)
+                                .stroke( (titleCharLimit - title.count) < titleCharLimit/4 ? Color.red.gradient: Color.label.gradient, lineWidth: 5)
                                 .rotationEffect(.init(degrees: -90))
                         }
                         .frame(width: 20, height: 20)
@@ -409,7 +417,10 @@ struct SnippetForm: View {
                 }
                 .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
             }
+                }
+            }
         }
+        .presentationBackground(Color.clear)
         .navigationTitle(editorTitle)
         .font(.custom("IBMPlexMono-Bold", size: 14))
         .navigationBarTitleDisplayMode(.inline)
@@ -559,6 +570,8 @@ struct SnippetForm: View {
     }
     
     private func save() {
+        CreateSnippetTip.alreadyDiscovered = true
+        
         if getDisabledSaveAction() {
             print("cant save empty")
         } else {
