@@ -96,9 +96,9 @@ enum Tags: String, CaseIterable, Identifiable, Codable   {
 @Model
 final class SnipTag {
     var creationDate: Date = Date.now
-    var name: String;
-    var imageTag: String
-    var id: String
+    var name: String?
+    var imageTag: String?
+    var id: String?
     
     @Relationship(inverse: \SnippetItem.customTag)
     var snippets: [SnippetItem]?
@@ -106,17 +106,15 @@ final class SnipTag {
     
     
     init(name: String, imageTag: String) {
-        self.id = UUID().uuidString 
+        self.id = UUID().uuidString
         self.name = name
         self.imageTag = imageTag
     }
 }
 
-//TODO: clean code, separate files, models, and fns...
-//TODO: Implement TextField remaining with circle
 @Model
 final class SnippetFile {
-    var id: String
+    var id: String?
     var fileType: FileType?
     var fileFormatType: String?
     @Attribute(.externalStorage) var fileData: Data?
@@ -134,19 +132,20 @@ final class SnippetFile {
 
 
 @Model
-final class SnippetItem {
-    var creationDate: Date = Date.now
+final class SnippetItem: Identifiable, Hashable {
+    var creationDate: Date?
     var updatedDate: Date?
-    var id: String
-    var title: String
-    var content: String
+    var id: String?
+    var title: String?
+    var content: String?
     var customTag: SnipTag?
-    var type: SnipType
+    var type: SnipType?
     var isSecure: Bool = false
     
     var file: SnippetFile?
     
     init(title: String, content: String , type: SnipType, isSecure: Bool) {
+        self.creationDate = Date.now
         self.id = UUID().uuidString // create SHA-256 more unique id creation
         self.title = title
         self.content = content

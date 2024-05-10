@@ -132,9 +132,9 @@ struct CreateOrSelectTag: View {
             Picker(selection: $tagName, label: Image(systemName: "tag.fill")) {
                 ForEach(tags, id: \.id) { tag in
                     HStack {
-                        Text(tag.name)
+                        Text(tag.name!)
                         Spacer()
-                        Image(systemName: tag.imageTag)
+                        Image(systemName: tag.imageTag!)
                     }
                     .tag(tag.name)
                 }
@@ -162,7 +162,7 @@ struct SnippetContent: View {
     var body: some View {
         if type == .url {
             Group {
-                TextField("yoursite.com", text: $contentValue, axis: .vertical)
+                TextField("https://yoursite.com", text: $contentValue, axis: .vertical)
                     .keyboardType(.URL)
                     .textContentType(.URL)
                     .textInputAutocapitalization(.never)
@@ -463,9 +463,9 @@ struct SnippetForm: View {
         .onAppear {
             snippetViewModel.modelContext = modelContext
             if let snippet {
-                title = snippet.title
-                content = snippet.content
-                type = snippet.type
+                title = snippet.title!
+                content = snippet.content!
+                type = snippet.type!
                 isSecure = snippet.isSecure
                 contentFileData = snippet.file?.fileData
                 customTagName = snippet.customTag?.name ?? "None"
@@ -559,7 +559,6 @@ struct SnippetForm: View {
         if contentFileData != nil &&  contentFileFormatType != nil {
             
             if let snippetFileId = item.file?.id {
-                print("Delete previous snippet file: \(snippetFileId) with snippet relationship: \(item.id)")
                 snippetViewModel.deleteFile(fileId: snippetFileId)
             }
             

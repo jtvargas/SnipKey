@@ -34,8 +34,6 @@ struct SnipKeyApp: App {
                     .onAppear(){
                         settingsViewModel.modelContext = container.mainContext
                         snippetViewModel.modelContext = container.mainContext
-                        settingsViewModel.setupKeyboardSettings()
-                        snippetViewModel.setupInitialTags()
                         DispatchQueue.main
                             .asyncAfter(deadline: .now() + (isOnboarding ? 2.2 : 1.4)){
                                 showSplashScreen.toggle()
@@ -46,6 +44,10 @@ struct SnipKeyApp: App {
                 WelcomeView(skipCallback: emptyCallback)
             } else {
                 SnippetHomeView()
+                    .onAppear() {
+                        snippetViewModel.setupInitialTags()
+                        settingsViewModel.setupKeyboardSettings()
+                    }
                 
             }
         }

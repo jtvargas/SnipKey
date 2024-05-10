@@ -249,7 +249,7 @@ struct KeyboardView: View {
                     Picker("", selection: $selectedFilter) {
                         ForEach(tags, id: \.id) { tag in
                             HStack {
-                                Image(systemName: tag.imageTag)
+                                Image(systemName: tag.imageTag!)
                             }
                             .tag(Optional(tag))
                         }

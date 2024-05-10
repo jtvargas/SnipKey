@@ -82,7 +82,7 @@ class KeyboardViewController: UIInputViewController {
                 case .image:
                     self.sendImageData(snippet: snippet)
                 default:
-                    self.textDocumentProxy.insertText(snippet.content)
+                    self.textDocumentProxy.insertText(snippet.content!)
                 }
               
             }

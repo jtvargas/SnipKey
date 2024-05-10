@@ -22,14 +22,14 @@ struct SnippetListItem: View {
 
   var body: some View {
     HStack {
-      SnippetImage(type: item.type)
+        SnippetImage(type: item.type ?? .txt)
             .frame(width: 35, height: 35)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .foregroundStyle(.white.gradient)
     
       Group {
           VStack{
-              Text("\(item.title)")
+              Text("\(item.title ?? "")")
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .tint(Color.label)
                 .bold()

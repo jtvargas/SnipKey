@@ -47,7 +47,7 @@ struct SnippetFilesView: View {
                                         .background(Color.blue)
                                         .cornerRadius(10)
                                         .overlay(
-                                            Text("\(snippetItem.title)")
+                                            Text("\(snippetItem.title ?? "")")
                                                 .lineLimit(1) // Limit text to a single line
                                                 .truncationMode(.tail)
                                                 .padding(6)
@@ -56,7 +56,7 @@ struct SnippetFilesView: View {
                                                 .cornerRadius(5),
                                             alignment: .bottom
                                         )
-                                        .overlay(      Image(systemName: snippetItem.customTag!.imageTag)
+                                        .overlay(      Image(systemName: snippetItem.customTag!.imageTag!)
                                             .padding(6)
                                             .background(Color.black.opacity(0.5))
                                             .foregroundColor(.white)

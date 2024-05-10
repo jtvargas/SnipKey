@@ -8,16 +8,24 @@
 import SwiftUI
 import SwiftData
 import StoreKit
+import CloudKitSyncMonitor
 
 struct SnippetHomeView: View {
     @AppStorage("isRequestedRating") var isRequestedRating: Bool = false
+    
+    @available(iOS 14.0, *)
+    @ObservedObject var syncMonitor = SyncMonitor.shared
+    
     
     @Environment(\.requestReview) var requestReview
     @Environment(\.modelContext) var modelContext
     @Environment(\.scenePhase) var scenePhase
     
     private let createSnippetTip = CreateSnippetTip()
+    private let iCloudTip = CloudIndicatorTip()
+    
     @State var viewModel = SnippetViewModel()
+    @State  var selectedSnippet: SnippetItem? = nil
     @State private var columnVisibility =
     NavigationSplitViewVisibility.all
     @State private var selectedFilter: SnipTag? = nil
@@ -36,7 +44,6 @@ struct SnippetHomeView: View {
     
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility){
-            
             VStack  {
                 if !snippets.isEmpty {
                     Group {
@@ -53,7 +60,7 @@ struct SnippetHomeView: View {
                             })
                     }
                 }
-               
+                
                 ZStack(alignment:.bottom) {
                     Form {
                         
@@ -77,18 +84,18 @@ struct SnippetHomeView: View {
                                 
                             }
                         ) {
-                            
                             List {
-                                ForEach(getSnippetItems(), id: \.self.id) { snippetItem in
+                                ForEach(getSnippetItems(), id: \.self) { snippetItem in
                                     NavigationLink(destination: SnippetViewDetail(item: snippetItem)) {
                                         SnippetListItem(item: snippetItem)
                                     }
+                                   
+                                    
                                 }
                                 .onDelete(perform: { indexSet in
                                     self.handleDeleteSnippet(offsets: indexSet)
                                 })
                             }
-                            
                         }
                     }
                     .safeAreaPadding(EdgeInsets(top: 0, leading: 0, bottom: 170, trailing: 0))
@@ -102,7 +109,7 @@ struct SnippetHomeView: View {
                             } label: {
                                 Image(systemName: "info.circle.fill")
                                     .font(.system(size:36, weight: .heavy))
-                                    .tint(.label)
+                                    .foregroundStyle(Color.label.gradient)
                             }
                             .sheet(isPresented: $isPresentedWelcomeInfo) {
                                 OnboardingView(appName: "SnipKey",showOnboarding: $isPresentedWelcomeInfo, features: [
@@ -110,6 +117,7 @@ struct SnippetHomeView: View {
                                     Feature(title: "Tag & Organize", description: "Sort snippets swiftly with tags.", icon: "tag.fill"),
                                     Feature(title: "Keyboard Quick-Use", description: "Access all snippets directly through the keyboard extension..", icon: "keyboard.fill"),
                                     Feature(title: "Lock Snippets", description: "Secure sensitive data with encryption and biometrics.", icon: "lock.fill"),
+                                    Feature(title: "iCloud Sync", description: "Your data stay secure across your devices with iCloud sync.", icon: "cloud.fill"),
                                 ], color: Color.label)
                             }
                             
@@ -118,7 +126,7 @@ struct SnippetHomeView: View {
                                 self.isPresentedFormModal.toggle()
                             } label: {
                                 Image(systemName: "plus.square.fill")
-                                    .tint(Color.label.gradient)
+                                    .foregroundStyle(Color.label.gradient)
                                     .font(.system(size: 62))
                                 
                             }
@@ -135,7 +143,7 @@ struct SnippetHomeView: View {
                             } label: {
                                 Image(systemName: "gearshape.circle.fill")
                                     .font(.system(size:36, weight: .heavy))
-                                    .tint(.label)
+                                    .foregroundStyle(Color.label.gradient)
                             }
                             .sheet(isPresented: $isPresentingSettings) {
                                 SettingsView(isPresentingSettings: $isPresentingSettings)
@@ -173,6 +181,23 @@ struct SnippetHomeView: View {
                         
                     }
                 }
+                
+                Group {
+                    ToolbarItem(placement: .topBarLeading) {
+                        if #available(iOS 14.0, *) {
+                            Button {
+                                CloudIndicatorTip.showiCloudTip.toggle()
+                            } label: {
+                                Image(systemName: syncMonitor.syncStateSummary.symbolName)
+                                    .foregroundColor(syncMonitor.syncStateSummary.symbolColor)
+                            }
+                            .popoverTip(iCloudTip)
+                        }
+                    }
+                    
+                }
+                
+               
                 if !snippets.isEmpty {
                     if !files.isEmpty {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -192,9 +217,9 @@ struct SnippetHomeView: View {
                                 Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
                                     ForEach(tags, id: \.id) { tag in
                                         HStack {
-                                            Text(tag.name)
+                                            Text(tag.name!)
                                             Spacer()
-                                            Image(systemName: tag.imageTag)
+                                            Image(systemName: tag.imageTag!)
                                         }
                                         .tag(Optional(tag))
                                     }
@@ -213,31 +238,32 @@ struct SnippetHomeView: View {
             
             
         } detail: {
-            Group{
-                HStack{
-                    Image("icon-snipkey")
-                        .resizable()
-                        .frame(width: 65, height: 68)
-                        .clipShape(RoundedRectangle( cornerRadius: 6))
-                    
-                    Text("SnipKey")
-                        .font(.custom("IBMPlexMono-Medium", size: 28))
+                Group{
+                    HStack{
+                        Image("icon-snipkey")
+                            .resizable()
+                            .frame(width: 65, height: 68)
+                            .clipShape(RoundedRectangle( cornerRadius: 6))
+                        
+                        Text("SnipKey")
+                            .font(.custom("IBMPlexMono-Medium", size: 28))
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.leading)
+                        
+                    }
+                    .padding()
+                    Text("Create Once, Paste Anywhere \(selectedSnippet?.title ?? "")")
+                        .font(.custom("IBMPlexMono-Medium", size: 21))
                         .fontWeight(.bold)
                         .multilineTextAlignment(.leading)
-                        
+                        .padding(.bottom)
+                    
+                    Text("(Open the left menu to create a new snippet)")
+                        .font(.custom("IBMPlexMono-Medium", size: 16))
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.leading)
                 }
-                .padding()
-                Text("Create Once, Paste Anywhere")
-                    .font(.custom("IBMPlexMono-Medium", size: 21))
-                    .fontWeight(.bold)
-                    .multilineTextAlignment(.leading)
-                    .padding(.bottom)
-                
-                Text("(Open the left menu to create a new snippet)")
-                    .font(.custom("IBMPlexMono-Medium", size: 16))
-                    .fontWeight(.bold)
-                    .multilineTextAlignment(.leading)
-            }
+          
         }
         .tint(Color.label.gradient)
         .onAppear() {

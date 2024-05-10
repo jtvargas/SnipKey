@@ -17,7 +17,7 @@ struct SnippetContentView: View {
     var body: some View {
         if snippet.type == .txt {
             ScrollView {
-                Text("\(snippet.content)")
+                Text("\(snippet.content ?? "")")
                     .multilineTextAlignment(.leading)
                     .padding(.top, 8)
                     .tint(Color.label)
@@ -25,7 +25,7 @@ struct SnippetContentView: View {
         }
         
         if snippet.type == .url {
-            Text("\(snippet.content)")
+            Text("\(snippet.content ?? "")")
                 .tint(Color.label)
         }
         
@@ -68,31 +68,11 @@ struct SnippetViewDetail: View {
                 .listRowBackground(Color.tertiarySystemBackground)
             } else {
                 Form {
-                    Section(header: Text("Type")) {
-                        HStack {
-                            Spacer()
-                            VStack {
-                                SnippetImage(type: snippet.type)
-                                    .font(.system(size: 44))
-                                    .frame(width: 82, height: 82)
-                                    .background(
-                                        Color.secondarySystemBackground,
-                                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    )
-                                    .foregroundStyle(.white)
-                                Text("\(snippet.type)")
-                            }
-                            Spacer()
-                            
-                        }
-                    }
-                    .listRowBackground(Color.tertiarySystemBackground)
-                    
                     Section(header: Text("title")) {
                         HStack {
                             Spacer()
                             VStack {
-                                Text("\(snippet.title)")
+                                Text("\(snippet.title ?? "")")
                             }
                             Spacer()
                             
@@ -100,6 +80,28 @@ struct SnippetViewDetail: View {
                     }
                     .frame(alignment: .center)
                     .listRowBackground(Color.tertiarySystemBackground)
+                    
+                    Section(header: Text("Type")) {
+                        HStack {
+                            Spacer()
+                            VStack {
+                                SnippetImage(type: snippet.type ?? SnipType.txt)
+                                    .font(.system(size: 44))
+                                    .frame(width: 82, height: 82)
+                                    .background(
+                                        Color.secondarySystemBackground,
+                                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    )
+                                    .foregroundStyle(.white)
+                                Text("\(snippet.type ?? SnipType.txt)")
+                            }
+                            Spacer()
+                            
+                        }
+                    }
+                    .listRowBackground(Color.tertiarySystemBackground)
+                    
+                   
                     
                     Section(
                         header: HStack {
@@ -157,10 +159,10 @@ struct SnippetViewDetail: View {
                     
                     ToolbarItem(placement: .bottomBar){
                         if snippet.updatedDate != nil {
-                            Text("**Updated:** \(snippet.updatedDate?.formatted(date: .complete, time: .omitted) ?? "" )")
+                            Text("**Updated:** \(snippet.updatedDate?.formatted(date: .complete, time: .omitted) ?? Date.now.formatted(date: .complete, time: .omitted) )")
                                 .font(.custom("IBMPlexMono-Medium", size: 12))
                         } else {
-                            Text("**Created:** \(snippet.creationDate.formatted(date: .complete, time: .omitted) )")
+                            Text("**Created:** \(snippet.creationDate?.formatted(date: .complete, time: .omitted) ?? Date.now.formatted(date: .complete, time: .omitted) )")
                                 .font(.custom("IBMPlexMono-Medium", size: 12))
                         }
                         
@@ -169,9 +171,7 @@ struct SnippetViewDetail: View {
                 }
             }
         }
-        .navigationTitle("\(snippet.title)")
         .font(.custom("IBMPlexMono-Medium", size: 15))
-        .bold()
         .tint(Color.label)
         .toast(isPresenting: $showToast) {
             AlertToast(
@@ -189,8 +189,8 @@ struct SnippetViewDetail: View {
     }
     
     func openURLContent() {
-        if !snippet.content.isEmpty  && snippet.content.isValidURL(){
-            UIApplication.shared.open(URL(string: snippet.content.getValidURLString())!)
+        if !snippet.content!.isEmpty  && snippet.content!.isValidURL(){
+            UIApplication.shared.open(URL(string: snippet.content!.getValidURLString())!)
         }
     }
     

@@ -17,7 +17,7 @@ class SnipKeyDataManager {
                 SnippetItem.self,
                 SettingsModel.self,
             ])
-            let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, groupContainer: .identifier("group.snipkey"))
+            let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, groupContainer: .identifier("group.snipkey"), cloudKitDatabase: .automatic)
             
             do {
                 return try ModelContainer(for: schema, configurations: [modelConfiguration])

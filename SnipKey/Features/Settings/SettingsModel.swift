@@ -28,7 +28,7 @@ enum KeyboardAfterPasteAction: String, CaseIterable, Identifiable, Codable {
 
 @Model
 final class SettingsModel {
-  @Attribute(.unique) var settingsId: String = "SnipKey-Settings"
+  var settingsId: String = "SnipKey-Settings"
 
   var testString: String = "Hello there"
 
