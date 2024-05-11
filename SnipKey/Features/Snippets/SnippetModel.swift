@@ -142,6 +142,9 @@ final class SnippetItem {
     var type: SnipType?
     var isSecure: Bool = false
     
+    var lastTimeUsed: Date?
+    var usedCount: Int = 0
+    
     var file: SnippetFile?
     
     init(title: String, content: String , type: SnipType, isSecure: Bool) {

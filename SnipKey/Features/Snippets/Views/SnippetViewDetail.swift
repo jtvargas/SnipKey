@@ -139,6 +139,18 @@ struct SnippetViewDetail: View {
                         SnippetContentView(snippet: snippet)
                     }
                     .listRowBackground(Color.tertiarySystemBackground)
+                    
+                    Section(
+                        footer: Group {
+                                Text("Enable full keyboard access to track usage count for this snippet.")
+                                    .foregroundColor(.secondary)
+                                    .font(.custom("IBMPlexMono-Regular", size: 12))
+                            }
+                    ){
+                        Text("Used Count: \(snippet.usedCount)")
+                    }
+                        
+                   
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {

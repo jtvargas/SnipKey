@@ -12,6 +12,20 @@ import SwiftUI
 class SnippetViewModel {
     var modelContext: ModelContext? = nil
     
+    func fetchSnippets() -> [SnippetItem]? {
+        let fetchDescriptor = FetchDescriptor<SnippetItem>()
+        
+        do {
+            let snippets = try modelContext?.fetch(fetchDescriptor)
+            
+            return snippets
+            
+        } catch {
+            print("FAILED TO FETCH SNIPPETS")
+            return []
+        }
+    }
+    
     func setupInitialTags(){
         let fetchDescriptor = FetchDescriptor<SnipTag>()
         
@@ -80,6 +94,13 @@ class SnippetViewModel {
         print("FILE CREATED: \(type) with ID: \(newFile.id)")
         return newFile
         
+    }
+    
+    func trackSnippetUsage(snippet: SnippetItem) {
+        print("Use snippet!")
+        
+        snippet.lastTimeUsed = Date.now
+        snippet.usedCount += 1
     }
     
     func findTagCreated(tagName: String) -> SnipTag? {

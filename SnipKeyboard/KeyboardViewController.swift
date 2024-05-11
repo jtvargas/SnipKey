@@ -14,8 +14,8 @@ import UniformTypeIdentifiers
 class KeyboardViewController: UIInputViewController {
 
     @IBOutlet var nextKeyboardButton: UIButton!
-    let container = SnipKeyDataManager().makeSharedContainer()
-    private let keyboardView = KeyboardView()
+//    let container = SnipKeyDataManager().makeSharedContainer()
+//    private let keyboardView = KeyboardViewExt()
     
     override func updateViewConstraints() {
         super.updateViewConstraints()
@@ -55,8 +55,10 @@ class KeyboardViewController: UIInputViewController {
         return ""
     }
     
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+
         
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
@@ -72,7 +74,13 @@ class KeyboardViewController: UIInputViewController {
         self.nextKeyboardButton.leftAnchor.constraint(equalTo: self.view.leftAnchor).isActive = true
         self.nextKeyboardButton.bottomAnchor.constraint(equalTo: self.view.bottomAnchor).isActive = true
         
-        view.addKeyboardSubview(UIHostingController(rootView: keyboardView.modelContext(container.mainContext)).view)
+        let contentView = UIHostingController(rootView: KeyboardViewExt())
+        
+        view.addKeyboardSubview(contentView.view)
+        
+        
+//        Alternative way to inject swiftdata context to view
+//        view.addKeyboardSubview(UIHostingController(rootView: keyboardView.modelContext(container.mainContext)).view)
         
         // insert text to textInput
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ notification in

@@ -148,14 +148,16 @@ struct KeyboardView: View {
     @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
     @Query(sort: \SnipTag.name) private var tags: [SnipTag]
     @Query() private var settings: [SettingsModel]
-  
+    
     let columns = [GridItem(.adaptive(minimum: 150, maximum: 175), spacing: 6)]
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
     let settingsViewModel = SettingsViewModel()
     
     @State private var isUnlocked: Bool = false
+    @State private var hasFullAccess: Bool = false
     @State private var showCreateSnippetCTA = false
     @State private var showCreatedToast = false
+    @State var snippetsTest: [SnippetItem] = []
     @State private var showToast = false
     @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .space)
     @State var snippetViewModel = SnippetViewModel()
@@ -163,143 +165,155 @@ struct KeyboardView: View {
     @State private var selectedFilter: SnipTag? = nil
     @State private var selectedText: String = ""
     
-
+    
     var body: some View {
         ZStack {
             
-      
-        VisualEffectViewKeyboard(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                     .edgesIgnoringSafeArea(.all)
-        VStack {
-            //            For multiple/custom tags use this style, or a toggle list button
-            HStack(alignment: .center) {
+            
+            VisualEffectViewKeyboard(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                .edgesIgnoringSafeArea(.all)
+            VStack {
+                //            For multiple/custom tags use this style, or a toggle list button
+                HStack(alignment: .center) {
                     Label("\(selectedFilter?.name ?? "All")", systemImage: selectedFilter?.imageTag ?? "circle")
                         .tint(Color.label)
-                EmptyView()
-                Spacer()
-                
-                Label("Private Snippets: \(isUnlocked ? "Unlocked":"Locked")", systemImage: "\(isUnlocked ? "lock.open":"lock")")
-
-                  
-                Spacer()
-                Button {
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name(rawValue: "switchKey"), object: nil)
-                } label: {
-                    Label("Keyboard", systemImage: "keyboard.fill")
-                        .underline()
-                        .foregroundStyle(.blue.gradient)
-                        .font(.custom("IBMPlexMono-Bold", size: 14))
-                }
-               
-            }
-            .font(.custom("IBMPlexMono-Medium", size: 14))
-            .padding(.top, 4)
-            .padding(.horizontal)
-           
-            
-        
-         
-            ScrollView {
-                if showCreateSnippetCTA {
-                    floatingButton
-                        .transition(.scale.combined(with: .opacity))
-                        .animation(.easeInOut, value: showCreateSnippetCTA)
-                }
-              
-                LazyVGrid(columns: layout, spacing: 20) {
-                    ForEach(getSnippetItems(), id: \.self.id) { snippet in
-                        Button {
-                            sentValue(snippet: snippet)
-                        } label: {
-                            SnippetListItem(item: snippet)
-                               
-                                .lineLimit(1) // Limit text to a single line
-                                .truncationMode(.tail)
-                                .padding(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .stroke(Color.tertiarySystemBackground, lineWidth: 4)
-                                )
-                        }
-                        .shadow(color: .tertiaryLabel, radius: 1, x: 0, y: 0)
+                    EmptyView()
+                    Spacer()
+                    
+                    Label("Private Snippets: \(isUnlocked ? "Unlocked":"Locked")", systemImage: "\(isUnlocked ? "lock.open":"lock")")
+                    
+                    
+                    Spacer()
+                    Button {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name(rawValue: "switchKey"), object: nil)
                         
+                    } label: {
+                        Label("Keyboard", systemImage: "keyboard.fill")
+                            .underline()
+                            .foregroundStyle(.blue.gradient)
+                            .font(.custom("IBMPlexMono-Bold", size: 14))
                     }
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-            }
-            
-            if selectedFilter != nil {
-                Button {
-                    selectedFilter = nil
-                } label: {
-                    HStack {
-                        Image(systemName: "minus.circle.fill")
-                        Text("Remove Filter")
-                            .font(.custom("IBMPlexMono-Medium", size: 12))
-                    }.tint(Color.label).underline()
                     
                 }
-            }
-            HStack(alignment: .center) {
+                .font(.custom("IBMPlexMono-Medium", size: 14))
+                .padding(.top, 4)
+                .padding(.horizontal)
                 
-                if !tags.isEmpty {
-                    Picker("", selection: $selectedFilter) {
-                        ForEach(tags, id: \.id) { tag in
-                            HStack {
-                                Image(systemName: tag.imageTag!)
+                
+                
+                
+                ScrollView {
+                    if showCreateSnippetCTA {
+                        if checkFullAccess() {
+                            floatingButton
+                                .transition(.scale.combined(with: .opacity))
+                                .animation(.easeInOut, value: showCreateSnippetCTA)
+                        } else {
+                            Text("Enable full access to quickly create snippets from selected text.")
+                                .foregroundColor(.secondary)
+                                .font(.custom("IBMPlexMono-Regular", size: 12))
+                                .padding(.top)
+                            
+                            
+                        }
+                       
+                    }
+                    
+                    LazyVGrid(columns: layout, spacing: 20) {
+                        ForEach(getSnippetItems(), id: \.self.id) { snippet in
+                            Button {
+                                sentValue(snippet: snippet)
+                            } label: {
+                                SnippetListItem(item: snippet)
+                                
+                                    .lineLimit(1) // Limit text to a single line
+                                    .truncationMode(.tail)
+                                    .padding(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .stroke(Color.tertiarySystemBackground, lineWidth: 4)
+                                    )
                             }
-                            .tag(Optional(tag))
+                            .shadow(color: .tertiaryLabel, radius: 1, x: 0, y: 0)
+                            
                         }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                }
+                
+                if selectedFilter != nil {
+                    Button {
+                        selectedFilter = nil
+                    } label: {
+                        HStack {
+                            Image(systemName: "minus.circle.fill")
+                            Text("Remove Filter")
+                                .font(.custom("IBMPlexMono-Medium", size: 12))
+                        }.tint(Color.label).underline()
                         
                     }
-                    .pickerStyle(.segmented)
-                }else {
-                    Text("Add tags for quick snippet search.")
-                        .foregroundColor(.secondary)
-                        .font(.custom("IBMPlexMono-Regular", size: 12))
+                }
+                HStack(alignment: .center) {
                     
-                   Spacer()
+                    if !tags.isEmpty {
+                        Picker("", selection: $selectedFilter) {
+                            ForEach(tags, id: \.id) { tag in
+                                HStack {
+                                    Image(systemName: tag.imageTag!)
+                                }
+                                .tag(Optional(tag))
+                            }
+                            
+                        }
+                        .pickerStyle(.segmented)
+                    }else {
+                        Text("Add tags for quick snippet search.")
+                            .foregroundColor(.secondary)
+                            .font(.custom("IBMPlexMono-Regular", size: 12))
+                        
+                        Spacer()
+                    }
+                    
+                    
+                    Button {
+                        deleteCharacter()
+                    } label: {
+                        // Using a system image to represent the delete key
+                        Image(systemName: "delete.left")
+                            .resizable()  // Make the image resizable
+                            .aspectRatio(contentMode: .fit)  // Keep the aspect ratio of the image
+                            .frame(width: 20, height: 20)
+                            .foregroundColor(.white)  // Set the icon color to white
+                            .padding(10)  // Add padding around the image, adjust as needed
+                            .background(Color.tertiaryLabel)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .shadow(radius: 5)
+                    }
+                    
+                    
+                    
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 10)
                 
-                
-                Button {
-                    deleteCharacter()
-                } label: {
-                    // Using a system image to represent the delete key
-                    Image(systemName: "delete.left")
-                        .resizable()  // Make the image resizable
-                        .aspectRatio(contentMode: .fit)  // Keep the aspect ratio of the image
-                        .frame(width: 20, height: 20)  // Set the frame of the image to 35x35
-                        .foregroundColor(.white)  // Set the icon color to white
-                        .padding(10)  // Add padding around the image, adjust as needed
-                        .background(Color.tertiaryLabel)  // Use a red background to mimic the delete key
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))  // Clip the background to a circle shape
-                        .shadow(radius: 5)
-                }
-               
-               
                 
             }
-            .padding(.horizontal)
-            .padding(.bottom, 10)
-            
-           
         }
-        }
-        .frame(width: .infinity, height: 260)
+        //        .id(snippetsTest.count)
+        .frame(height: 260)
         .background(Color.tertiaryLabel)
         .sensoryFeedback(.increase, trigger: selectedFilter)
         .onAppear {
             settingsViewModel.modelContext = modelContext
             snippetViewModel.modelContext = modelContext
-
+            
             if let myCurrentSettings = settings.first {
                 currentSettings = myCurrentSettings
             }
             
-//            setupSelectTextObserver()
+            setupSelectTextObserver()
             
         }
         .toast(isPresenting: $showToast) {
@@ -345,27 +359,26 @@ struct KeyboardView: View {
     }
     
     private var floatingButton: some View {
-           Button(action: {
-               createNewSnippetFromKeyboard(content: selectedText)
-           }) {
-               VStack{
-                   Text("Create New Snippet")
-                       .foregroundColor(.white)
-                       .padding()
-                       .frame(width: 220, height: 50)
-                       .background(Color.blue)
-                       .cornerRadius(25)
-                       .shadow(radius: 10)
-                       .font(.custom("IBMPlexMono-Medium", size: 16))
-                   Text("(with value selected)")
-                       .font(.custom("IBMPlexMono-Medium", size: 10))
-               }
-             
-              
-           }
-           .fixedSize()
-           .padding(.top)
-       }
+        Button(action: {
+            createNewSnippetFromKeyboard(content: selectedText)
+        }) {
+            VStack{
+                Text("Create New Snippet")
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(width: 220, height: 50)
+                    .background(Color.blue)
+                    .cornerRadius(25)
+                    .shadow(radius: 10)
+                    .font(.custom("IBMPlexMono-Medium", size: 16))
+                Text("(with value selected)")
+                    .font(.custom("IBMPlexMono-Medium", size: 10))
+            }
+            .fixedSize()
+            .padding(.top)
+            
+        }
+    }
     
     func actionPerform() {
         print("snippets: \(snippets)")
@@ -415,6 +428,8 @@ struct KeyboardView: View {
     }
     
     func sentValue(snippet: SnippetItem){
+        snippetViewModel.trackSnippetUsage(snippet: snippet)
+        
         if snippet.isSecure {
             sentSecureValue(snippet: snippet)
         }else {
@@ -422,7 +437,7 @@ struct KeyboardView: View {
         }
     }
     
-   
+    
     
     func sentSecureValue(snippet: SnippetItem) {
         deviceBiometrics.authenticate(successHandler: {
@@ -446,7 +461,7 @@ struct KeyboardView: View {
             actionKeyboardAfterPaste(actionKey: currentSettings.afterPasteAction)
         }
         
-       
+        
     }
     
     func deleteCharacter() {
@@ -465,10 +480,10 @@ struct KeyboardView: View {
     }
     
     
-
+    
     func setupSelectTextObserver() {
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectText"), object: nil, queue: nil){ notification in
-           
+            
             
             if let text = notification.object as? String {
                 
@@ -477,22 +492,38 @@ struct KeyboardView: View {
                     selectedText = text
                     print("TEXT VALUE: \(text)")
                 }
-               
+                
             }
-         
+            
         }
         
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil, queue: nil){ notification in
-           
+            
             showCreateSnippetCTA = false
-         
+            
+        }
+        
+        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "hasFullAccess"), object: nil, queue: nil){ notification in
+            
+            if let fullAccess = notification.object as? Bool {
+                
+                hasFullAccess = fullAccess
+                
+            }
+            
         }
     }
 }
 
-#Preview {
+struct KeyboardViewExt: View {
     let container = SnipKeyDataManager().makeSharedContainer()
     
-    return KeyboardView()
-        .modelContainer(container)
+    var body: some View {
+        KeyboardView()
+            .modelContainer(container)
+    }
+}
+
+#Preview {
+    return KeyboardViewExt()
 }
