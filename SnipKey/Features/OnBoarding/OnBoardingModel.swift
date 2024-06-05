@@ -12,7 +12,7 @@ struct BoardingItem: Identifiable {
     var id = UUID()
     var title: String
     var information: String
-    var image: String
+    var image: String?
     var darkImage: String?
     // Closure that takes no parameters and returns Void
     var action: (() -> Void)?

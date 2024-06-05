@@ -17,7 +17,7 @@ struct SnippetContentView: View {
     var body: some View {
         if snippet.type == .txt {
             ScrollView {
-                Text("\(snippet.content ?? "")")
+                Text("\(snippet.content ?? "")".toDetectedAttributedString())
                     .multilineTextAlignment(.leading)
                     .padding(.top, 8)
                     .tint(Color.label)
@@ -25,7 +25,7 @@ struct SnippetContentView: View {
         }
         
         if snippet.type == .url {
-            Text("\(snippet.content ?? "")")
+            Text("\(snippet.content ?? "")".toDetectedAttributedString())
                 .tint(Color.label)
         }
         

@@ -17,9 +17,9 @@ let welcomeItems: [BoardingItem] = [
     image: "welcome-snipkey2"
   ),
   BoardingItem(
-    title: "Your Data Stays Yours",
+    title: "Your Data Stays Secure",
     information:
-      "All your **snippets** are fully **encrypted** and **stored locally**. Your information **never leaves** your **device**.",
+        "All your **snippets** are securely **encrypted** and **synchronized** across devices via iCloud. Your information is safe and accessible **wherever you go**.",
     image: "data_protected"
   ),
   BoardingItem(
@@ -29,10 +29,12 @@ let welcomeItems: [BoardingItem] = [
     image: "create_snippets"
   ),
   BoardingItem(
-    title: "Offline? No Problem!",
+    title: "Before start✋\n\nLet's Set Up Your Keyboard",
     information:
-      "Your snippets are **always** at your fingertips, ready to use **offline**, **anytime**, without any internet dependency",
-    image: "offline_work"
+      "Enable and start using the keyboard extension in just a few steps:\n\n1. Go to **Settings** > **General** > **Keyboard** > **Keyboards**.\n\n2. Tap **Add New Keyboard** and select **SnipKey** from the list.\n\n3. Enable **Allow Full Access** to utilize all features securely (Images, Fast snippet creation...).",
+    image: nil,
+    action: { openPhoneSettings() },
+    actionLabel: "Go to Settings"
   ),
 ]
 

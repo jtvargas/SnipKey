@@ -9,6 +9,8 @@ import SwiftUI
 import SwiftData
 import StoreKit
 import CloudKitSyncMonitor
+import UniformTypeIdentifiers
+import AlertToast
 
 struct SnippetHomeView: View {
     @AppStorage("isRequestedRating") var isRequestedRating: Bool = false
@@ -35,6 +37,7 @@ struct SnippetHomeView: View {
     @State var isKeyboardActive: Bool = false
     @State var isPresentedGuide: Bool = false
     @State var isPresentingSnippetFiles: Bool = false
+    @State private var showToast = false
     
     @Query(sort: \SnippetItem.creationDate, order: .reverse, animation: .bouncy) private var snippets:
     [SnippetItem]
@@ -89,7 +92,17 @@ struct SnippetHomeView: View {
                                     NavigationLink(destination: SnippetViewDetail(item: snippetItem)) {
                                         SnippetListItem(item: snippetItem)
                                     }
-                                   
+                                    .swipeActions(edge: .leading) {
+                                        Button {
+                                            let clipboard = UIPasteboard.general
+                                            clipboard.setValue(snippetItem.content!, forPasteboardType: UTType.plainText.identifier)
+                                            showToast.toggle()
+                                        } label: {
+                                            Label("Copy", systemImage: "doc.on.doc.fill")
+                                        }
+                                        .tint(Color.quaternaryLabel)
+                                    }
+                                    
                                     
                                 }
                                 .onDelete(perform: { indexSet in
@@ -197,7 +210,7 @@ struct SnippetHomeView: View {
                     
                 }
                 
-               
+                
                 if !snippets.isEmpty {
                     if !files.isEmpty {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -235,38 +248,38 @@ struct SnippetHomeView: View {
                                 })
                         }
                     }
-             
+                    
                 }
             }
             
             
         } detail: {
-                Group{
-                    HStack{
-                        Image("icon-snipkey")
-                            .resizable()
-                            .frame(width: 65, height: 68)
-                            .clipShape(RoundedRectangle( cornerRadius: 6))
-                        
-                        Text("SnipKey")
-                            .font(.custom("IBMPlexMono-Medium", size: 28))
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.leading)
-                        
-                    }
-                    .padding()
-                    Text("Create Once, Paste Anywhere \(selectedSnippet?.title ?? "")")
-                        .font(.custom("IBMPlexMono-Medium", size: 21))
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.leading)
-                        .padding(.bottom)
+            Group{
+                HStack{
+                    Image("icon-snipkey")
+                        .resizable()
+                        .frame(width: 65, height: 68)
+                        .clipShape(RoundedRectangle( cornerRadius: 6))
                     
-                    Text("(Open the left menu to create a new snippet)")
-                        .font(.custom("IBMPlexMono-Medium", size: 16))
+                    Text("SnipKey")
+                        .font(.custom("IBMPlexMono-Medium", size: 28))
                         .fontWeight(.bold)
                         .multilineTextAlignment(.leading)
+                    
                 }
-          
+                .padding()
+                Text("Create Once, Paste Anywhere \(selectedSnippet?.title ?? "")")
+                    .font(.custom("IBMPlexMono-Medium", size: 21))
+                    .fontWeight(.bold)
+                    .multilineTextAlignment(.leading)
+                    .padding(.bottom)
+                
+                Text("(Open the left menu to create a new snippet)")
+                    .font(.custom("IBMPlexMono-Medium", size: 16))
+                    .fontWeight(.bold)
+                    .multilineTextAlignment(.leading)
+            }
+            
         }
         .tint(Color.label.gradient)
         .onAppear() {
@@ -296,6 +309,14 @@ struct SnippetHomeView: View {
             } else if newPhase == .background {
                 print("Background")
             }
+        }
+        .toast(isPresenting: $showToast) {
+            AlertToast(
+                displayMode: .banner(.pop), type: .systemImage("doc.on.clipboard", .label),
+                title: "Copied!",
+                style: .style(
+                    backgroundColor: Color.tertiarySystemBackground,
+                    titleFont: .custom("IBMPlexMono-Medium", size: 14)))
         }
         
         

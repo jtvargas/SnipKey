@@ -66,7 +66,7 @@ struct CustomRadioButtonGroup<T: Hashable>: View {
 
 let options: [SnipType] = [.txt, .url, .image]
 let labels: [SnipType: String] = [.txt: "text", .url: "url", .file: "file", .image: "image"]
-let titleCharLimit = 18
+let titleCharLimit = 21
 let tagCharLimit = 10
 enum Field {
     case snippetTitle
@@ -86,6 +86,7 @@ struct CreateOrSelectTag: View {
     
     @Environment(\.modelContext) var modelContext
     @Query( sort: \SnipTag.name) private var tags: [SnipTag]
+    
     
     var body: some View {
         let customTagNameBinding = Binding(
@@ -125,7 +126,7 @@ struct CreateOrSelectTag: View {
                 VStack(alignment: .leading) {
                     TextField("Your Tag Name Here", text: customTagNameBinding)
                         .limitText(customTagNameBinding, to: tagCharLimit)
-                    Text("Remaining: \(tagCharLimit - tagName.count)")
+                    Text("Text Limit: \(tagCharLimit)")
                         .font(.custom("IBMPlexMono-Regular", size: 10))
                 }
                 
@@ -161,7 +162,7 @@ struct CreateOrSelectTag: View {
                     impactMed.impactOccurred()
                 }
             }
-          
+            
         }
     }
 }
@@ -215,6 +216,8 @@ struct SnippetContent: View {
                                 Image(uiImage: uiImage)
                                     .resizable()
                                     .scaledToFit()
+                                
+                                
                             } else {
                                 Label {
                                     Text("Select Photo")
@@ -235,8 +238,13 @@ struct SnippetContent: View {
                                     selectedImageData = nil
                                 } label: {
                                     Image(systemName: "x.circle.fill")
-                                        .foregroundStyle(.red)
-                                        .font(.system(size: 24, weight: .light, design: .rounded))
+                                        .padding(8)
+                                        .font(.custom("IBMPlexMono-Medium", size: 14))
+                                        .foregroundStyle(.white)
+                                        .background(.red)
+                                        .cornerRadius(8)
+                                    //                                    Label("Remove", systemImage: "x.circle.fill")
+                                    
                                 }
                                 .padding()
                             }
@@ -245,27 +253,31 @@ struct SnippetContent: View {
                 )
                 
                 
-                Label {
-                    VStack{
-                        Text("To use image snippets, please enable full access for the keyboard in your device's keyboard settings.")
-                            .foregroundColor(.yellow)
-                        Button {
-                            if let url = URL(string: UIApplication.openSettingsURLString) {
-                                if UIApplication.shared.canOpenURL(url) {
-                                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                if !isKeyboardExtensionEnabled() {
+                    Label {
+                        VStack{
+                            Text("To use image snippets, please enable full access for the keyboard in your device's keyboard settings.")
+                                .foregroundColor(.yellow)
+                            Button {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    if UIApplication.shared.canOpenURL(url) {
+                                        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                                    }
                                 }
+                            } label: {
+                                Text("Go to Settings")
+                                    .underline()
+                                    .padding(.top, 4)
                             }
-                        } label: {
-                            Text("Go to Settings")
-                                .underline()
-                                .padding(.top, 4)
                         }
+                        
+                    } icon: {
+                        Image(systemName: "info")
+                            .foregroundColor(.yellow)
                     }
-                    
-                } icon: {
-                    Image(systemName: "info")
-                        .foregroundColor(.yellow)
                 }
+                
+                
             }
             .task(id: selectedImage) {
                 if let data = try? await selectedImage?.loadTransferable(type: Data.self)  {
@@ -326,118 +338,110 @@ struct SnippetForm: View {
         NavigationStack {
             ZStack {
                 VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                             .edgesIgnoringSafeArea(.all)
-     
+                    .edgesIgnoringSafeArea(.all)
+                
                 VStack {
                     
-           
-            Label("Don't forget to click Save!", systemImage: "info.square.fill")
-                .bold()
-                .font(.custom("IBMPlexMono-Medium", size: 15))
-            
-            Form {
-                Section(header: Text("snippet type")) {
-                    CustomRadioButtonGroup(items: options, selection: $type, labels: labels)
                     
-                }
-                .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-                
-                Section(
-                    header: Text("snippet title *"),
-                    footer: HStack{
-                        Text("Remaining: ")
-                        ZStack {
-                            Circle()
-                                .stroke(Color.tertiaryLabel, lineWidth: 5)
-                            Text("\(titleCharLimit - title.count)")
-                                .font(.custom("IBMPlexMono-Medium", size: 10))
-                            Circle()
-                                .trim(from: 0, to: progress)
-                                .stroke( (titleCharLimit - title.count) < titleCharLimit/4 ? Color.red.gradient: Color.label.gradient, lineWidth: 5)
-                                .rotationEffect(.init(degrees: -90))
+                    Label("Don't forget to click Save!", systemImage: "info.square.fill")
+                        .bold()
+                        .font(.custom("IBMPlexMono-Medium", size: 15))
+                    
+                    Form {
+                        Section(header: Text("snippet type")) {
+                            CustomRadioButtonGroup(items: options, selection: $type, labels: labels)
+                            
                         }
-                        .frame(width: 20, height: 20)
-                    }
-                ) {
-                    TextField("Title", text: $title)
-                        .disableAutocorrection(true)
-                        .focused($focusedField, equals: .snippetTitle)
-                        .submitLabel(.return)
-                        .limitText($title, to: titleCharLimit)
-                    
-                    
-                }
-                .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-                
-                Section(header: HStack {
-                    Group{
-                        Text("snippet content")
+                        .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
                         
-                        Spacer()
-                        if type != .image {
-                            Button(action: pasteContentFromClipboard) {
-                                Label("Paste", systemImage: "doc.on.clipboard.fill")
-                                    .tint(.label)
-                                    .bold()
-                                    .font(.custom("IBMPlexMono-Medium", size: 14))
-                                    .underline()
-                                    .tint(Color.label)
+                        Section(
+                            header: Text("snippet title *"),
+                            footer: HStack{
+                                if title.count > (titleCharLimit / 2) {
+                                        footer
+                                }
+                                
                             }
+                        ) {
+                            TextField("Title", text: $title)
+                                .disableAutocorrection(true)
+                                .focused($focusedField, equals: .snippetTitle)
+                                .submitLabel(.return)
+                                .limitText($title, to: titleCharLimit)
+                            
+                            
                         }
+                        .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+                        
+                        Section(header: HStack {
+                            Group{
+                                Text("snippet content")
+                                
+                                Spacer()
+                                if type != .image {
+                                    Button(action: pasteContentFromClipboard) {
+                                        Label("Paste", systemImage: "doc.on.clipboard.fill")
+                                            .tint(.label)
+                                            .bold()
+                                            .font(.custom("IBMPlexMono-Medium", size: 14))
+                                            .underline()
+                                            .tint(Color.label)
+                                    }
+                                }
+                                
+                                
+                                
+                            }
+                        }) {
+                            SnippetContent(
+                                type: type,
+                                contentValue: $content,
+                                contentData: $contentFileData,
+                                selectedImage: $selectedImage,
+                                selectedImageMimeType: $contentFileFormatType,
+                                selectedImageData: $contentFileData
+                            )
+                            
+                        }
+                        .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
                         
                         
+                        Section(
+                            header: Text("tag"),
+                            footer: Label(
+                                "Categorize your snippets for easy access", systemImage: "questionmark.circle")
+                        ) {
+                            
+                            CreateOrSelectTag(
+                                isCreatingNewTag: $isCreatingNewTag,
+                                snippetTag: $snippetTag,
+                                tagName: $customTagName,
+                                tagIcon: $customTagIconName
+                            )
+                            
+                        }
+                        .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
                         
+                        
+                        Section(
+                            header: Label(
+                                "Security",
+                                systemImage: "lock.fill"
+                            ),
+                            footer: Text(
+                                "Enabling this will safeguard your snippet with FaceID/TouchID for secure access."
+                            )
+                        ) {
+                            Toggle(
+                                "Sensitive Data",
+                                isOn: $isSecure
+                            )
+                            .disabled(
+                                !deviceBiometrics.hasBiometricsCapability
+                            )
+                        }
+                        .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
                     }
-                }) {
-                    SnippetContent(
-                        type: type,
-                        contentValue: $content,
-                        contentData: $contentFileData,
-                        selectedImage: $selectedImage,
-                        selectedImageMimeType: $contentFileFormatType,
-                        selectedImageData: $contentFileData
-                    )
-                    
-                }
-                .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-                
-                
-                Section(
-                    header: Text("tag"),
-                    footer: Label(
-                        "Categorize your snippets for easy access", systemImage: "questionmark.circle")
-                ) {
-                    
-                    CreateOrSelectTag(
-                        isCreatingNewTag: $isCreatingNewTag,
-                        snippetTag: $snippetTag,
-                        tagName: $customTagName,
-                        tagIcon: $customTagIconName
-                    )
-                    
-                }
-                .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-                
-                
-                Section(
-                    header: Label(
-                        "Security",
-                        systemImage: "lock.fill"
-                    ),
-                    footer: Text(
-                        "Enabling this will safeguard your snippet with FaceID/TouchID for secure access."
-                    )
-                ) {
-                    Toggle(
-                        "Sensitive Data",
-                        isOn: $isSecure
-                    )
-                    .disabled(
-                        !deviceBiometrics.hasBiometricsCapability
-                    )
-                }
-                .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-            }
                 }
             }
         }
@@ -510,6 +514,24 @@ struct SnippetForm: View {
             }
             
         }
+    }
+    
+    private var footer: some View {
+        HStack {
+            Text("Remaining: ")
+            ZStack {
+                Circle()
+                    .stroke(Color.tertiaryLabel, lineWidth: 5)
+                Text("\(titleCharLimit - title.count)")
+                    .font(.custom("IBMPlexMono-Medium", size: 10))
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke((titleCharLimit - title.count) < titleCharLimit / 4 ? Color.red.gradient : Color.label.gradient, lineWidth: 5)
+                    .rotationEffect(.init(degrees: -90))
+            }
+            .frame(width: 20, height: 20)
+        }
+        .transition(.opacity) // Add transition effect
     }
     
     var progress: CGFloat {

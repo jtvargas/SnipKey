@@ -42,18 +42,22 @@ struct BoardingCardView: View {
 
         Spacer()
 
+          if let imageCard = boardingItem.image {
+              if let darkImageName = boardingItem.darkImage {
+                AdaptiveImage(light: Image(imageCard), dark: Image(darkImageName))
+                  .scaledToFit()
+                  .frame(width: 320, height: 320)
+              } else {
+                Image(imageCard)
+                  .resizable()
+                  .scaledToFit()
+                  .frame(width: 320, height: 320)
+              }
+              Spacer()
+          }
         // Check if darkImage is provided, if so use AdaptiveImage
-        if let darkImageName = boardingItem.darkImage {
-          AdaptiveImage(light: Image(boardingItem.image), dark: Image(darkImageName))
-            .scaledToFit()
-            .frame(width: 320, height: 320)
-        } else {
-          Image(boardingItem.image)
-            .resizable()
-            .scaledToFit()
-            .frame(width: 320, height: 320)
-        }
-        Spacer()
+      
+       
 
         //                use .init to support markdown formatt
         Text(.init(boardingItem.information))
