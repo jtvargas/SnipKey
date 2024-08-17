@@ -42,14 +42,8 @@ func checkFullAccess() -> Bool
     var hasFullAccess = false
     if #available(iOSApplicationExtension 10.0, *) {
         let pasty = UIPasteboard.general
-        if pasty.hasURLs || pasty.hasColors || pasty.hasStrings || pasty.hasImages {
+        if pasty.hasURLs || pasty.hasColors || pasty.hasStrings || pasty.hasImages || pasty.value(forPasteboardType: UTType.pdf.identifier) != nil {
             hasFullAccess = true
-        } else {
-            pasty.string = "TEST"
-            if pasty.hasStrings {
-                hasFullAccess = true
-                pasty.string = ""
-            }
         }
     } else {
         // Fallback on earlier versions

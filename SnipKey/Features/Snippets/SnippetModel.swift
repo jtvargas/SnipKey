@@ -23,7 +23,7 @@ enum SnipType:  String, CaseIterable, Identifiable, Codable  {
         case .url:
             return "URL"
         case .file:
-            return "File"
+            return "PDF"
         case .image:
             return "Image"
         }
@@ -122,10 +122,11 @@ final class SnippetFile {
     @Relationship(inverse: \SnippetItem.file)
     var snippet: [SnippetItem]?
     
-    init(type: FileType = .image, formatType: String) {
+    init(type: FileType = .image, formatType: String, fileData: Data) {
         self.id = UUID().uuidString
         self.fileType = type
         self.fileFormatType = formatType
+        self.fileData = fileData
     }
     
 }

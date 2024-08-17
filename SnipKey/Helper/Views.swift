@@ -30,3 +30,37 @@ struct VisualEffectView: UIViewRepresentable {
     func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
     func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
 }
+
+
+// Pressable effect and add haptic feedback on press view
+struct HapticFeedback: ViewModifier {
+    func body(content: Content) -> some View {
+        content.onAppear {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+        }
+    }
+}
+
+// pressable efect (scale down and up)
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .opacity(configuration.isPressed ? 0.7 : 1.0)
+            .animation(.spring(), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { isPressed in
+                if isPressed {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                }
+            }
+    }
+}
+
+// add extension to view to easily add the pressable effect to any view that is a button
+extension View {
+    func pressable() -> some View {
+        self.buttonStyle(PressableButtonStyle())
+    }
+}

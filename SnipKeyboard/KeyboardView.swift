@@ -144,6 +144,7 @@ struct VisualEffectViewKeyboard: UIViewRepresentable {
 struct KeyboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
+    @Environment(SettingsViewModel.self) private var settingsViewModel
     @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
     @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
     @Query(sort: \SnipTag.name) private var tags: [SnipTag]
@@ -151,7 +152,7 @@ struct KeyboardView: View {
     
     let columns = [GridItem(.adaptive(minimum: 150, maximum: 175), spacing: 6)]
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
-    let settingsViewModel = SettingsViewModel()
+//    let settingsViewModel = SettingsViewModel()
     
     @State private var isUnlocked: Bool = false
     @State private var hasFullAccess: Bool = false
@@ -325,7 +326,7 @@ struct KeyboardView: View {
                     "doc.on.clipboard",
                     .label
                 ),
-                title: !checkFullAccess() ? "Enable full keyboard access to copy/paste images." : "Image copied to your clipboard. Paste to use it.",
+                title: !checkFullAccess() ? "Enable full keyboard access to copy/paste images." : "File copied to your clipboard. Paste to use it.",
                 style: .style(
                     backgroundColor: Color.tertiarySystemBackground,
                     titleFont: .custom(
@@ -454,14 +455,14 @@ struct KeyboardView: View {
     func sentValueToKeyboard(snippet: SnippetItem) {
         NotificationCenter.default.post(
             name: NSNotification.Name(rawValue: "addKey"), object: snippet)
-        
-        if snippet.type == .image{
-            showToast.toggle()
+
+        if snippet.type == .image || snippet.type == .file {
+            showToast = true
         } else {
             actionKeyboardAfterPaste(actionKey: currentSettings.afterPasteAction)
         }
         
-        
+       
     }
     
     func deleteCharacter() {
@@ -517,13 +518,31 @@ struct KeyboardView: View {
 
 struct KeyboardViewExt: View {
     let container = SnipKeyDataManager().makeSharedContainer()
+    @State private var settingsViewModel: SettingsViewModel?
     
     var body: some View {
-        KeyboardView()
-            .modelContainer(container)
+        Group {
+            if let settingsViewModel = settingsViewModel {
+                KeyboardView()
+                    .modelContainer(container)
+                    .environment(settingsViewModel)
+            } else {
+                ProgressView()
+                    .onAppear {
+                        Task {
+                            await loadSettingsViewModel()
+                        }
+                    }
+            }
+        }
+    }
+    
+    private func loadSettingsViewModel() async {
+        let modelContext = await container.mainContext
+        let viewModel = SettingsViewModel(modelContext: modelContext)
+        settingsViewModel = viewModel
     }
 }
-
 #Preview {
     return KeyboardViewExt()
 }

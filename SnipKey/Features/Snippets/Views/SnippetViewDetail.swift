@@ -136,7 +136,7 @@ struct SnippetViewDetail: View {
                             }
                         }
                     ) {
-                        SnippetContentView(snippet: snippet)
+                        SnippetContentViewDisplay(snippet: snippet)
                     }
                     .listRowBackground(Color.tertiarySystemBackground)
                     
@@ -218,9 +218,38 @@ struct SnippetViewDetail: View {
         self.isEditFormVisible.toggle()
     }
     
+    func copyImageToClipboard() {
+        guard
+            let newImage = UIImage(data: (snippet.file?.fileData)!)
+        else { return }
+        
+        var imageData: Data?
+        
+        if snippet.file?.fileFormatType == "image/png"{
+            imageData = newImage.pngData()
+        }
+        
+        if snippet.file?.fileFormatType == "image/jpeg"{
+            imageData = newImage.jpegData(compressionQuality: 0.5)
+        }
+        
+        
+        let clipboard = UIPasteboard.general
+        clipboard.setValue(imageData!, forPasteboardType: UTType.png.identifier)
+        
+    }
+    
     func copyToClipboard() {
         let clipboard = UIPasteboard.general
-        clipboard.setValue(snippet.content, forPasteboardType: UTType.plainText.identifier)
+        switch snippet.type {
+        case .file:
+            clipboard.setValue(snippet.file?.fileData as Any, forPasteboardType: UTType.pdf.identifier)
+        case .image:
+            copyImageToClipboard()
+        default:
+            clipboard.setValue(snippet.content!, forPasteboardType: UTType.plainText.identifier)
+        }
+//        clipboard.setValue(snippet.content, forPasteboardType: UTType.plainText.identifier)
         showToast.toggle()
     }
 }

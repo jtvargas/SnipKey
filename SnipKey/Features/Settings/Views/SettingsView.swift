@@ -12,11 +12,12 @@ struct SettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
     @Environment(\.openURL) private var openURL
+    @Environment(SettingsViewModel.self) private var settingsViewModel
     
     @Query() private var settings: [SettingsModel]
     @Query() private var tags: [SnipTag]
     
-    let settingsViewModel = SettingsViewModel()
+//    let settingsViewModel = SettingsViewModel()
     let snippetViewModel = SnippetViewModel()
     
     @Binding var isPresentingSettings: Bool
@@ -152,8 +153,8 @@ struct SettingsView: View {
 }
 
 #Preview {
-    let settingsViewModel = SettingsViewModel()
     let tempSettingsContainer = SnipKeyDataManager().makeSharedContainer()
+    let settingsViewModel = SettingsViewModel(modelContext: tempSettingsContainer.mainContext)
     @State var isPresentingSettings: Bool = false
     
     return SettingsView(isPresentingSettings: $isPresentingSettings)
@@ -162,4 +163,5 @@ struct SettingsView: View {
             settingsViewModel.setupKeyboardSettings()
         }
         .modelContainer(tempSettingsContainer)
+        .environment(settingsViewModel)
 }

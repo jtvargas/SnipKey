@@ -54,6 +54,7 @@ struct SnippetHomeView: View {
                             isActive: isKeyboardActive,
                             onKeyboardStatusPress: handleOnKeyboardStatusPress
                         )
+                        .pressable()
                         .padding(.horizontal)
                         .padding(.top)
                         .sheet(
@@ -124,6 +125,7 @@ struct SnippetHomeView: View {
                                     .font(.system(size:36, weight: .heavy))
                                     .foregroundStyle(Color.label.gradient)
                             }
+                            .pressable()
                             .sheet(isPresented: $isPresentedWelcomeInfo) {
                                 OnboardingView(appName: "SnipKey",showOnboarding: $isPresentedWelcomeInfo, features: [
                                     Feature(title: "Create Snippets/Shortcuts", description: "Craft and instantly use snippets across any apps.", icon: "doc.on.doc.fill"),
@@ -143,6 +145,7 @@ struct SnippetHomeView: View {
                                     .font(.system(size: 62))
                                 
                             }
+                            .pressable()
                             .popoverTip(createSnippetTip)
                             .sheet(isPresented: $isPresentedFormModal) {
                                 NavigationStack {
@@ -158,6 +161,7 @@ struct SnippetHomeView: View {
                                     .font(.system(size:36, weight: .heavy))
                                     .foregroundStyle(Color.label.gradient)
                             }
+                            .pressable()
                             .sheet(isPresented: $isPresentingSettings) {
                                 SettingsView(isPresentingSettings: $isPresentingSettings)
                                 

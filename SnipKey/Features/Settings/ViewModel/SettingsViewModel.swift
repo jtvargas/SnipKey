@@ -11,6 +11,11 @@ import SwiftUI
 @Observable
 class SettingsViewModel {
   var modelContext: ModelContext? = nil
+    
+    
+    public init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
 
   func setupKeyboardSettings() {
 

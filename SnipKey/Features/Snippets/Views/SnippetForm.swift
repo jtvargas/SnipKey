@@ -13,59 +13,96 @@ import PhotosUI
 
 struct CustomRadioButtonGroup<T: Hashable>: View {
     let items: [T]
-    @Binding var selection: T
-    let labels: [T: String]
-    
-    var body: some View {
-        HStack {
-            ForEach(items, id: \.self) { item in
-                Button(action: {
-                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                    impactMed.impactOccurred()
-                    self.selection = item
-                    hideKeyboard()
-                }) {
-                    VStack {
-                        SnippetImage(type: item as! SnipType)
-                            .frame(width: 35, height: 35)
-                            .background(
-                                Color.secondarySystemBackground,
-                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            )
-                            .foregroundStyle(.white)
-                        Text(self.labels[item] ?? "")
-                            .foregroundColor(selection == item ? Color.label : .gray)
-                        if selection == item {
-                            Circle()
-                                .fill(Color.label)
-                                .frame(width: 10, height: 10)
-                        } else {
-                            Circle()
-                                .stroke(Color.label, lineWidth: 1)
-                                .frame(width: 10, height: 10)
-                        }
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Circle())
-                    
-                }
-                .buttonStyle(PlainButtonStyle())
-                .overlay(
-                    /// apply a rounded border
-                    selection == item
-                    ? RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.secondarySystemBackground, lineWidth: 4) : nil
-                )
-                
-            }
-            
-        }
-    }
-}
+      @Binding var selection: T
+      let labels: [T: String]
+      let disabledItems: Set<T>  // New parameter to specify disabled items
+      
+      private let columns = 3
+      
+      init(items: [T], selection: Binding<T>, labels: [T: String], disabledItems: Set<T> = []) {
+          self.items = items
+          self._selection = selection
+          self.labels = labels
+          self.disabledItems = disabledItems
+      }
+      
+      var body: some View {
+          ScrollView {
+              VStack(spacing: 20) {
+                  ForEach(0..<rowCount, id: \.self) { rowIndex in
+                      HStack(spacing: 20) {
+                          ForEach(itemsForRow(rowIndex), id: \.self) { item in
+                              radioButton(for: item)
+                          }
+                      }
+                      .frame(maxWidth: .infinity, alignment: rowIndex == rowCount - 1 && lastRowItemCount < 3 ? .center : .leading)
+                  }
+              }
+              .padding()
+          }
+      }
+      
+      private var rowCount: Int {
+          (items.count + columns - 1) / columns
+      }
+      
+      private var lastRowItemCount: Int {
+          items.count % columns == 0 ? columns : items.count % columns
+      }
+      
+      private func itemsForRow(_ row: Int) -> [T] {
+          let startIndex = row * columns
+          let endIndex = min(startIndex + columns, items.count)
+          return Array(items[startIndex..<endIndex])
+      }
+      
+      private func radioButton(for item: T) -> some View {
+          Button(action: {
+              if !disabledItems.contains(item) {
+                  let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                  impactMed.impactOccurred()
+                  self.selection = item
+                  hideKeyboard()
+              }
+          }) {
+              VStack {
+                  SnippetImage(type: item as! SnipType)
+                      .frame(width: 35, height: 35)
+                      .background(
+                          Color.secondarySystemBackground,
+                          in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                      )
+                      .foregroundStyle(disabledItems.contains(item) ? .gray : .white)
+                  Text(self.labels[item] ?? "")
+                      .foregroundColor(disabledItems.contains(item) ? .gray : (selection == item ? Color.label : .gray))
+                  if selection == item && !disabledItems.contains(item) {
+                      Circle()
+                          .fill(Color.label)
+                          .frame(width: 10, height: 10)
+                  } else {
+                      Circle()
+                          .stroke(disabledItems.contains(item) ? Color.gray : Color.label, lineWidth: 1)
+                          .frame(width: 10, height: 10)
+                  }
+              }
+              .padding()
+              .frame(width: 100)  // Adjust this value as needed
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(PlainButtonStyle())
+          .overlay(
+              selection == item && !disabledItems.contains(item)
+              ? RoundedRectangle(cornerRadius: 8)
+                  .stroke(Color.secondarySystemBackground, lineWidth: 4) : nil
+          )
+          .opacity(disabledItems.contains(item) ? 0.5 : 1.0)
+          .disabled(disabledItems.contains(item))
+      }
+  }
 
-let options: [SnipType] = [.txt, .url, .image]
-let labels: [SnipType: String] = [.txt: "text", .url: "url", .file: "file", .image: "image"]
+
+let options: [SnipType] = [.txt, .url, .image, .file]
+let labels: [SnipType: String] = [.txt: "text", .url: "url", .file: "pdf", .image: "image"]
 let titleCharLimit = 21
 let tagCharLimit = 10
 enum Field {
@@ -125,6 +162,7 @@ struct CreateOrSelectTag: View {
                 
                 VStack(alignment: .leading) {
                     TextField("Your Tag Name Here", text: customTagNameBinding)
+                        .disableAutocorrection(true)
                         .limitText(customTagNameBinding, to: tagCharLimit)
                     Text("Text Limit: \(tagCharLimit)")
                         .font(.custom("IBMPlexMono-Regular", size: 10))
@@ -167,139 +205,11 @@ struct CreateOrSelectTag: View {
     }
 }
 
-struct SnippetContent: View {
-    let type: SnipType
-    
-    @Binding var contentValue: String
-    @Binding var contentData: Data?
-    @Binding var selectedImage: PhotosPickerItem?
-    @Binding var selectedImageMimeType: String?
-    @Binding var selectedImageData: Data?
-    
-    
-    var body: some View {
-        if type == .url {
-            Group {
-                TextField("https://yoursite.com", text: $contentValue, axis: .vertical)
-                    .keyboardType(.URL)
-                    .textContentType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .submitLabel(.return)
-                    .tint(Color.label)
-                
-                if contentValue.isValidURL() {
-                    Button {
-                        openURLContent()
-                    } label:{
-                        Text("Open URL")
-                            .tint(Color.blue)
-                    }
-                }
-                
-            }
-            
-        } else if type == .txt{
-            TextField("Content", text: $contentValue, axis: .vertical)
-                .textInputAutocapitalization(.never)
-                .lineLimit(5...10)
-                .submitLabel(.return)
-        } else if type == .image {
-            Group{
-                PhotosPicker(
-                    selection: $selectedImage,
-                    matching: .images,
-                    preferredItemEncoding: .compatible,
-                    photoLibrary: .shared(),
-                    label: {
-                        Group {
-                            if let selectedImageData , let uiImage = UIImage(data: selectedImageData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFit()
-                                
-                                
-                            } else {
-                                Label {
-                                    Text("Select Photo")
-                                        .font(.system(size: 16, weight: .light, design: .rounded))
-                                        .multilineTextAlignment(.center)
-                                        .tint(.label)
-                                        .underline()
-                                } icon: {
-                                    Image(systemName: "photo.badge.plus")
-                                        .foregroundColor(.label)
-                                }
-                            }
-                        }
-                        .overlay(alignment: .topTrailing) {
-                            if selectedImageData != nil {
-                                Button {
-                                    selectedImage = nil
-                                    selectedImageData = nil
-                                } label: {
-                                    Image(systemName: "x.circle.fill")
-                                        .padding(8)
-                                        .font(.custom("IBMPlexMono-Medium", size: 14))
-                                        .foregroundStyle(.white)
-                                        .background(.red)
-                                        .cornerRadius(8)
-                                    //                                    Label("Remove", systemImage: "x.circle.fill")
-                                    
-                                }
-                                .padding()
-                            }
-                        }
-                    }
-                )
-                
-                
-                if !isKeyboardExtensionEnabled() {
-                    Label {
-                        VStack{
-                            Text("To use image snippets, please enable full access for the keyboard in your device's keyboard settings.")
-                                .foregroundColor(.yellow)
-                            Button {
-                                if let url = URL(string: UIApplication.openSettingsURLString) {
-                                    if UIApplication.shared.canOpenURL(url) {
-                                        UIApplication.shared.open(url, options: [:], completionHandler: nil)
-                                    }
-                                }
-                            } label: {
-                                Text("Go to Settings")
-                                    .underline()
-                                    .padding(.top, 4)
-                            }
-                        }
-                        
-                    } icon: {
-                        Image(systemName: "info")
-                            .foregroundColor(.yellow)
-                    }
-                }
-                
-                
-            }
-            .task(id: selectedImage) {
-                if let data = try? await selectedImage?.loadTransferable(type: Data.self)  {
-                    selectedImageData = data
-                    selectedImageMimeType = selectedImage?.supportedContentTypes.first?.preferredMIMEType
-                }
-            }
-        }
-        
-        
-    }
-    
-    func openURLContent() {
-        if !contentValue.isEmpty  && contentValue.isValidURL(){
-            UIApplication.shared.open(URL(string: contentValue.getValidURLString())!)
-        }
-        
-    }
-}
 
 struct SnippetForm: View {
     @Environment(\.colorScheme) var colorScheme
+    
+    let disabledItems: Set<SnipType> = []
     
     let snippet: SnippetItem?
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
@@ -323,6 +233,7 @@ struct SnippetForm: View {
     //    File State
     @State var contentFileData: Data?
     @State var contentFileFormatType: String?
+
     
     @FocusState private var focusedField: Field?
     @Binding var isFormVisible: Bool
@@ -348,8 +259,27 @@ struct SnippetForm: View {
                         .font(.custom("IBMPlexMono-Medium", size: 15))
                     
                     Form {
+                        Section(
+                            header: Label(
+                                "Security",
+                                systemImage: "lock.fill"
+                            ),
+                            footer: Text(
+                                "Enabling this will safeguard your snippet with FaceID/TouchID for secure access."
+                            )
+                        ) {
+                            Toggle(
+                                "Sensitive Data",
+                                isOn: $isSecure
+                            )
+                            .disabled(
+                                !deviceBiometrics.hasBiometricsCapability
+                            )
+                        }
+                        .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+                        
                         Section(header: Text("snippet type")) {
-                            CustomRadioButtonGroup(items: options, selection: $type, labels: labels)
+                            CustomRadioButtonGroup(items: options, selection: $type, labels: labels,  disabledItems: disabledItems)
                             
                         }
                         .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
@@ -378,7 +308,7 @@ struct SnippetForm: View {
                                 Text("snippet content")
                                 
                                 Spacer()
-                                if type != .image {
+                                if type == .txt || type == .url {
                                     Button(action: pasteContentFromClipboard) {
                                         Label("Paste", systemImage: "doc.on.clipboard.fill")
                                             .tint(.label)
@@ -393,13 +323,12 @@ struct SnippetForm: View {
                                 
                             }
                         }) {
-                            SnippetContent(
+                            SnippetContentForm(
                                 type: type,
                                 contentValue: $content,
                                 contentData: $contentFileData,
                                 selectedImage: $selectedImage,
-                                selectedImageMimeType: $contentFileFormatType,
-                                selectedImageData: $contentFileData
+                                selectedFileMimeType: $contentFileFormatType
                             )
                             
                         }
@@ -419,26 +348,6 @@ struct SnippetForm: View {
                                 tagIcon: $customTagIconName
                             )
                             
-                        }
-                        .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-                        
-                        
-                        Section(
-                            header: Label(
-                                "Security",
-                                systemImage: "lock.fill"
-                            ),
-                            footer: Text(
-                                "Enabling this will safeguard your snippet with FaceID/TouchID for secure access."
-                            )
-                        ) {
-                            Toggle(
-                                "Sensitive Data",
-                                isOn: $isSecure
-                            )
-                            .disabled(
-                                !deviceBiometrics.hasBiometricsCapability
-                            )
                         }
                         .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
                     }
@@ -498,21 +407,33 @@ struct SnippetForm: View {
                 snippetTag = snippet.customTag ?? SnipTag(name: "", imageTag: "tag.fill")
             }
         }
-        .onChange(of: type) {_, _ in
-            if type == .txt {
+        .onChange(of: type) { oldType , newType in
+            switch newType {
+            case .txt:
                 content = ""
-            }
-            
-            if type != .image {
                 contentFileData = nil
-                
-                if let snippetFileId = snippet?.file?.id {
-                    print("Delete Snippet FILE ID: \(snippetFileId)")
-                    snippetViewModel.deleteFile(fileId: snippetFileId)
+            case .url:
+                content = ""
+                contentFileData = nil
+            case .image:
+                if oldType == .file {
+                    contentFileData = nil
+                    if let snippetFileId = snippet?.file?.id {
+                        print("Delete Snippet FILE ID: \(snippetFileId)")
+                        snippetViewModel.deleteFile(fileId: snippetFileId)
+                    }
                 }
-                
+                break
+            case .file:
+                // If changing from image to file, clear the image data
+                if oldType == .image {
+                    contentFileData = nil
+                    if let snippetFileId = snippet?.file?.id {
+                        print("Delete Snippet FILE ID: \(snippetFileId)")
+                        snippetViewModel.deleteFile(fileId: snippetFileId)
+                    }
+                }
             }
-            
         }
     }
     
@@ -550,7 +471,7 @@ struct SnippetForm: View {
         let needNewTagName = isCreatingNewTag ? snippetTag.name!.isEmpty : false
         
         switch type {
-        case .image:
+        case .image, .file:
             return title.isEmpty || ((contentFileData?.isEmpty) != false) || needNewTagName
         case .txt, .url:
             return title.isEmpty || content.isEmpty || needNewTagName
@@ -627,7 +548,7 @@ struct SnippetForm: View {
                 snippet.isSecure = isSecure
                 addTagToSnippet(item: snippet)
                 
-                if type == .image {
+                if type == .image || type == .file  {
                     addFileToSnippeet(item: snippet)
                 }
             } else {
@@ -635,7 +556,7 @@ struct SnippetForm: View {
                 let newSnippetCreated = snippetViewModel.createSnippet(title, content: content, type: type, isSecure: isSecure)
                 addTagToSnippet(item: newSnippetCreated)
                 
-                if type == .image {
+                if type == .image || type == .file {
                     addFileToSnippeet(item: newSnippetCreated)
                 }
             }

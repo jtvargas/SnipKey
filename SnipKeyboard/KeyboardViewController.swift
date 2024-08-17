@@ -41,7 +41,19 @@ class KeyboardViewController: UIInputViewController {
             
             
             let clipboard = UIPasteboard.general
-            clipboard.setValue(imageData!, forPasteboardType: UTType.png.identifier)
+            UIPasteboard.general.string = " "
+            clipboard.setData(imageData!, forPasteboardType: UTType.png.identifier)
+        }
+    }
+    
+    func sendPDFData(snippet: SnippetItem) {
+        if self.hasFullAccess {
+            guard let pdfData = snippet.file?.fileData else { return }
+            
+            let clipboard = UIPasteboard.general
+            clipboard.string = " "
+            clipboard.colors = [UIColor(Color(.red))]
+            clipboard.setData(pdfData, forPasteboardType: UTType.pdf.identifier)
         }
     }
     
@@ -89,6 +101,8 @@ class KeyboardViewController: UIInputViewController {
                 switch snippet.type {
                 case .image:
                     self.sendImageData(snippet: snippet)
+                case .file:
+                    self.sendPDFData(snippet: snippet)
                 default:
                     self.textDocumentProxy.insertText(snippet.content!)
                 }

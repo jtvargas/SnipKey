@@ -88,8 +88,7 @@ class SnippetViewModel {
     
     func createData(type: FileType, data: Data, fileFormatType: String) -> SnippetFile {
         print("CREATING NEW FILE-DOCUMENT: \(type)")
-        let newFile = SnippetFile(type: type, formatType: fileFormatType)
-        newFile.fileData = data;
+        let newFile = SnippetFile(type: type, formatType: fileFormatType, fileData: data)
         self.modelContext?.insert(newFile)
         print("FILE CREATED: \(type) with ID: \(newFile.id)")
         return newFile
