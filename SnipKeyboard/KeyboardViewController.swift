@@ -14,6 +14,9 @@ import UniformTypeIdentifiers
 class KeyboardViewController: UIInputViewController {
 
     @IBOutlet var nextKeyboardButton: UIButton!
+    
+    var isLongPressing = false
+    var deletionCount = 0
 //    let container = SnipKeyDataManager().makeSharedContainer()
 //    private let keyboardView = KeyboardViewExt()
     
@@ -121,7 +124,40 @@ class KeyboardViewController: UIInputViewController {
         }
         
         // Delete text
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "deleteKey"), object: nil, queue: nil){ _ in
+//        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "deleteKey"), object: nil, queue: nil){ _ in
+//            self.textDocumentProxy.deleteBackward()
+//        }
+        
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name(rawValue: "deleteKey"),
+            object: nil,
+            queue: nil
+        ) { [weak self] notification in
+            if let isLongPress = notification.object as? Bool {
+                self?.handleDelete(isLongPress: isLongPress)
+            }
+        }
+    }
+    
+//    Simulate fast deletion
+    func handleDelete(isLongPress: Bool) {
+        if isLongPress {
+            if !isLongPressing {
+                // Start of long press
+                isLongPressing = true
+                deletionCount = 0
+            }
+            
+            deletionCount += 1
+            let charsToDelete = min(deletionCount, 10)
+            
+            for _ in 0..<charsToDelete {
+                self.textDocumentProxy.deleteBackward()
+            }
+        } else {
+            // Single tap
+            isLongPressing = false
+            deletionCount = 0
             self.textDocumentProxy.deleteBackward()
         }
     }

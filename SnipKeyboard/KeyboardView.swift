@@ -141,6 +141,11 @@ struct VisualEffectViewKeyboard: UIViewRepresentable {
     func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
 }
 
+enum SortOption: String, CaseIterable {
+       case dateCreated = "Date Created"
+       case recentlyUsed = "Recently Used"
+   }
+
 struct KeyboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
@@ -166,6 +171,16 @@ struct KeyboardView: View {
     @State private var selectedFilter: SnipTag? = nil
     @State private var selectedText: String = ""
     
+//    delete functionality
+    @State private var isLongPressing = false
+     @State private var deleteTimer: Timer?
+    
+    // sort functionality
+    @State private var sortOption: SortOption = .dateCreated
+    @State private var sortOrder: SortOrder = .forward
+        
+    
+    
     
     var body: some View {
         ZStack {
@@ -176,12 +191,30 @@ struct KeyboardView: View {
             VStack {
                 //            For multiple/custom tags use this style, or a toggle list button
                 HStack(alignment: .center) {
-                    Label("\(selectedFilter?.name ?? "All")", systemImage: selectedFilter?.imageTag ?? "circle")
-                        .tint(Color.label)
+//                    Label("\(selectedFilter?.name ?? "All")", systemImage: selectedFilter?.imageTag ?? "circle")
+//                        .tint(Color.label)
+                    
+                    
+                    Menu {
+                        Picker("Sort by", selection: $sortOption) {
+                            ForEach(SortOption.allCases, id: \.self) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        
+                        Picker("Sort Order", selection: $sortOrder) {
+                            Text("Ascending").tag(SortOrder.forward)
+                            Text("Descending").tag(SortOrder.reverse)
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down")
+                            .foregroundStyle(.blue.gradient)
+                    }
                     EmptyView()
                     Spacer()
                     
-                    Label("Private Snippets: \(isUnlocked ? "Unlocked":"Locked")", systemImage: "\(isUnlocked ? "lock.open":"lock")")
+                    Label("\(isUnlocked ? "Snippets Unlocked" : "Snippets Locked")", systemImage: "\(isUnlocked ? "lock.open" : "lock")")
+                        .foregroundStyle(.white.gradient)
                     
                     
                     Spacer()
@@ -222,7 +255,7 @@ struct KeyboardView: View {
                     }
                     
                     LazyVGrid(columns: layout, spacing: 20) {
-                        ForEach(getSnippetItems(), id: \.self.id) { snippet in
+                        ForEach(getSnippets(), id: \.self.id) { snippet in
                             Button {
                                 sentValue(snippet: snippet)
                             } label: {
@@ -259,16 +292,7 @@ struct KeyboardView: View {
                 HStack(alignment: .center) {
                     
                     if !tags.isEmpty {
-                        Picker("", selection: $selectedFilter) {
-                            ForEach(tags, id: \.id) { tag in
-                                HStack {
-                                    Image(systemName: tag.imageTag!)
-                                }
-                                .tag(Optional(tag))
-                            }
-                            
-                        }
-                        .pickerStyle(.segmented)
+                        MenuTags()
                     }else {
                         Text("Add tags for quick snippet search.")
                             .foregroundColor(.secondary)
@@ -279,7 +303,8 @@ struct KeyboardView: View {
                     
                     
                     Button {
-                        deleteCharacter()
+                        // Single tap action
+                                    deleteCharacter(isLongPress: false)
                     } label: {
                         // Using a system image to represent the delete key
                         Image(systemName: "delete.left")
@@ -292,6 +317,23 @@ struct KeyboardView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             .shadow(radius: 5)
                     }
+                    .simultaneousGesture(
+                               LongPressGesture(minimumDuration: 0.5)
+                                   .onEnded { _ in
+                                       isLongPressing = true
+                                       deleteCharacter(isLongPress: true)
+                                       startRapidDeletion()
+                                   }
+                           )
+                           .simultaneousGesture(
+                               DragGesture(minimumDistance: 0)
+                                   .onEnded { _ in
+                                       if isLongPressing {
+                                           isLongPressing = false
+                                           stopRapidDeletion()
+                                       }
+                                   }
+                           )
                     
                     
                     
@@ -359,6 +401,64 @@ struct KeyboardView: View {
         
     }
     
+    @ViewBuilder
+    func MenuTags() -> some View {
+        Menu {
+            ForEach(tags, id: \.id) { tag in
+                Button(action: {
+                    selectedFilter = tag
+                }) {
+                    HStack {
+                        Image(systemName: tag.imageTag!)
+                        Text(tag.name ?? "") // Assuming tag has a 'name' property
+                        if tag == selectedFilter {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                Image(systemName: selectedFilter?.imageTag ?? "line.3.horizontal.decrease.circle")
+                Text(selectedFilter?.name ?? "Filter")
+                    .foregroundStyle(.blue.gradient)
+                Image(systemName: "chevron.up")
+                    .foregroundStyle(.blue.gradient)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.secondary.opacity(0.1))
+            .cornerRadius(8)
+           
+        }
+      
+    }
+    
+    private func getSnippets() -> [SnippetItem] {
+           let filteredSnippets = selectedFilter == nil
+               ? snippets
+               : snippets.filter { $0.customTag == selectedFilter }
+           
+           let sortedSnippets = filteredSnippets.sorted { first, second in
+               let firstDate: Date
+               let secondDate: Date
+               
+               switch sortOption {
+               case .dateCreated:
+                   firstDate = first.creationDate ?? Date.distantPast
+                   secondDate = second.creationDate ?? Date.distantPast
+               case .recentlyUsed:
+                   firstDate = first.lastTimeUsed ?? Date.distantPast
+                   secondDate = second.lastTimeUsed ?? Date.distantPast
+               }
+               
+               return sortOrder == .forward ? firstDate < secondDate : firstDate > secondDate
+           }
+           
+           return sortedSnippets
+       }
+    
     private var floatingButton: some View {
         Button(action: {
             createNewSnippetFromKeyboard(content: selectedText)
@@ -408,8 +508,12 @@ struct KeyboardView: View {
             // Unicode scalar value for 'Return' (Carriage Return)
             NotificationCenter.default.post(
                 name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
             break
         case .changeReturn:
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
             NotificationCenter.default.post(
                 name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
             NotificationCenter.default.post(
@@ -424,6 +528,8 @@ struct KeyboardView: View {
         case .space:
             NotificationCenter.default.post(
                 name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
+            break
+        case .nothing:
             break
         }
     }
@@ -465,9 +571,24 @@ struct KeyboardView: View {
        
     }
     
-    func deleteCharacter() {
+    
+    
+    func deleteCharacter(isLongPress: Bool) {
         NotificationCenter.default.post(
-            name: NSNotification.Name(rawValue: "deleteKey"), object: nil)
+            name: NSNotification.Name(rawValue: "deleteKey"),
+            object: isLongPress
+        )
+    }
+    
+    func startRapidDeletion() {
+        deleteTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            deleteCharacter(isLongPress: true)
+        }
+    }
+    
+    func stopRapidDeletion() {
+        deleteTimer?.invalidate()
+        deleteTimer = nil
     }
     
     
@@ -544,5 +665,15 @@ struct KeyboardViewExt: View {
     }
 }
 #Preview {
+    let tempSettingsContainer = SnipKeyDataManager().makeSharedContainer()
+    let settingsViewModel = SettingsViewModel(modelContext: tempSettingsContainer.mainContext)
+    @State var isPresentingSettings: Bool = false
+    
     return KeyboardViewExt()
+        .onAppear {
+            settingsViewModel.modelContext = tempSettingsContainer.mainContext
+            settingsViewModel.setupKeyboardSettings()
+        }
+        .modelContainer(tempSettingsContainer)
+        .environment(settingsViewModel)
 }

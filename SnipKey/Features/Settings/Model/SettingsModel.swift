@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 enum KeyboardAfterPasteAction: String, CaseIterable, Identifiable, Codable {
-  case rtrn, space, change, changeReturn
+  case rtrn, space, change, changeReturn, nothing
   var id: String { return self.rawValue }
   var displayText: String {
     switch self {
@@ -21,6 +21,8 @@ enum KeyboardAfterPasteAction: String, CaseIterable, Identifiable, Codable {
       return "Switch"
     case .space:
       return "Space"
+    case .nothing:
+      return "Nothing"
     }
   }
 

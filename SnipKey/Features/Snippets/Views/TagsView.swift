@@ -20,6 +20,9 @@ struct TagsView: View {
     @State private var editMode = false
     @State var viewModel = SnippetViewModel()
     
+    @State private var isEditTagVisible:Bool = false
+    @State private var selectedTag:SnipTag? = nil
+    
     var headerSection: some View {
         HStack {
             Text("hello")
@@ -39,6 +42,18 @@ struct TagsView: View {
                         HStack(alignment: .center){
                             Label("\(tag.name ?? "")", systemImage: (tag.imageTag!.isEmpty ? "tag.fill" : tag.imageTag) ?? "tag.fill")
                                 .foregroundStyle(Color.label)
+                            
+                            Spacer()
+                            Button {
+                                selectedTag = tag
+                            } label: {
+
+                                Image(systemName: "applepencil.gen1")
+                                    .padding(6)
+                                    .background(.thickMaterial)
+                                    .clipShape(.rect(cornerRadius: 4))
+                            }
+                            .pressable()
                         }
                         
                     }
@@ -51,9 +66,16 @@ struct TagsView: View {
             
            
         }
+        .sheet(item: $selectedTag) { selected in
+            EditTagView(tag: .constant(selected))
+        }
         .navigationTitle("Tags")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(trailing: EditButton())
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                EditButton()
+            }
+        }
         .environment(\.editMode, self.$isEditMode)
         .onAppear() {
             viewModel.modelContext = modelContext

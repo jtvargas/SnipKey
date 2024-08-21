@@ -13,6 +13,7 @@
 		0627678B2BBCDE3000B3993B /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */; };
 		0630BC0E2C6E747100E8493B /* SnippetContentForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0630BC0D2C6E747100E8493B /* SnippetContentForm.swift */; };
 		0630BC102C6E89D700E8493B /* SnippetContentViewDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0630BC0F2C6E89D700E8493B /* SnippetContentViewDisplay.swift */; };
+		063E4EAE2C757C5B000DAF1F /* EditTagView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063E4EAD2C757C5B000DAF1F /* EditTagView.swift */; };
 		064D8A122BDC1E3200B9B65F /* SwiftUIMasonry in Frameworks */ = {isa = PBXBuildFile; productRef = 064D8A112BDC1E3200B9B65F /* SwiftUIMasonry */; };
 		064D8A142BDC1F0100B9B65F /* SnippetFilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 064D8A132BDC1F0100B9B65F /* SnippetFilesView.swift */; };
 		065B05C22BBF2A0F00C1E3E0 /* ArrowSVG.swift in Sources */ = {isa = PBXBuildFile; fileRef = 065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */; };
@@ -103,6 +104,7 @@
 		061ED3CD2BC43611006A6E47 /* Biometrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Biometrics.swift; sourceTree = "<group>"; };
 		0630BC0D2C6E747100E8493B /* SnippetContentForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetContentForm.swift; sourceTree = "<group>"; };
 		0630BC0F2C6E89D700E8493B /* SnippetContentViewDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetContentViewDisplay.swift; sourceTree = "<group>"; };
+		063E4EAD2C757C5B000DAF1F /* EditTagView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTagView.swift; sourceTree = "<group>"; };
 		064D8A132BDC1F0100B9B65F /* SnippetFilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetFilesView.swift; sourceTree = "<group>"; };
 		065B05C12BBF2A0F00C1E3E0 /* ArrowSVG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowSVG.swift; sourceTree = "<group>"; };
 		0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKey.entitlements; sourceTree = "<group>"; };
@@ -294,6 +296,7 @@
 				06D454522BEE8E4C00D34782 /* TagsView.swift */,
 				0630BC0D2C6E747100E8493B /* SnippetContentForm.swift */,
 				0630BC0F2C6E89D700E8493B /* SnippetContentViewDisplay.swift */,
+				063E4EAD2C757C5B000DAF1F /* EditTagView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -528,6 +531,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				068C77CD2BB4C60C0008D9A1 /* SnippetViewModel.swift in Sources */,
+				063E4EAE2C757C5B000DAF1F /* EditTagView.swift in Sources */,
 				06AE13122BBB0D16008EAE98 /* SettingsView.swift in Sources */,
 				06D454532BEE8E4C00D34782 /* TagsView.swift in Sources */,
 				06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */,

@@ -111,6 +111,8 @@ enum Field {
 }
 
 struct CreateOrSelectTag: View {
+   
+    
     @Binding var isCreatingNewTag: Bool
     @Binding var snippetTag: SnipTag
     
@@ -244,6 +246,7 @@ struct SnippetForm: View {
     
     @Environment(\.modelContext) var modelContext
     //    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
+    
     
     var body: some View {
         NavigationStack {
@@ -513,10 +516,12 @@ struct SnippetForm: View {
         
         if tagCreated != nil {
             tagCreated?.snippets?.append(item)
+            lastSnipTag = tagCreated
         } else {
             let newTagCreated = snippetViewModel.createTag(
                 name: snippetTag.name!, iconName: snippetTag.imageTag!)
             newTagCreated.snippets?.append(item)
+            lastSnipTag = newTagCreated
         }
     }
     
