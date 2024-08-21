@@ -516,12 +516,10 @@ struct SnippetForm: View {
         
         if tagCreated != nil {
             tagCreated?.snippets?.append(item)
-            lastSnipTag = tagCreated
         } else {
             let newTagCreated = snippetViewModel.createTag(
                 name: snippetTag.name!, iconName: snippetTag.imageTag!)
             newTagCreated.snippets?.append(item)
-            lastSnipTag = newTagCreated
         }
     }
     
