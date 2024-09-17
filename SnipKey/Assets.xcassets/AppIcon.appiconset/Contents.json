@@ -1,7 +1,31 @@
 {
   "images" : [
     {
-      "filename" : "final-app-icon.png",
+      "filename" : "snipkey-new-dark 1.png",
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "snipkey-new-dark.png",
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "tinted"
+        }
+      ],
+      "filename" : "snipkey-new-tinted.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

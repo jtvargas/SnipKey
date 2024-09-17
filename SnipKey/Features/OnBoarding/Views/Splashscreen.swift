@@ -10,17 +10,20 @@ struct Splashscreen: View {
 
   var body: some View {
     VStack(alignment: .leading) {
-      Image("icon-snipkey")
-        .resizable()
-        .frame(width: 72, height: 72)
-        .clipShape(
-          RoundedRectangle(
-            cornerRadius: 8
-          )
-        )
-        .scaleEffect(animateImage ? 1 : 0.9)  // Start from a slightly smaller scale
-        .opacity(animateImage ? 1 : 0)  // Start with 0 opacity
-        .animation(.easeOut(duration: 0.8), value: animateImage)
+        
+        if let image = UIImage(named: AppIconProvider.appIcon()) {
+                           Image(uiImage: image)
+                               .resizable()
+                               .frame(width: 72, height: 72)
+                               .clipShape(
+                                   RoundedRectangle(
+                                       cornerRadius: 8
+                                   )
+                               )
+                               .scaleEffect(animateImage ? 1 : 0.9)  // Start from a slightly smaller scale
+                               .opacity(animateImage ? 1 : 0)  // Start with 0 opacity
+                               .animation(.easeOut(duration: 0.8), value: animateImage)
+                       }
 
       Text("Welcome to \n**SnipKey**")
         .font(.custom("IBMPlexMono-Medium", size: 32))
