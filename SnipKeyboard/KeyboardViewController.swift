@@ -137,6 +137,14 @@ class KeyboardViewController: UIInputViewController {
                 self?.handleDelete(isLongPress: isLongPress)
             }
         }
+        
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name(rawValue: "spaceKey"),
+            object: nil,
+            queue: nil
+        ) { _ in
+            self.textDocumentProxy.insertText(" ")
+        }
     }
     
 //    Simulate fast deletion

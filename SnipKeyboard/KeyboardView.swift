@@ -142,13 +142,27 @@ struct VisualEffectViewKeyboard: UIViewRepresentable {
 }
 
 enum SortOption: String, CaseIterable {
-       case dateCreated = "Date Created"
-       case recentlyUsed = "Recently Used"
-   }
+    case dateCreated = "Date Created"
+    case recentlyUsed = "Recently Used"
+    case alphabetical = "Albabetical"
+    
+    var imageName: String {
+        switch self {
+        case .dateCreated:
+            return "calendar.circle"
+        case .recentlyUsed:
+            return "timer.circle"
+        case .alphabetical:
+            return "textformat.abc"
+        }
+    }
+}
 
 struct KeyboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
+    @AppStorage("sortBySelection") var sortBySelection: SortOption = .dateCreated
+    
     @Environment(SettingsViewModel.self) private var settingsViewModel
     @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
     @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
@@ -165,7 +179,6 @@ struct KeyboardView: View {
     @State private var showCreatedToast = false
     @State var snippetsTest: [SnippetItem] = []
     @State private var showToast = false
-    @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .space)
     @State var snippetViewModel = SnippetViewModel()
     @State private var text: String = ""
     @State private var selectedFilter: SnipTag? = nil
@@ -176,10 +189,16 @@ struct KeyboardView: View {
      @State private var deleteTimer: Timer?
     
     // sort functionality
-    @State private var sortOption: SortOption = .dateCreated
+    @State private var sortOption: SortOption = .alphabetical
     @State private var sortOrder: SortOrder = .forward
         
-    
+    var currentKeyboardSettings: SettingsModel {
+        if let myCurrentSettings = settings.first {
+            return myCurrentSettings
+        }
+        
+        return SettingsModel(afterPasteAction: .space)
+    }
     
     
     var body: some View {
@@ -187,7 +206,7 @@ struct KeyboardView: View {
             
             
             VisualEffectViewKeyboard(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                .edgesIgnoringSafeArea(.all)
+//                .edgesIgnoringSafeArea(.all)
             VStack {
                 //            For multiple/custom tags use this style, or a toggle list button
                 HStack(alignment: .center) {
@@ -198,13 +217,33 @@ struct KeyboardView: View {
                     Menu {
                         Picker("Sort by", selection: $sortOption) {
                             ForEach(SortOption.allCases, id: \.self) { option in
-                                Text(option.rawValue).tag(option)
+                                HStack {
+                                    Text(option.rawValue)
+                                    Spacer()
+                                    Image(systemName: option.imageName)
+                                }
+                                .tag(option)
                             }
                         }
                         
-                        Picker("Sort Order", selection: $sortOrder) {
-                            Text("Ascending").tag(SortOrder.forward)
-                            Text("Descending").tag(SortOrder.reverse)
+                        Picker("Order", selection: $sortOrder) {
+                            switch sortOption {
+                            case .dateCreated:
+                                Label("Earliest First", systemImage: "arrow.up")
+                                    .tag(SortOrder.forward)
+                                Label("Latest First", systemImage: "arrow.down")
+                                    .tag(SortOrder.reverse)
+                            case .recentlyUsed:
+                                Label("Most Recent First", systemImage: "arrow.up")
+                                    .tag(SortOrder.reverse)
+                                Label("Least Recent First", systemImage: "arrow.down")
+                                    .tag(SortOrder.forward)
+                            case .alphabetical:
+                                Label("A to Z", systemImage: "arrow.up")
+                                    .tag(SortOrder.forward)
+                                Label("Z to A", systemImage: "arrow.down")
+                                    .tag(SortOrder.reverse)
+                            }
                         }
                     } label: {
                         Label("Sort", systemImage: "arrow.up.arrow.down")
@@ -260,7 +299,6 @@ struct KeyboardView: View {
                                 sentValue(snippet: snippet)
                             } label: {
                                 SnippetListItem(item: snippet)
-                                
                                     .lineLimit(1) // Limit text to a single line
                                     .truncationMode(.tail)
                                     .padding(8)
@@ -301,6 +339,35 @@ struct KeyboardView: View {
                         Spacer()
                     }
                     
+                    Button {
+                        spaceAction()
+                    } label: {
+                        // Using a system image to represent the delete key
+                        Image(systemName: "space")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 52, height: 20)
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.tertiaryLabel)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .shadow(radius: 5)
+                    }
+                    Button {
+                        returnAction()
+                    } label: {
+                        // Using a system image to represent the delete key
+                        Image(systemName: "return")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 30, height: 20)
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.tertiaryLabel)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .shadow(radius: 5)
+                    }
+                    
                     
                     Button {
                         // Single tap action
@@ -308,11 +375,11 @@ struct KeyboardView: View {
                     } label: {
                         // Using a system image to represent the delete key
                         Image(systemName: "delete.left")
-                            .resizable()  // Make the image resizable
-                            .aspectRatio(contentMode: .fit)  // Keep the aspect ratio of the image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
                             .frame(width: 20, height: 20)
-                            .foregroundColor(.white)  // Set the icon color to white
-                            .padding(10)  // Add padding around the image, adjust as needed
+                            .foregroundColor(.white)
+                            .padding(10)
                             .background(Color.tertiaryLabel)
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             .shadow(radius: 5)
@@ -344,17 +411,12 @@ struct KeyboardView: View {
                 
             }
         }
-        //        .id(snippetsTest.count)
         .frame(height: 260)
         .background(Color.tertiaryLabel)
         .sensoryFeedback(.increase, trigger: selectedFilter)
         .onAppear {
             settingsViewModel.modelContext = modelContext
             snippetViewModel.modelContext = modelContext
-            
-            if let myCurrentSettings = settings.first {
-                currentSettings = myCurrentSettings
-            }
             
             setupSelectTextObserver()
             
@@ -436,28 +498,31 @@ struct KeyboardView: View {
     }
     
     private func getSnippets() -> [SnippetItem] {
-           let filteredSnippets = selectedFilter == nil
-               ? snippets
-               : snippets.filter { $0.customTag == selectedFilter }
-           
-           let sortedSnippets = filteredSnippets.sorted { first, second in
-               let firstDate: Date
-               let secondDate: Date
-               
-               switch sortOption {
-               case .dateCreated:
-                   firstDate = first.creationDate ?? Date.distantPast
-                   secondDate = second.creationDate ?? Date.distantPast
-               case .recentlyUsed:
-                   firstDate = first.lastTimeUsed ?? Date.distantPast
-                   secondDate = second.lastTimeUsed ?? Date.distantPast
-               }
-               
-               return sortOrder == .forward ? firstDate < secondDate : firstDate > secondDate
-           }
-           
-           return sortedSnippets
-       }
+        // Filter snippets
+        let filteredSnippets = selectedFilter.map { filter in
+            snippets.filter { $0.customTag == filter }
+        } ?? snippets
+        
+        // Sort snippets
+        return filteredSnippets.sorted { first, second in
+            switch sortOption {
+            case .dateCreated:
+                let firstDate = first.creationDate ?? .distantPast
+                let secondDate = second.creationDate ?? .distantPast
+                return sortOrder == .forward ? firstDate < secondDate : firstDate > secondDate
+                
+            case .recentlyUsed:
+                let firstDate = first.lastTimeUsed ?? .distantPast
+                let secondDate = second.lastTimeUsed ?? .distantPast
+                return sortOrder == .forward ? firstDate < secondDate : firstDate > secondDate
+                
+            case .alphabetical:
+                let firstTitle = first.title?.lowercased() ?? ""
+                let secondTitle = second.title?.lowercased() ?? ""
+                return sortOrder == .forward ? firstTitle < secondTitle : firstTitle > secondTitle
+            }
+        }
+    }
     
     private var floatingButton: some View {
         Button(action: {
@@ -483,18 +548,6 @@ struct KeyboardView: View {
     
     func actionPerform() {
         print("snippets: \(snippets)")
-    }
-    
-    func getSnippetItems() -> [SnippetItem] {
-        if selectedFilter == nil {
-            return snippets
-        }
-        
-        let snippetsFiltered = snippets.filter { snippetItem in
-            return snippetItem.customTag == selectedFilter
-        }
-        
-        return snippetsFiltered
     }
     
     private func emoji(_ value: Int) -> String {
@@ -565,7 +618,7 @@ struct KeyboardView: View {
         if snippet.type == .image || snippet.type == .file {
             showToast = true
         } else {
-            actionKeyboardAfterPaste(actionKey: currentSettings.afterPasteAction)
+            actionKeyboardAfterPaste(actionKey: currentKeyboardSettings.afterPasteAction)
         }
         
        
@@ -578,6 +631,16 @@ struct KeyboardView: View {
             name: NSNotification.Name(rawValue: "deleteKey"),
             object: isLongPress
         )
+    }
+    
+    func spaceAction() {
+        NotificationCenter.default.post(
+            name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
+    }
+    
+    func returnAction() {
+        NotificationCenter.default.post(
+            name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
     }
     
     func startRapidDeletion() {

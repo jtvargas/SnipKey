@@ -33,7 +33,7 @@ struct SnippetListItem: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .tint(Color.label)
                 .bold()
-                .font(.custom("IBMPlexMono-Medium", size: 16))
+                .font(.custom("IBMPlexMono-Medium", size: 14))
 
                 Text("#\(item.customTag?.name ?? "None")")
                 .frame(maxWidth: .infinity, alignment: .leading)

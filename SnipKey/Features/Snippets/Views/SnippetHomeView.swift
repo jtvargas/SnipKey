@@ -342,7 +342,7 @@ struct SnippetHomeView: View {
         isPresentedGuide = true
     }
     func handleDeleteSnippet(offsets: IndexSet) {
-        viewModel.deleteItems(offsets: offsets, snippets: snippets)
+        viewModel.deleteItems(offsets: offsets, snippets: getSnippetItems())
     }
     func toggleSnippetFiles() {
         self.isPresentingSnippetFiles.toggle()

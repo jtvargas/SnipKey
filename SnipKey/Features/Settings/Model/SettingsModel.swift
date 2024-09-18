@@ -9,35 +9,36 @@ import Foundation
 import SwiftData
 
 enum KeyboardAfterPasteAction: String, CaseIterable, Identifiable, Codable {
-  case rtrn, space, change, changeReturn, nothing
-  var id: String { return self.rawValue }
-  var displayText: String {
-    switch self {
-    case .rtrn:
-      return "Return"
-    case .changeReturn:
-      return "Return + Switch"
-    case .change:
-      return "Switch"
-    case .space:
-      return "Space"
-    case .nothing:
-      return "Nothing"
+    case rtrn, space, change, changeReturn, nothing
+    var id: String { return self.rawValue }
+    var displayText: String {
+        switch self {
+        case .rtrn:
+            return "Return"
+        case .changeReturn:
+            return "Return + Switch"
+        case .change:
+            return "Switch"
+        case .space:
+            return "Space"
+        case .nothing:
+            return "Nothing"
+        }
     }
-  }
-
+    
 }
 
 @Model
 final class SettingsModel {
-  var settingsId: String = "SnipKey-Settings"
-
-  var testString: String = "Hello there"
-
-  var afterPasteAction: KeyboardAfterPasteAction = KeyboardAfterPasteAction.space
-
-  init(afterPasteAction: KeyboardAfterPasteAction = .space) {
-    self.settingsId = "SnipKey-Settings"
-    self.afterPasteAction = afterPasteAction
-  }
+    var settingsId: String = "SnipKey-Settings"
+    
+    var testString: String = "Hello there"
+    
+    var afterPasteAction: KeyboardAfterPasteAction = KeyboardAfterPasteAction.space
+    
+    
+    init(afterPasteAction: KeyboardAfterPasteAction = .space) {
+        self.settingsId = "SnipKey-Settings"
+        self.afterPasteAction = afterPasteAction
+    }
 }

@@ -532,6 +532,7 @@ struct SnippetForm: View {
             
             let newFile = snippetViewModel.createData(type: .image, data: contentFileData!, fileFormatType: contentFileFormatType!)
             newFile.snippet?.append(item)
+            item.file = newFile
         }
         
     }
