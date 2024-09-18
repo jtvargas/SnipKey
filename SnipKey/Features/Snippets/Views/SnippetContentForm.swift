@@ -26,16 +26,19 @@ struct SnippetContentForm: View {
         case .txt:
             TextContentView(contentValue: $contentValue)
         case .image:
-            ImageContentView(
-                selectedImage: $selectedImage,
-                selectedImageData: $contentData,
-                selectedImageMimeType: $selectedFileMimeType
-            )
+                ImageContentView(
+                    selectedImage: $selectedImage,
+                    selectedImageData: $contentData,
+                    selectedImageMimeType: $selectedFileMimeType
+                )
+            
         case .file:
             FileContentView(contentData: $contentData, selectedFileMimeType: $selectedFileMimeType)
         default:
             EmptyView()
         }
+        
+      
     }
 }
 
@@ -110,10 +113,6 @@ private struct ImageContentView: View {
                 selectedImage: $selectedImage,
                 selectedImageData: $selectedImageData
             )
-            
-            if !isKeyboardExtensionEnabled() {
-                KeyboardAccessWarning()
-            }
         }
         .task(id: selectedImage) {
             await loadSelectedImage()
@@ -353,22 +352,43 @@ private struct SelectFileButton: View {
     }
 }
 
-private struct KeyboardAccessWarning: View {
+struct KeyboardAccessWarning: View {
+    @Environment(\.colorScheme) var colorScheme
+    
     var body: some View {
-        Label {
-            VStack {
-                Text("To use image snippets, please enable full access for the keyboard in your device's keyboard settings.")
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(.yellow)
-                Button(action: openSettings) {
-                    Text("Go to Settings")
-                        .underline()
-                        .padding(.top, 4)
-                }
+                Text("Enable Full Access & Shortcuts")
+                    .font(.headline)
+                    .foregroundColor(.primary)
             }
-        } icon: {
-            Image(systemName: "info")
-                .foregroundColor(.yellow)
+            
+            Text("You can save image/file snippets, but to use them in the keyboard extension, enable 'Full Access' & 'Shortcuts' in your device's settings.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Button {
+                openSettings()
+            } label :{
+                Text("Go to Settings")
+                    .font(.subheadline.weight(.medium))
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 16)
+                    .background(Color.yellow.opacity(0.2))
+                    .foregroundColor(colorScheme == .dark ? .yellow : .black)
+                    .cornerRadius(8)
+            }
         }
+        .padding(16)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.yellow, lineWidth: 1)
+        )
     }
     
     private func openSettings() {

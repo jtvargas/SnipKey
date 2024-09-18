@@ -47,7 +47,7 @@ struct KeyboardStatusView: View {
                         }
                         
                         
-                        Label("Images need Full Access enabled", systemImage: "info.square.fill")
+                        Label("Images need Full Access & Shortcuts enabled", systemImage: "info.square.fill")
                             .padding(.top, 4)
                             .foregroundColor(Color.secondaryLabel)
                             .symbolEffect(.pulse)

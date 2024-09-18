@@ -325,6 +325,10 @@ struct SnippetForm: View {
                                 
                                 
                             }
+                        }, footer: VStack {
+                            if !isKeyboardExtensionEnabled() && (type == .image || type == .file){
+                                KeyboardAccessWarning()
+                            }
                         }) {
                             SnippetContentForm(
                                 type: type,
@@ -337,6 +341,7 @@ struct SnippetForm: View {
                         }
                         .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
                         
+                                       
                         
                         Section(
                             header: Text("tag"),

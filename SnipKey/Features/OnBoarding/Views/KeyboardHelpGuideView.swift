@@ -31,7 +31,7 @@ let keyboardGuideItems: [BoardingItem] = [
   BoardingItem(
     title: "➕ Add Some **Magic**",
     information:
-      "Tap **Add New Keyboard** to unveil all available keyboards on your device. \n\n **NOTE: If you want to store images, you need to give Full Access to the keyboard by Apple policies.**",
+      "Tap **Add New Keyboard** to unveil all available keyboards on your device. \n\n **NOTE: If you want to store images, you need to give Full Access & Shortcuts to the keyboard by Apple policies.**",
     image: "add-new-section-white",
     darkImage: "add-new-section-dark"
   ),

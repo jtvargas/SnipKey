@@ -283,7 +283,7 @@ struct KeyboardView: View {
                                 .transition(.scale.combined(with: .opacity))
                                 .animation(.easeInOut, value: showCreateSnippetCTA)
                         } else {
-                            Text("Enable full access to quickly create snippets from selected text.")
+                            Text("Enable Full Access to quickly create snippets from selected text.")
                                 .foregroundColor(.secondary)
                                 .font(.custom("IBMPlexMono-Regular", size: 12))
                                 .padding(.top)

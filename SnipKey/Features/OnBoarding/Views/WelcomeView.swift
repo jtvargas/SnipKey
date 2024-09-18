@@ -31,7 +31,7 @@ let welcomeItems: [BoardingItem] = [
   BoardingItem(
     title: "Before start✋\n\nLet's Set Up Your Keyboard",
     information:
-      "Enable and start using the keyboard extension in just a few steps:\n\n1. Go to **Settings** > **General** > **Keyboard** > **Keyboards**.\n\n2. Tap **Add New Keyboard** and select **SnipKey** from the list.\n\n3. Enable **Allow Full Access** to utilize all features securely (Images, Fast snippet creation...).",
+      "Enable and start using the keyboard extension in just a few steps:\n\n1. Go to **Settings** > **General** > **Keyboard** > **Keyboards**.\n\n2. Tap **Add New Keyboard** and select **SnipKey** from the list.\n\n3. Enable **Allow Full Access & Shortcuts** to utilize all features securely (Images, Fast snippet creation...).",
     image: nil,
     action: { openPhoneSettings() },
     actionLabel: "Go to Settings"
