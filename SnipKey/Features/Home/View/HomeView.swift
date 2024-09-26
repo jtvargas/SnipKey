@@ -70,14 +70,14 @@ struct HomeView: View {
                             onKeyboardStatusPress: handleOnKeyboardStatusPress
                         )
                         .pressable()
-                        .padding(.horizontal)
-                        .padding(.top)
-                        .sheet(
-                            isPresented: $isPresentedGuide,
-                            content: {
-                                KeyboardHelpGuideView(isPresented: $isPresentedGuide)
-                            })
                     }
+                    .padding(.horizontal)
+                    .padding(.top)
+                    .sheet(
+                        isPresented: $isPresentedGuide,
+                        content: {
+                            KeyboardHelpGuideView(isPresented: $isPresentedGuide)
+                        })
                 }
                 
                 ZStack(alignment:.bottom) {
@@ -275,7 +275,7 @@ struct HomeView: View {
         } detail: {
             Group{
                 HStack{
-                    Image("icon-snipkey")
+                    Image("snipkey-icon-new")
                         .resizable()
                         .frame(width: 65, height: 68)
                         .clipShape(RoundedRectangle( cornerRadius: 6))

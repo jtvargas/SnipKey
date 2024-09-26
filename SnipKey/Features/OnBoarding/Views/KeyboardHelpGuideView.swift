@@ -22,32 +22,25 @@ let keyboardGuideItems: [BoardingItem] = [
   BoardingItem(
     title: "Dive into **Settings**",
     information:
-      "Head to **Settings > General > Keyboards** and find the **SnipKey Keyboard** option.",
-    image: "keyboard-section-white",
-    darkImage: "keyboard-section-dark",
+      "Head to **App Settings > Keyboards**",
+    image: "settings-white-keyboard",
+    darkImage: "settings-dark-keyboard",
     action: { openPhoneSettings() },
     actionLabel: "Go to Settings"
   ),
   BoardingItem(
     title: "➕ Add Some **Magic**",
     information:
-      "Tap **Add New Keyboard** to unveil all available keyboards on your device. \n\n **NOTE: If you want to store images, you need to give Full Access & Shortcuts to the keyboard by Apple policies.**",
-    image: "add-new-section-white",
-    darkImage: "add-new-section-dark"
-  ),
-  BoardingItem(
-    title: "🔍 Find **SnipKey**",
-    information:
-      "Scroll through the list and select **SnipKey** to add your custom keyboard.",
-    image: "select-section-white",
-    darkImage: "select-section-dark"
+      "To use basic features (text/URLs), enable the **'Shortcuts'** toggle.\n\nFor advanced features (images/PDFs/quick creation), enable **'Full Access'**.\n\n**Note**: **Full Access** and **Shortcuts** must be enabled to manipulate data between the keyboard extension and the app per Apple policies.",
+    image: "settings-white-keyboard2",
+    darkImage: "settings-dark-keyboard2"
   ),
   BoardingItem(
     title: "🎉 Ready, Set, **Type**!",
     information:
-      "You're all set! Enjoy typing with **SnipKey** everywhere and access your snippets effortlessly.",
-    image: "keyboard-switch-white",
-    darkImage: "keyboard-switch-dark"
+      "You're all set! Enjoy using **SnipKey** to access your snippets easily.\n\nIf you encounter setup issues, **close** the app, **open a text editor**, **switch** to the SnipKey keyboard, then **reopen** the app. If problems persist, please contact us via the settings screen.",
+    image: "keyboard-switch",
+    darkImage: "keyboard-switch"
   ),
 ]
 
@@ -60,9 +53,13 @@ struct KeyboardHelpGuideView: View {
   // MARK: - BODY
   var body: some View {
     TabView(selection: $viewId) {
+    
       ForEach(items.indices) { index in
-        BoardingCardView(boardingItem: items[index], onRightActionPress: nextItem)
-          .tag(index)
+          ScrollView{
+              BoardingCardView(boardingItem: items[index], onRightActionPress: nextItem)
+                .tag(index)
+          }
+        
       }  //: LOOP
 
     }  //: TAB
@@ -75,7 +72,7 @@ struct KeyboardHelpGuideView: View {
       content: {
         if viewId != items.count - 1 {
           Button(action: closeWelcome) {
-            Text("Skip")
+            Text("Close")
               .tint(Color.label)
               .bold()
               .font(.custom("IBMPlexMono-Medium", size: 16))

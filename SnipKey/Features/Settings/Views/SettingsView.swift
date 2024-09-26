@@ -28,6 +28,7 @@ struct SettingsView: View {
     @State private var showingAlert = false
     @State private var action: KeyboardAfterPasteAction = .rtrn
     @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .rtrn)
+    @State var isPresentedGuide: Bool = false
     
     @State private var keyboardValueTest: String = ""
     
@@ -79,11 +80,15 @@ struct SettingsView: View {
                             showAboutApp.toggle()
                         } label: {
                             Label("More About The App", systemImage: "person.crop.circle.badge.fill")
-                                .symbolRenderingMode(.hierarchical)
-                                    .foregroundStyle(
-                                        .white
-                                    )
                         }
+                        
+                        Button {
+//                            isPresentingSettings = false
+                            isPresentedGuide.toggle()
+                        } label: {
+                            Label("Set Up Keyboard Extension", systemImage: "gear.circle")
+                        }
+                        
                         Button {
                             isPresentingSettings = false
                             showWelcomeView.toggle()
@@ -167,6 +172,11 @@ struct SettingsView: View {
                 }
             }
         }
+        .sheet(
+            isPresented: $isPresentedGuide,
+            content: {
+                KeyboardHelpGuideView(isPresented: $isPresentedGuide)
+            })
         .alert("Are you sure you want to reset the keyboard settings?", isPresented: $showingAlert) {
             Button("Reset Settings", role: .destructive) {
                 resetKeyboardSettings()

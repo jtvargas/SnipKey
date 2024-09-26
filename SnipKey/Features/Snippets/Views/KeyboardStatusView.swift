@@ -88,10 +88,14 @@ struct KeyboardStatusView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                GradientBorder(
-                    gradient: borderBoxColorGradient,
-                    lineWidth: $lineWidth
-                )
+                ZStack{
+                    Color.systemBackground
+                    GradientBorder(
+                        gradient: borderBoxColorGradient,
+                        lineWidth: $lineWidth
+                    )
+                }
+                
             )
             .font(.custom("IBMPlexMono-Bold", size: 14))
             .tint(Color.label)
