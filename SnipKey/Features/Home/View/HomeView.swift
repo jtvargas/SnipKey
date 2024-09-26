@@ -12,9 +12,10 @@ import CloudKitSyncMonitor
 import UniformTypeIdentifiers
 import AlertToast
 
-struct SnippetHomeView: View {
+struct HomeView: View {
     @AppStorage("isRequestedRating") var isRequestedRating: Bool = false
-    
+    @AppStorage("isKeyboardShortcutEnabled") var isKeyboardShortcutEnabled: Bool = false
+
     @available(iOS 14.0, *)
     @ObservedObject var syncMonitor = SyncMonitor.shared
     
@@ -45,13 +46,27 @@ struct SnippetHomeView: View {
     @Query(sort: \SnippetFile.id, order: .reverse, animation: .bouncy) private var files:
     [SnippetFile]
     
+    @State private var hasFullAccess = false
+    
+    func checkFullAccessKy() {
+        // Attempt to access shared UserDefaults from App Group
+        if let userDefaults = UserDefaults(suiteName: "group.snipkey") {
+            // Try to read a known value (written by the extension)
+            if userDefaults.bool(forKey: "fullAccessGranted") {
+                hasFullAccess = true
+            } else {
+                hasFullAccess = false
+            }
+        }
+    }
+    
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility){
             VStack  {
                 if !snippets.isEmpty {
                     Group {
                         KeyboardStatusView(
-                            isActive: isKeyboardActive,
+                            isShortcutsActive: isKeyboardShortcutEnabled,
                             onKeyboardStatusPress: handleOnKeyboardStatusPress
                         )
                         .pressable()
@@ -127,12 +142,12 @@ struct SnippetHomeView: View {
                             }
                             .pressable()
                             .sheet(isPresented: $isPresentedWelcomeInfo) {
-                                OnboardingView(appName: "SnipKey",showOnboarding: $isPresentedWelcomeInfo, features: [
-                                    Feature(title: "Create Snippets/Shortcuts", description: "Craft and instantly use snippets across any apps.", icon: "doc.on.doc.fill"),
-                                    Feature(title: "Tag & Organize", description: "Sort snippets swiftly with tags.", icon: "tag.fill"),
-                                    Feature(title: "Keyboard Quick-Use", description: "Access all snippets directly through the keyboard extension..", icon: "keyboard.fill"),
-                                    Feature(title: "Lock Snippets", description: "Secure sensitive data with encryption and biometrics.", icon: "lock.fill"),
-                                    Feature(title: "Access Everywhere", description: "Sync and secure data across devices with iCloud.", icon: "cloud.fill"),
+                                OnboardingView(appName: "SnipKey", showOnboarding: $isPresentedWelcomeInfo, features: [
+                                    Feature(title: "Create & Use Snippets", description: "Craft snippets, use them anywhere.", icon: "doc.on.doc.fill"),
+                                    Feature(title: "Keyboard Extension", description: "Access snippets directly from keyboard.", icon: "keyboard.fill"),
+                                    Feature(title: "Organize with Tags", description: "Sort snippets using quick tags.", icon: "tag.fill"),
+                                    Feature(title: "Secure Data", description: "Encrypt sensitive snippets.", icon: "lock.fill"),
+                                    Feature(title: "iCloud Sync", description: "Access across all your devices.", icon: "cloud.fill"),
                                 ], color: Color.label)
                             }
                             
@@ -400,6 +415,6 @@ func isKeyboardExtensionEnabled() -> Bool {
 #Preview {
     let container = SnipKeyDataManager().makeSharedContainer()
     
-    return SnippetHomeView()
+    return HomeView()
         .modelContainer(container)
 }

@@ -26,6 +26,11 @@ class KeyboardViewController: UIInputViewController {
         // Add custom view sizing constraints here
     }
     
+    // Helper method to check if full access is enabled
+    func hasFullAccess() -> Bool {
+        return self.hasFullAccess
+    }
+    
     func sendImageData(snippet: SnippetItem) {
         if self.hasFullAccess {
             guard
@@ -71,10 +76,10 @@ class KeyboardViewController: UIInputViewController {
     }
     
     
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
         
@@ -122,6 +127,7 @@ class KeyboardViewController: UIInputViewController {
 //            Switch Keyboard
             self.advanceToNextInputMode()
         }
+        
         
         // Delete text
 //        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "deleteKey"), object: nil, queue: nil){ _ in

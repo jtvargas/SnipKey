@@ -9,6 +9,9 @@ import SwiftData
 import SwiftUI
 
 struct SettingsView: View {
+    @AppStorage("showWelcomeView") var showWelcomeView: Bool = false
+    @AppStorage("showAboutApp") var showAboutApp: Bool = false
+    
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
     @Environment(\.openURL) private var openURL
@@ -72,6 +75,23 @@ struct SettingsView: View {
                     
                     Section("About") {
                         Button {
+                            isPresentingSettings = false
+                            showAboutApp.toggle()
+                        } label: {
+                            Label("More About The App", systemImage: "person.crop.circle.badge.fill")
+                                .symbolRenderingMode(.hierarchical)
+                                    .foregroundStyle(
+                                        .white
+                                    )
+                        }
+                        Button {
+                            isPresentingSettings = false
+                            showWelcomeView.toggle()
+                        } label: {
+                            Label("Show Welcome Message", systemImage: "hand.wave.fill")
+                        }
+                        
+                        Button {
                             if let url = URL(string: "https://snipkey.jrtv.online") {
                                 openURL(url)
                             }
@@ -95,6 +115,16 @@ struct SettingsView: View {
                             }
                         } label: {
                             Label("Suggest Feature", systemImage: "square.and.pencil.circle.fill")
+                        }
+                        
+                        Button {
+                            let urlString = "https://snipkey.jrtv.online/contact-us"
+                            print("url: \(urlString)")
+                            if let url = URL(string: urlString) {
+                                openURL(url)
+                            }
+                        } label: {
+                            Label("Contact Us", systemImage: "tray.circle.fill")
                         }
                     }
                     

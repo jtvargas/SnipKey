@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "sandmind-icon-final.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

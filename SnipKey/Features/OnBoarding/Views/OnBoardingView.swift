@@ -27,6 +27,7 @@ struct Feature: Identifiable {
 
 struct OnboardingView: View {
     @Environment(\.colorScheme) var colorScheme
+    @AppStorage("showAboutApp") var showAboutApp: Bool = false
     
     @State var appName: String
     
@@ -41,7 +42,7 @@ struct OnboardingView: View {
         VStack {
             Group{
                 HStack{
-                    Image("icon-snipkey")
+                    Image("snipkey-icon-new")
                         .resizable()
                         .frame(width: 65, height: 68)
                         .clipShape(RoundedRectangle( cornerRadius: 6))
@@ -53,7 +54,6 @@ struct OnboardingView: View {
                         
                 }
                 .padding(.top, 50)
-                
             }
             
             Spacer()
@@ -90,6 +90,16 @@ struct OnboardingView: View {
                     .padding(.horizontal,20)
                     .padding(.bottom, 20)
                 }
+                Button {
+                    showOnboarding = false
+                    showAboutApp = true
+                } label: {
+                    Label("About the App", systemImage: "questionmark.circle.fill")
+                        .foregroundStyle(.blue.gradient)
+                        .underline()
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .buttonStyle(.plain)
             }
             Spacer()
             VStack {

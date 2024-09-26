@@ -11,7 +11,15 @@ import TipKit
 
 @main
 struct SnipKeyApp: App {
+    @Environment(\.scenePhase) var scenePhase
     @AppStorage("isOnboarding") var isOnboarding: Bool = true
+    
+    @AppStorage("showAboutApp") var showAboutApp: Bool = false
+    @AppStorage("showWelcomeView") var showWelcomeView: Bool = false
+    @AppStorage("isWelcomeAlreadyDisplayed") var isWelcomeAlreadyDisplayed: Bool = false
+    
+    @AppStorage("isKeyboardShortcutEnabled") var isKeyboardShortcutEnabled: Bool = false
+    
     @State private var showSplashScreen = true
     private let container = SnipKeyDataManager().makeSharedContainer()
 //    private let settingsViewModel = SettingsViewModel()
@@ -38,19 +46,39 @@ struct SnipKeyApp: App {
                     .onAppear(){
                         snippetViewModel.modelContext = container.mainContext
                         DispatchQueue.main
-                            .asyncAfter(deadline: .now() + (isOnboarding ? 2.2 : 1.4)){
+                            .asyncAfter(deadline: .now() +  1.2){
                                 showSplashScreen.toggle()
                             }
                     }
                 
-            } else if isOnboarding {
-                WelcomeView(skipCallback: emptyCallback)
             } else {
-                SnippetHomeView()
+                HomeView()
+                    .sheet(isPresented: $showAboutApp){
+                        DevAbout()
+                    }.sheet(isPresented: $showWelcomeView){
+                        OnboardingStepperView()
+                    }
                     .onAppear() {
                         settingsViewModel.setupKeyboardSettings()
+                        
+                        if !isWelcomeAlreadyDisplayed {
+                            DispatchQueue.main
+                                .asyncAfter(deadline: .now() +  1.0){
+                                    showWelcomeView = true
+                                    isWelcomeAlreadyDisplayed = true
+                                }
+                        }
                     }
                     .environment(settingsViewModel)
+                    .onChange(of: scenePhase) { oldPhase, newPhase in
+                        if newPhase == .active {
+                            isKeyboardShortcutEnabled = isShortcutsKeyboardEnabled()
+                        } else if newPhase == .inactive {
+                            print("Inactive")
+                        } else if newPhase == .background {
+                            print("Background")
+                        }
+                    }
                 
             }
         }

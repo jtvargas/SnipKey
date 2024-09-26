@@ -200,10 +200,13 @@ struct KeyboardView: View {
         return SettingsModel(afterPasteAction: .space)
     }
     
+    var hasSecureSnippets: Bool {
+        return snippets.contains { $0.isSecure }
+    }
+    
     
     var body: some View {
         ZStack {
-            
             
             VisualEffectViewKeyboard(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
 //                .edgesIgnoringSafeArea(.all)
@@ -252,8 +255,11 @@ struct KeyboardView: View {
                     EmptyView()
                     Spacer()
                     
-                    Label("\(isUnlocked ? "Snippets Unlocked" : "Snippets Locked")", systemImage: "\(isUnlocked ? "lock.open" : "lock")")
-                        .foregroundStyle(.white.gradient)
+                    if hasSecureSnippets {
+                        Label("\(isUnlocked ? "Vault Open" : "Vault Locked")", systemImage: "\(isUnlocked ? "lock.open" : "lock")")
+                            .foregroundStyle(Color.secondaryLabel)
+                    }
+                   
                     
                     
                     Spacer()
@@ -555,6 +561,13 @@ struct KeyboardView: View {
         return String(Character(scalar))
     }
     
+//    to be able to send a notification to keyboard and verify if has full access and set on variable key
+    func keyboardAppearCheck() {
+        print("keyboard appear")
+        NotificationCenter.default.post(
+            name: NSNotification.Name(rawValue: "onAppearKeyboard"), object: String(UnicodeScalar(0x0020)!))
+    }
+    
     func actionKeyboardAfterPaste(actionKey: KeyboardAfterPasteAction) {
         switch actionKey {
         case .rtrn:
@@ -691,7 +704,6 @@ struct KeyboardView: View {
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "hasFullAccess"), object: nil, queue: nil){ notification in
             
             if let fullAccess = notification.object as? Bool {
-                
                 hasFullAccess = fullAccess
                 
             }

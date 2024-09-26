@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "snipkey-secure.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

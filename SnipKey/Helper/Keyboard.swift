@@ -36,6 +36,32 @@ func copyImageToClipboard(snippet: SnippetItem) -> Bool? {
 }
 
 
+func isKeyboardExtensionFullAccessGranted() -> Bool {
+    let tempKey = "KeyboardExtensionFullAccessCheck"
+    let tempValue = "TemporaryValue"
+    
+    // Store the original value if it exists
+    let originalValue = UIPasteboard.general.string
+    
+    // Try to set a value in the pasteboard
+    UIPasteboard.general.setValue(tempValue, forPasteboardType: tempKey)
+    
+    // Try to retrieve the value
+    let retrievedValue = UIPasteboard.general.value(forPasteboardType: tempKey) as? String
+    
+    // Clean up by restoring the original value or removing our temp value
+    if let original = originalValue {
+        UIPasteboard.general.string = original
+    } else {
+        UIPasteboard.general.items = UIPasteboard.general.items.filter { item in
+            !item.keys.contains(where: { $0 == tempKey })
+        }
+    }
+    
+    // If we could set and retrieve the value, full access is granted
+    return retrievedValue == tempValue
+}
+
 
 func checkFullAccess() -> Bool
 {
@@ -54,4 +80,44 @@ func checkFullAccess() -> Bool
         }
     }
     return hasFullAccess
+    
+//   return isKeyboardExtensionFullAccessGranted()
+}
+
+func isKeyboardExtensionActive() -> Bool {
+    guard let bundleID = Bundle.main.bundleIdentifier else {
+        return false
+    }
+    
+    let activeInputModes = UITextInputMode.activeInputModes
+    
+    return activeInputModes.contains { inputMode in
+        inputMode.value(forKey: "identifier") as? String == bundleID + ".SnipKeyboard"
+    }
+}
+
+func isShortcutsKeyboardEnabled() -> Bool {
+    guard let appBundleIdentifier = Bundle.main.bundleIdentifier else {
+        fatalError("isKeyboardExtensionEnabled(): Cannot retrieve bundle identifier.")
+    }
+    
+    UserDefaults.standard.dictionaryRepresentation()
+    
+    guard
+        let keyboards = UserDefaults.standard.dictionaryRepresentation()["AppleKeyboards"] as? [String]
+    else {
+        // There is no key `AppleKeyboards` in NSUserDefaults. That happens sometimes.
+        return false
+    }
+    
+    print("KEYBOARDS: \(keyboards)")
+    let keyboardExtensionBundleIdentifierPrefix = appBundleIdentifier + ".SnipKeyboard"
+    
+    for keyboard in keyboards {
+        if keyboard.hasPrefix(keyboardExtensionBundleIdentifierPrefix) {
+            return true
+        }
+    }
+    
+    return false
 }
