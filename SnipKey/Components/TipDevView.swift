@@ -82,6 +82,8 @@ struct TipDevView: View {
     @Environment(\.requestReview) var requestReview
     @EnvironmentObject private var revenueCat: RevenueCatManager
     
+    @State private var isButtonEnabled: Bool = true
+    
     var body: some View {
         ScrollView {
             Image("snipkey-icon-new")
@@ -105,8 +107,16 @@ struct TipDevView: View {
                             text: tipJar.name,
                             price: package.localizedPriceString
                         ) {
-                            revenueCat.purchase(package: package)
+                            
+                            if isButtonEnabled {
+                                revenueCat.purchase(package: package)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
+                                    isButtonEnabled = true
+                                }
+                            }
+                         
                         }
+                        .disabled(!isButtonEnabled)
                     }
                 }
             }
