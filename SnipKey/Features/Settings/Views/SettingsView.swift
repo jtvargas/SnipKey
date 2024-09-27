@@ -11,6 +11,7 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("showWelcomeView") var showWelcomeView: Bool = false
     @AppStorage("showAboutApp") var showAboutApp: Bool = false
+    @AppStorage("showTipDev") var showTipDev: Bool = false
     
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
@@ -75,6 +76,13 @@ struct SettingsView: View {
                    
                     
                     Section("About") {
+                        Button {
+                            isPresentingSettings = false
+                            showTipDev.toggle()
+                        } label: {
+                            Label("Support Development", systemImage: "wrench.and.screwdriver.fill")
+                        }
+                        
                         Button {
                             isPresentingSettings = false
                             showAboutApp.toggle()

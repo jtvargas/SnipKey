@@ -1,5 +1,5 @@
 {
-  "originHash" : "be17c3e8eee2bea430257ea6d93a507683974db34503282710f61081bc215a74",
+  "originHash" : "8c85c23ec6f1877401f672d83c00de5331bca4f740a09ca806c413ef3369b422",
   "pins" : [
     {
       "identity" : "alerttoast",
@@ -26,6 +26,15 @@
       "state" : {
         "revision" : "cc014eba4b65f689cadc281ad925de5607f2adc9",
         "version" : "1.0.3"
+      }
+    },
+    {
+      "identity" : "purchases-ios-spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RevenueCat/purchases-ios-spm.git",
+      "state" : {
+        "revision" : "10a9f1d167b5e0cec5c1186eda04f7f36e0a06f3",
+        "version" : "5.4.0"
       }
     },
     {

@@ -21,6 +21,9 @@
 		066372112BED855C00226EE4 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = 066372102BED855C00226EE4 /* Pow */; };
 		066372132BED86E300226EE4 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = 066372122BED86E300226EE4 /* Pow */; };
 		066372172BEDC0AC00226EE4 /* CloudKitSyncMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = 066372162BEDC0AC00226EE4 /* CloudKitSyncMonitor */; };
+		066B83122CA707FE00B95904 /* RevenueCatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066B83102CA707FE00B95904 /* RevenueCatManager.swift */; };
+		066B83152CA708B300B95904 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 066B83142CA708B300B95904 /* RevenueCat */; };
+		066B83172CA708B300B95904 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 066B83162CA708B300B95904 /* RevenueCatUI */; };
 		066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */; };
 		066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */; };
 		066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69D62BB9831900D971E8 /* KeyboardViewController.swift */; };
@@ -54,6 +57,7 @@
 		06CA671A2CA4E81500CAD9E0 /* MorphingSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA67192CA4E81500CAD9E0 /* MorphingSymbolView.swift */; };
 		06CA671C2CA4E8A800CAD9E0 /* OnboardingStepperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA671B2CA4E8A800CAD9E0 /* OnboardingStepperView.swift */; };
 		06CA671E2CA5B6BF00CAD9E0 /* AboutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA671D2CA5B6BF00CAD9E0 /* AboutApp.swift */; };
+		06CA67202CA6EFAB00CAD9E0 /* TipDevView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA671F2CA6EFAB00CAD9E0 /* TipDevView.swift */; };
 		06D428DE2CA4BC10005A5445 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D428DD2CA4BC10005A5445 /* HomeView.swift */; };
 		06D428E12CA4E51B005A5445 /* Page.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D428E02CA4E51B005A5445 /* Page.swift */; };
 		06D428E42CA4E580005A5445 /* StaggeredImagesList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D428E32CA4E580005A5445 /* StaggeredImagesList.swift */; };
@@ -117,6 +121,7 @@
 		0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKey.entitlements; sourceTree = "<group>"; };
 		0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKeyboard.entitlements; sourceTree = "<group>"; };
 		0663720D2BED5DED00226EE4 /* HomeTips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTips.swift; sourceTree = "<group>"; };
+		066B83102CA707FE00B95904 /* RevenueCatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatManager.swift; sourceTree = "<group>"; };
 		066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
 		066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Splashscreen.swift; sourceTree = "<group>"; };
 		066E69D42BB9831900D971E8 /* SnipKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SnipKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -139,6 +144,7 @@
 		06CA67192CA4E81500CAD9E0 /* MorphingSymbolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorphingSymbolView.swift; sourceTree = "<group>"; };
 		06CA671B2CA4E8A800CAD9E0 /* OnboardingStepperView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStepperView.swift; sourceTree = "<group>"; };
 		06CA671D2CA5B6BF00CAD9E0 /* AboutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutApp.swift; sourceTree = "<group>"; };
+		06CA671F2CA6EFAB00CAD9E0 /* TipDevView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipDevView.swift; sourceTree = "<group>"; };
 		06D428DD2CA4BC10005A5445 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		06D428E02CA4E51B005A5445 /* Page.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Page.swift; sourceTree = "<group>"; };
 		06D428E32CA4E580005A5445 /* StaggeredImagesList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaggeredImagesList.swift; sourceTree = "<group>"; };
@@ -181,7 +187,9 @@
 			files = (
 				066372112BED855C00226EE4 /* Pow in Frameworks */,
 				06E7E2C02BD998860058D11E /* StoreKit.framework in Frameworks */,
+				066B83152CA708B300B95904 /* RevenueCat in Frameworks */,
 				06D827FE2BBDC7DC00305E18 /* SymbolPicker in Frameworks */,
+				066B83172CA708B300B95904 /* RevenueCatUI in Frameworks */,
 				066372172BEDC0AC00226EE4 /* CloudKitSyncMonitor in Frameworks */,
 				064D8A122BDC1E3200B9B65F /* SwiftUIMasonry in Frameworks */,
 				060399962BB8836E00A6E818 /* AlertToast in Frameworks */,
@@ -365,6 +373,7 @@
 				06D428E52CA4E5AB005A5445 /* LoopVideoView.swift */,
 				06CA67192CA4E81500CAD9E0 /* MorphingSymbolView.swift */,
 				06CA671D2CA5B6BF00CAD9E0 /* AboutApp.swift */,
+				06CA671F2CA6EFAB00CAD9E0 /* TipDevView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -409,6 +418,7 @@
 				061ED3CD2BC43611006A6E47 /* Biometrics.swift */,
 				06E7E2B82BD97FB40058D11E /* Keyboard.swift */,
 				0681F1D12C9A172E00459FD3 /* AppIconProvider.swift */,
+				066B83102CA707FE00B95904 /* RevenueCatManager.swift */,
 			);
 			path = Helper;
 			sourceTree = "<group>";
@@ -481,6 +491,8 @@
 				064D8A112BDC1E3200B9B65F /* SwiftUIMasonry */,
 				066372102BED855C00226EE4 /* Pow */,
 				066372162BEDC0AC00226EE4 /* CloudKitSyncMonitor */,
+				066B83142CA708B300B95904 /* RevenueCat */,
+				066B83162CA708B300B95904 /* RevenueCatUI */,
 			);
 			productName = SnipKey;
 			productReference = 066FAF0A2BB216160086F135 /* SnipKey.app */;
@@ -519,6 +531,7 @@
 				064D8A102BDC1E3200B9B65F /* XCRemoteSwiftPackageReference "SwiftUIMasonry" */,
 				0663720F2BED855C00226EE4 /* XCRemoteSwiftPackageReference "Pow" */,
 				066372152BEDC0AC00226EE4 /* XCRemoteSwiftPackageReference "CloudKitSyncMonitor" */,
+				066B83132CA708B300B95904 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 			);
 			productRefGroup = 066FAF0B2BB216160086F135 /* Products */;
 			projectDirPath = "";
@@ -583,6 +596,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				06CA67202CA6EFAB00CAD9E0 /* TipDevView.swift in Sources */,
 				068C77CD2BB4C60C0008D9A1 /* SnippetViewModel.swift in Sources */,
 				063E4EAE2C757C5B000DAF1F /* EditTagView.swift in Sources */,
 				06AE13122BBB0D16008EAE98 /* SettingsView.swift in Sources */,
@@ -620,6 +634,7 @@
 				068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */,
 				066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */,
 				06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */,
+				066B83122CA707FE00B95904 /* RevenueCatManager.swift in Sources */,
 				06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */,
 				06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */,
 				0630BC102C6E89D700E8493B /* SnippetContentViewDisplay.swift in Sources */,
@@ -820,7 +835,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = SnipKey/SnipKey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
 				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				ENABLE_PREVIEWS = YES;
@@ -834,13 +849,13 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.0;
+				MARKETING_VERSION = 4.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -862,7 +877,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = SnipKey/SnipKey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
 				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				ENABLE_PREVIEWS = YES;
@@ -876,13 +891,13 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.0;
+				MARKETING_VERSION = 4.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -960,6 +975,14 @@
 				minimumVersion = 1.2.1;
 			};
 		};
+		066B83132CA708B300B95904 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.4.0;
+			};
+		};
 		06D827FC2BBDC7DC00305E18 /* XCRemoteSwiftPackageReference "SymbolPicker" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/xnth97/SymbolPicker.git";
@@ -995,6 +1018,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 066372152BEDC0AC00226EE4 /* XCRemoteSwiftPackageReference "CloudKitSyncMonitor" */;
 			productName = CloudKitSyncMonitor;
+		};
+		066B83142CA708B300B95904 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 066B83132CA708B300B95904 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		066B83162CA708B300B95904 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 066B83132CA708B300B95904 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
 		};
 		06D827FD2BBDC7DC00305E18 /* SymbolPicker */ = {
 			isa = XCSwiftPackageProductDependency;

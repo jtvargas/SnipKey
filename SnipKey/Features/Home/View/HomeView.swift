@@ -13,6 +13,7 @@ import UniformTypeIdentifiers
 import AlertToast
 
 struct HomeView: View {
+    @AppStorage("showTipDev") var showTipDev: Bool = false
     @AppStorage("isRequestedRating") var isRequestedRating: Bool = false
     @AppStorage("isKeyboardShortcutEnabled") var isKeyboardShortcutEnabled: Bool = false
 
@@ -230,8 +231,18 @@ struct HomeView: View {
                 }
                 
                 
+                
                 if !snippets.isEmpty {
                     if !files.isEmpty {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button{
+                                showTipDev = true
+                            } label:{
+                                Image(systemName: "gift.circle.fill")
+                            }
+                            
+                        }
+                        
                         ToolbarItem(placement: .topBarTrailing) {
                             Button(action: toggleSnippetFiles) {
                                 Image(systemName: "rectangle.grid.3x2.fill")
