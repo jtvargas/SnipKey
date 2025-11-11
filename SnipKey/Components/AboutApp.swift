@@ -151,7 +151,8 @@ struct DevAbout: View {
     ]
     
     let otherLinks = [
-        AppLink(name: "SandMind", description: "Emotion Tracker - Free", iconName: "sandmind-icon", url: URL(string: "https://app.sandmind.art/snipkey-access")!, isSystemIcon: false),
+        AppLink(name: "Hit21", description: "Minimalistic Blackjack - Free", iconName: "hit21-icon", url: URL(string: "https://go.jrtv.space/hit21-download")!, isSystemIcon: false),
+        AppLink(name: "More Free Apps", description: "Browse all my published apps", iconName: "store-icon", url: URL(string: "https://go.jrtv.space/apps")!, isSystemIcon: false),
     ]
     
     

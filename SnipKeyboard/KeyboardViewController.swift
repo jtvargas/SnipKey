@@ -12,13 +12,13 @@ import MobileCoreServices
 import UniformTypeIdentifiers
 
 class KeyboardViewController: UIInputViewController {
-
+    
     @IBOutlet var nextKeyboardButton: UIButton!
     
     var isLongPressing = false
     var deletionCount = 0
-//    let container = SnipKeyDataManager().makeSharedContainer()
-//    private let keyboardView = KeyboardViewExt()
+    //    let container = SnipKeyDataManager().makeSharedContainer()
+    //    private let keyboardView = KeyboardViewExt()
     
     override func updateViewConstraints() {
         super.updateViewConstraints()
@@ -79,7 +79,7 @@ class KeyboardViewController: UIInputViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
         
@@ -96,11 +96,14 @@ class KeyboardViewController: UIInputViewController {
         
         let contentView = UIHostingController(rootView: KeyboardViewExt())
         
+        contentView.view.backgroundColor = .clear
+        
         view.addKeyboardSubview(contentView.view)
+//        view.isOpaque = true
         
         
-//        Alternative way to inject swiftdata context to view
-//        view.addKeyboardSubview(UIHostingController(rootView: keyboardView.modelContext(container.mainContext)).view)
+        //        Alternative way to inject swiftdata context to view
+        //        view.addKeyboardSubview(UIHostingController(rootView: keyboardView.modelContext(container.mainContext)).view)
         
         // insert text to textInput
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ notification in
@@ -114,7 +117,7 @@ class KeyboardViewController: UIInputViewController {
                 default:
                     self.textDocumentProxy.insertText(snippet.content!)
                 }
-              
+                
             }
             
             if let text = notification.object as? String {
@@ -123,16 +126,16 @@ class KeyboardViewController: UIInputViewController {
         }
         
         // Listen to swicthKeyboard
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "switchKey"), object: nil, queue: nil){ _ in      
-//            Switch Keyboard
+        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "switchKey"), object: nil, queue: nil){ _ in
+            //            Switch Keyboard
             self.advanceToNextInputMode()
         }
         
         
         // Delete text
-//        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "deleteKey"), object: nil, queue: nil){ _ in
-//            self.textDocumentProxy.deleteBackward()
-//        }
+        //        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "deleteKey"), object: nil, queue: nil){ _ in
+        //            self.textDocumentProxy.deleteBackward()
+        //        }
         
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name(rawValue: "deleteKey"),
@@ -153,7 +156,7 @@ class KeyboardViewController: UIInputViewController {
         }
     }
     
-//    Simulate fast deletion
+    //    Simulate fast deletion
     func handleDelete(isLongPress: Bool) {
         if isLongPress {
             if !isLongPressing {
@@ -183,7 +186,7 @@ class KeyboardViewController: UIInputViewController {
     
     override func textWillChange(_ textInput: UITextInput?) {
         // The app is about to change the document's contents. Perform any preparation here.
-    
+        
     }
     
     override func textDidChange(_ textInput: UITextInput?) {
@@ -210,7 +213,6 @@ class KeyboardViewController: UIInputViewController {
                 name: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil)
         }
     }
-
 }
 
 

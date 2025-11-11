@@ -162,4 +162,7 @@ extension SnippetItem {
     static var dummy: SnippetItem {
         .init(title: "Dummy Test", content: st, type: .url, isSecure: false)
     }
+    static var dummy2: SnippetItem {
+        .init(title: "Dummy Test Test Long here and so on", content: st, type: .url, isSecure: false)
+    }
 }

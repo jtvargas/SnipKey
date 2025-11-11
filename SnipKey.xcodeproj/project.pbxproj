@@ -21,6 +21,9 @@
 		066372112BED855C00226EE4 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = 066372102BED855C00226EE4 /* Pow */; };
 		066372132BED86E300226EE4 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = 066372122BED86E300226EE4 /* Pow */; };
 		066372172BEDC0AC00226EE4 /* CloudKitSyncMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = 066372162BEDC0AC00226EE4 /* CloudKitSyncMonitor */; };
+		066952892EBE63C100CC89BC /* HomeView2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066952882EBE63C100CC89BC /* HomeView2.swift */; };
+		066952992EBEFAD900CC89BC /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066952982EBEFAD900CC89BC /* SearchView.swift */; };
+		0669529B2EBEFD3800CC89BC /* SnippetTagForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0669529A2EBEFD3800CC89BC /* SnippetTagForm.swift */; };
 		066B83122CA707FE00B95904 /* RevenueCatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066B83102CA707FE00B95904 /* RevenueCatManager.swift */; };
 		066B83152CA708B300B95904 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 066B83142CA708B300B95904 /* RevenueCat */; };
 		066B83172CA708B300B95904 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 066B83162CA708B300B95904 /* RevenueCatUI */; };
@@ -121,6 +124,9 @@
 		0662D7AB2BB9DD8A00DEC4B9 /* SnipKey.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKey.entitlements; sourceTree = "<group>"; };
 		0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SnipKeyboard.entitlements; sourceTree = "<group>"; };
 		0663720D2BED5DED00226EE4 /* HomeTips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTips.swift; sourceTree = "<group>"; };
+		066952882EBE63C100CC89BC /* HomeView2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView2.swift; sourceTree = "<group>"; };
+		066952982EBEFAD900CC89BC /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		0669529A2EBEFD3800CC89BC /* SnippetTagForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetTagForm.swift; sourceTree = "<group>"; };
 		066B83102CA707FE00B95904 /* RevenueCatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatManager.swift; sourceTree = "<group>"; };
 		066E69CC2BB8D11400D971E8 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
 		066E69CE2BB8E45A00D971E8 /* Splashscreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Splashscreen.swift; sourceTree = "<group>"; };
@@ -320,6 +326,7 @@
 				0630BC0D2C6E747100E8493B /* SnippetContentForm.swift */,
 				0630BC0F2C6E89D700E8493B /* SnippetContentViewDisplay.swift */,
 				063E4EAD2C757C5B000DAF1F /* EditTagView.swift */,
+				0669529A2EBEFD3800CC89BC /* SnippetTagForm.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -354,6 +361,8 @@
 			isa = PBXGroup;
 			children = (
 				06D428DD2CA4BC10005A5445 /* HomeView.swift */,
+				066952882EBE63C100CC89BC /* HomeView2.swift */,
+				066952982EBEFAD900CC89BC /* SearchView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -606,6 +615,7 @@
 				06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */,
 				0630BC0E2C6E747100E8493B /* SnippetContentForm.swift in Sources */,
 				06CA671C2CA4E8A800CAD9E0 /* OnboardingStepperView.swift in Sources */,
+				066952992EBEFAD900CC89BC /* SearchView.swift in Sources */,
 				06F4F3192BB6777E00399C78 /* SnippetListEmpty.swift in Sources */,
 				06CA671A2CA4E81500CAD9E0 /* MorphingSymbolView.swift in Sources */,
 				06E7E2BE2BD998390058D11E /* SubscriptionView.swift in Sources */,
@@ -619,11 +629,13 @@
 				066FAF0E2BB216160086F135 /* SnipKeyApp.swift in Sources */,
 				06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */,
 				064D8A142BDC1F0100B9B65F /* SnippetFilesView.swift in Sources */,
+				0669529B2EBEFD3800CC89BC /* SnippetTagForm.swift in Sources */,
 				06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */,
 				066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */,
 				06E7E2B92BD97FB40058D11E /* Keyboard.swift in Sources */,
 				06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */,
 				06AE130E2BBB09B5008EAE98 /* SettingsModel.swift in Sources */,
+				066952892EBE63C100CC89BC /* HomeView2.swift in Sources */,
 				06D428E62CA4E5AB005A5445 /* LoopVideoView.swift in Sources */,
 				0663720E2BED5DED00226EE4 /* HomeTips.swift in Sources */,
 				06F4F31F2BB71E8F00399C78 /* WelcomeView.swift in Sources */,
@@ -664,13 +676,13 @@
 				INFOPLIST_FILE = SnipKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Shortcuts;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey.SnipKeyboard";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -691,13 +703,13 @@
 				INFOPLIST_FILE = SnipKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Shortcuts;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey.SnipKeyboard";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -835,7 +847,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = SnipKey/SnipKey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
 				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				ENABLE_PREVIEWS = YES;
@@ -850,12 +862,12 @@
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.5;
+				MARKETING_VERSION = 5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -877,7 +889,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = SnipKey/SnipKey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
 				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				ENABLE_PREVIEWS = YES;
@@ -892,12 +904,12 @@
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.5;
+				MARKETING_VERSION = 5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

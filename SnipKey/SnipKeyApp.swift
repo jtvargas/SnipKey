@@ -58,7 +58,7 @@ struct SnipKeyApp: App {
                     }
                 
             } else {
-                HomeView()
+                HomeView2()
                     .sheet(isPresented: $showAboutApp){
                         DevAbout()
                     }.sheet(isPresented: $showWelcomeView){

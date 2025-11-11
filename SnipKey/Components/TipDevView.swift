@@ -152,16 +152,16 @@ struct TipDevView: View {
             .frame(maxWidth: .infinity)
             .padding()
             .background(Color.systemBackground)
-            .clipShape(.capsule)
+            .contentShape(Rectangle())
             .border(Color.label.gradient, width: 4)
             .foregroundColor(.label)
             .cornerRadius(6)
         }
-        .pressable()
+//        .pressable()
     }
 }
 
 #Preview {
     TipDevView()
-//        .environmentObject(RevenueCatManager.shared)
+        .environmentObject(RevenueCatManager.shared)
 }

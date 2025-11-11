@@ -43,6 +43,7 @@ struct Splashscreen: View {
         Spacer()
         ProgressView(value: progressValue, total: 1.0)
           .progressViewStyle(LinearProgressViewStyle())
+          .tint(.yellow)
         Spacer()
       }
       .padding(.top, 40)

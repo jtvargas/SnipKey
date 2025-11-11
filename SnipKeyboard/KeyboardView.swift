@@ -50,7 +50,7 @@ class KeyboardObserver: ObservableObject {
 }
 
 let layout = [
-    GridItem(.adaptive(minimum: 140, maximum: 200))
+    GridItem(.adaptive(minimum: 135, maximum: 200))
 ]
 
 struct SnippetImageKeyboard: View {
@@ -142,9 +142,10 @@ struct VisualEffectViewKeyboard: UIViewRepresentable {
 }
 
 enum SortOption: String, CaseIterable {
+    case alphabetical = "Albabetical"
     case dateCreated = "Date Created"
     case recentlyUsed = "Recently Used"
-    case alphabetical = "Albabetical"
+  
     
     var imageName: String {
         switch self {
@@ -169,7 +170,7 @@ struct KeyboardView: View {
     @Query(sort: \SnipTag.name) private var tags: [SnipTag]
     @Query() private var settings: [SettingsModel]
     
-    let columns = [GridItem(.adaptive(minimum: 150, maximum: 175), spacing: 6)]
+    let columns = [GridItem(.adaptive(minimum: 135, maximum: 175), spacing: 6)]
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
 //    let settingsViewModel = SettingsViewModel()
     
@@ -177,7 +178,7 @@ struct KeyboardView: View {
     @State private var hasFullAccess: Bool = false
     @State private var showCreateSnippetCTA = false
     @State private var showCreatedToast = false
-    @State var snippetsTest: [SnippetItem] = []
+    @State var snippetsTest: [SnippetItem] = [SnippetItem.dummy]
     @State private var showToast = false
     @State var snippetViewModel = SnippetViewModel()
     @State private var text: String = ""
@@ -189,8 +190,8 @@ struct KeyboardView: View {
      @State private var deleteTimer: Timer?
     
     // sort functionality
-    @State private var sortOption: SortOption = .alphabetical
-    @State private var sortOrder: SortOrder = .forward
+    @State private var sortOption: SortOption = .recentlyUsed
+    @State private var sortOrder: SortOrder =  .forward
         
     var currentKeyboardSettings: SettingsModel {
         if let myCurrentSettings = settings.first {
@@ -208,8 +209,9 @@ struct KeyboardView: View {
     var body: some View {
         ZStack {
             
-            VisualEffectViewKeyboard(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-//                .edgesIgnoringSafeArea(.all)
+//            VisualEffectViewKeyboard(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+            Color.clear
+                .edgesIgnoringSafeArea(.all)
             VStack {
                 //            For multiple/custom tags use this style, or a toggle list button
                 HStack(alignment: .center) {
@@ -304,21 +306,15 @@ struct KeyboardView: View {
                             Button {
                                 sentValue(snippet: snippet)
                             } label: {
-                                SnippetListItem(item: snippet)
-                                    .lineLimit(1) // Limit text to a single line
+                                SnippetListItemMinimal(item: snippet)
                                     .truncationMode(.tail)
-                                    .padding(8)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .stroke(Color.tertiarySystemBackground, lineWidth: 4)
-                                    )
                             }
-                            .shadow(color: .tertiaryLabel, radius: 1, x: 0, y: 0)
                             
                         }
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
+                    
                 }
                 
                 if selectedFilter != nil {
@@ -345,70 +341,9 @@ struct KeyboardView: View {
                         Spacer()
                     }
                     
-                    Button {
-                        spaceAction()
-                    } label: {
-                        // Using a system image to represent the delete key
-                        Image(systemName: "space")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 52, height: 20)
-                            .foregroundColor(.white)
-                            .padding(10)
-                            .background(Color.tertiaryLabel)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .shadow(radius: 5)
-                    }
-                    Button {
-                        returnAction()
-                    } label: {
-                        // Using a system image to represent the delete key
-                        Image(systemName: "return")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 30, height: 20)
-                            .foregroundColor(.white)
-                            .padding(10)
-                            .background(Color.tertiaryLabel)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .shadow(radius: 5)
-                    }
-                    
-                    
-                    Button {
-                        // Single tap action
-                                    deleteCharacter(isLongPress: false)
-                    } label: {
-                        // Using a system image to represent the delete key
-                        Image(systemName: "delete.left")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 20, height: 20)
-                            .foregroundColor(.white)
-                            .padding(10)
-                            .background(Color.tertiaryLabel)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .shadow(radius: 5)
-                    }
-                    .simultaneousGesture(
-                               LongPressGesture(minimumDuration: 0.5)
-                                   .onEnded { _ in
-                                       isLongPressing = true
-                                       deleteCharacter(isLongPress: true)
-                                       startRapidDeletion()
-                                   }
-                           )
-                           .simultaneousGesture(
-                               DragGesture(minimumDistance: 0)
-                                   .onEnded { _ in
-                                       if isLongPressing {
-                                           isLongPressing = false
-                                           stopRapidDeletion()
-                                       }
-                                   }
-                           )
-                    
-                    
+                   
+                    ButtonActionsView()
+                   
                     
                 }
                 .padding(.horizontal)
@@ -418,7 +353,7 @@ struct KeyboardView: View {
             }
         }
         .frame(height: 260)
-        .background(Color.tertiaryLabel)
+//        .background(Color.clear)
         .sensoryFeedback(.increase, trigger: selectedFilter)
         .onAppear {
             settingsViewModel.modelContext = modelContext
@@ -470,6 +405,63 @@ struct KeyboardView: View {
     }
     
     @ViewBuilder
+    func ButtonActionsView() -> some View {
+        Button {
+            spaceAction()
+        } label: {
+            Image(systemName: "space")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 52, height: 20)
+                .foregroundStyle(.blue.gradient)
+                .padding(10)
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        }
+        .glassEffect()
+        
+        Button {
+            returnAction()
+        } label: {
+            Image(systemName: "return")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 30, height: 20)
+                .foregroundStyle(.blue.gradient)
+                .padding(10)
+        }
+        .glassEffect()
+        
+        Button {
+            deleteCharacter(isLongPress: false)
+        } label: {
+            Image(systemName: "delete.left")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 20, height: 20)
+                .foregroundStyle(.blue.gradient)
+                .padding(10)
+        }
+        .glassEffect()
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in
+                    isLongPressing = true
+                    deleteCharacter(isLongPress: true)
+                    startRapidDeletion()
+                }
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onEnded { _ in
+                    if isLongPressing {
+                        isLongPressing = false
+                        stopRapidDeletion()
+                    }
+                }
+        )
+    }
+    
+    @ViewBuilder
     func MenuTags() -> some View {
         Menu {
             ForEach(tags, id: \.id) { tag in
@@ -496,18 +488,22 @@ struct KeyboardView: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(Color.secondary.opacity(0.1))
-            .cornerRadius(8)
+//            .background(Color.secondary.opacity(0.1))
+//            .cornerRadius(8)
            
         }
+        .glassEffect()
       
     }
     
     private func getSnippets() -> [SnippetItem] {
-        // Filter snippets
-        let filteredSnippets = selectedFilter.map { filter in
-            snippets.filter { $0.customTag == filter }
-        } ?? snippets
+        // Filter snippets based on selectedFilter
+            let filteredSnippets: [SnippetItem]
+            if let filter = selectedFilter {
+                filteredSnippets = snippets.filter { $0.customTag == filter }
+            } else {
+                filteredSnippets = snippets
+            }
         
         // Sort snippets
         return filteredSnippets.sorted { first, second in
@@ -515,16 +511,19 @@ struct KeyboardView: View {
             case .dateCreated:
                 let firstDate = first.creationDate ?? .distantPast
                 let secondDate = second.creationDate ?? .distantPast
-                return sortOrder == .forward ? firstDate < secondDate : firstDate > secondDate
+                // Most recent first when forward, oldest first when reverse
+                return sortOrder == .forward ? firstDate > secondDate : firstDate < secondDate
                 
             case .recentlyUsed:
                 let firstDate = first.lastTimeUsed ?? .distantPast
                 let secondDate = second.lastTimeUsed ?? .distantPast
-                return sortOrder == .forward ? firstDate < secondDate : firstDate > secondDate
+                // Most recent first when forward, oldest first when reverse
+                return sortOrder == .forward ? firstDate > secondDate : firstDate < secondDate
                 
             case .alphabetical:
                 let firstTitle = first.title?.lowercased() ?? ""
                 let secondTitle = second.title?.lowercased() ?? ""
+                // A-Z when forward, Z-A when reverse
                 return sortOrder == .forward ? firstTitle < secondTitle : firstTitle > secondTitle
             }
         }
@@ -709,6 +708,16 @@ struct KeyboardView: View {
             }
             
         }
+    }
+}
+
+// Custom button style for liquid press effect
+struct LiquidButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 

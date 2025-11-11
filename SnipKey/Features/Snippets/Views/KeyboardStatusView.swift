@@ -9,128 +9,209 @@ import SwiftUI
 import Pow
 
 struct KeyboardStatusView: View {
-    var isShortcutsActive: Bool  = false
+    var isShortcutsActive: Bool = false
     var onKeyboardStatusPress: () -> Void
     
-    @State private var isAnimating = false
-    @State private var lineWidth: CGFloat = 4.0
+    @State private var showingDetails = false
     
-    let gradientSuccess = LinearGradient(
-        gradient: Gradient(colors: [Color.customSuccess, Color.gray]),
-        startPoint: .leading,
-        endPoint: .trailing
-    )
+    var statusColor: Color {
+        isShortcutsActive ? .customSuccess : .customError
+    }
     
-    let gradientShortcutsOnlyEnabled = LinearGradient(
-        gradient: Gradient(colors: [Color.orange, Color.gray]),
-        startPoint: .leading,
-        endPoint: .trailing
-    )
-    
-    let gradientError = LinearGradient(
-        gradient: Gradient(colors: [Color.customError, Color.gray]),
-        startPoint: .leading,
-        endPoint: .trailing
-    )
-    
-    var borderBoxColorGradient: LinearGradient {
-        if isShortcutsActive {
-            return gradientSuccess
-        }
-        
-        return gradientError
+    var statusIcon: String {
+        isShortcutsActive ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
     }
     
     var body: some View {
-        
-        let shortcutsBoxColor = isShortcutsActive ? Color.customSuccess : Color.customError
-        
         Button {
-            onKeyboardStatusPress()
-        }label: {
-            VStack {
-                VStack(alignment: .leading) {
-                    Text("Keyboard Status:")
-                    HStack {
-//                            Image(systemName: "circle.fill")
-//                                .foregroundColor(colorBox)
-//                                .symbolEffect(.pulse)
-                        VStack(alignment: .leading, spacing: 6) {
-//                                Text(isActive ? "Ready to use" : "Keyboard Extension setup needed. Tap here")
-//
-                            
-//                            Label(isActive ? "Ready to use" : "Keyboard Extension setup needed. Tap here", systemImage: "circle.fill")
-//                                .foregroundColor(colorBox)
-//                                .symbolEffect(.pulse)
-//                                .font(.custom("IBMPlexMono-Bold", size: 12))
-                            
-                            Label("Shortcuts Enabled", systemImage: isShortcutsActive ? "checkmark.circle.fill" : "x.circle.fill")
-                                .padding(.top, 2)
-                                .foregroundColor(shortcutsBoxColor)
-                                .font(.custom("IBMPlexMono-Bold", size: 12))
-                            
-//                            Label("Full Access Enabled", systemImage: isFullAccessActive ? "checkmark.circle.fill" : "x.circle.fill")
-//                                .foregroundColor(fullAccessBoxColor)
-//                                .font(.custom("IBMPlexMono-Bold", size: 12))
-                        }
-                       
-
-                    }
-                        Label("Enable Full Access for Images & Files", systemImage: "info.square.fill")
-                            .padding(.top, 4)
-                            .foregroundColor(Color.secondaryLabel)
-                            .symbolEffect(.pulse)
-                   
-                    
-                    
-                }
-                .padding()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                ZStack{
-                    Color.systemBackground
-                    GradientBorder(
-                        gradient: borderBoxColorGradient,
-                        lineWidth: $lineWidth
-                    )
-                }
+            showingDetails = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: statusIcon)
+                    .foregroundColor(statusColor)
+                    .symbolEffect(.pulse)
                 
-            )
-            .font(.custom("IBMPlexMono-Bold", size: 14))
-            .tint(Color.label)
+//                Text(isShortcutsActive ? "Keyboard Ready" : "Setup Required")
+//                    .font(.custom("IBMPlexMono-Bold", size: 14))
+//                    .foregroundColor(.label)
+                
+//                Image(systemName: "chevron.right")
+//                    .font(.system(size: 12, weight: .semibold))
+//                    .foregroundColor(.secondaryLabel)
+            }
+//            .padding(.horizontal, 16)
+//            .padding(.vertical, 12)
+//            .background(Color.systemBackground)
+//            .overlay(
+//                RoundedRectangle(cornerRadius: 8)
+//                    .stroke(statusColor, lineWidth: 2)
+//            )
         }
         .conditionalEffect(
             .repeat(
-                
-                .glow(color: shortcutsBoxColor, radius: 6),
-                
+                .glow(color: statusColor, radius: 4),
                 every: 1.5
-                
             ),
-            
-            condition: true
-            
+            condition: !isShortcutsActive
         )
-    }
-}
-
-struct GradientBorder: View {
-    var gradient: LinearGradient
-    @Binding var lineWidth: CGFloat
-    
-    var body: some View {
-        GeometryReader { geometry in
-            RoundedRectangle(cornerRadius: 5)
-                .stroke(gradient, lineWidth: lineWidth)
+        .sheet(isPresented: $showingDetails) {
+            KeyboardDetailsSheet(
+                isShortcutsActive: isShortcutsActive,
+                onKeyboardStatusPress: onKeyboardStatusPress
+            )
+//            .presentationDetents([.])
+            .presentationDetents([.fraction(0.7)])
+            .presentationDragIndicator(.visible)
         }
     }
 }
 
+struct KeyboardDetailsSheet: View {
+    var isShortcutsActive: Bool
+    var onKeyboardStatusPress: () -> Void
+    
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Keyboard Status")
+                    .font(.custom("IBMPlexMono-Bold", size: 18))
+                
+                Spacer()
+                
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.secondaryLabel)
+                }
+            }
+            .padding()
+            
+            Divider()
+            
+            // Content
+            VStack(spacing: 24) {
+                // Status Icon & Text
+                VStack(spacing: 12) {
+                    Image(systemName: isShortcutsActive ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(isShortcutsActive ? .customSuccess : .customError)
+                        .symbolEffect(.pulse)
+                    
+                    VStack(spacing: 4) {
+                        Text(isShortcutsActive ? "Ready to Use" : "Setup Required")
+                            .font(.custom("IBMPlexMono-Bold", size: 20))
+                        
+                        Text(isShortcutsActive ? "Keyboard is configured" : "Tap below to configure")
+                            .font(.custom("IBMPlexMono-Regular", size: 13))
+                            .foregroundColor(.secondaryLabel)
+                    }
+                }
+                .padding(.top, 20)
+                
+                // Status Card
+                VStack(spacing: 12) {
+                    HStack {
+                        Image(systemName: "keyboard")
+                            .foregroundColor(.blue)
+                        
+                        Text("Shortcuts")
+                            .font(.custom("IBMPlexMono-Bold", size: 14))
+                        
+                        Spacer()
+                        
+                        Image(systemName: isShortcutsActive ? "checkmark.circle.fill" : "x.circle.fill")
+                            .foregroundColor(isShortcutsActive ? .customSuccess : .customError)
+                    }
+                    
+                    Divider()
+                    
+                    HStack(alignment: .top) {
+                        Image(systemName: "info.circle")
+                            .foregroundColor(.orange)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Full Access")
+                                .font(.custom("IBMPlexMono-Bold", size: 14))
+                            Text("Required for images & files")
+                                .font(.custom("IBMPlexMono-Regular", size: 11))
+                                .foregroundColor(.secondaryLabel)
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                .padding(16)
+                .background(Color.secondarySystemBackground)
+                .cornerRadius(12)
+                
+                Spacer()
+                
+                // Action Button
+                if !isShortcutsActive {
+                    Button {
+                        dismiss()
+                        onKeyboardStatusPress()
+                    } label: {
+                        HStack {
+                            Image(systemName: "lightbulb.min.fill")
+                            Text("See How To Setup")
+                                .font(.custom("IBMPlexMono-Bold", size: 15))
+                        }
+                        .foregroundColor(.yellow)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .cornerRadius(10)
+                    }
+                    .buttonStyle(.glass)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 20)
+        }
+        .presentationDragIndicator(.hidden)
+    }
+}
+struct StatusRow: View {
+    let icon: String
+    let title: String
+    let isActive: Bool
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .font(.system(size: 20))
+            
+            Text(title)
+                .font(.custom("IBMPlexMono-Bold", size: 14))
+            
+            Spacer()
+            
+            Image(systemName: isActive ? "checkmark.circle.fill" : "x.circle.fill")
+                .foregroundColor(isActive ? .customSuccess : .customError)
+                .font(.system(size: 20))
+        }
+        .padding(.vertical, 4)
+    }
+}
 
 #Preview {
-    KeyboardStatusView(
-        isShortcutsActive: true,
-        onKeyboardStatusPress: { }
-    )
+    VStack {
+        KeyboardStatusView(
+            isShortcutsActive: false,
+            onKeyboardStatusPress: { }
+        )
+        .padding()
+        
+        KeyboardStatusView(
+            isShortcutsActive: true,
+            onKeyboardStatusPress: { }
+        )
+        .padding()
+    }
 }

@@ -65,10 +65,32 @@ class SnippetViewModel {
     ////        item.customTag = tag
     //    }
     
+    // via List onDelete
     func deleteItems(offsets: IndexSet, snippets:  [SnippetItem]) {
-        for index in offsets {
-            self.modelContext?.delete(snippets[index])
+        withAnimation {
+              for index in offsets {
+                  self.modelContext?.delete(snippets[index])
+              }
+          }
+        try? self.modelContext?.save()
+    }
+    
+    // single
+    func deleteItem(snippet: SnippetItem) {
+        withAnimation {
+            self.modelContext?.delete(snippet)
         }
+        try? self.modelContext?.save()
+    }
+    
+    // multiple
+    func deleteSelectedItems(snippets: [SnippetItem]) {
+        withAnimation {
+            for snippet in snippets {
+                self.modelContext?.delete(snippet)
+            }
+        }
+        try? self.modelContext?.save()
     }
     
     func deleteTag(offsets: IndexSet, tags:  [SnipTag]) {

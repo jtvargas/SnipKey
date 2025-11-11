@@ -81,6 +81,9 @@ struct SnippetViewDetail: View {
                     .frame(alignment: .center)
                     .listRowBackground(Color.tertiarySystemBackground)
                     
+                  
+                    
+                    
                     Section(header: Text("Type")) {
                         HStack {
                             Spacer()
@@ -140,6 +143,37 @@ struct SnippetViewDetail: View {
                     }
                     .listRowBackground(Color.tertiarySystemBackground)
                     
+                    Section(header: Text("Security Access")) {
+                        HStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(snippet.isSecure ? Color.blue.opacity(0.2) : Color.gray.opacity(0.2))
+                                    .frame(width: 44, height: 44)
+                                
+                                Image(systemName: snippet.isSecure ? "lock.shield.fill" : "lock.open")
+                                    .font(.title3)
+                                    .foregroundStyle(snippet.isSecure ? .blue : .secondary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(snippet.isSecure ? "Protected" : "Standard")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                
+                                Text(snippet.isSecure
+                                     ? "Requires Face ID or passcode to use"
+                                     : "Can be used without authentication")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .listRowBackground(Color.tertiarySystemBackground)
+                    
                     Section(
                         footer: Group {
                                 Text("Enable full keyboard access to track usage count for this snippet.")
@@ -169,12 +203,12 @@ struct SnippetViewDetail: View {
                         }
                     }
                     
-                    ToolbarItem(placement: .bottomBar){
+                    ToolbarItem(placement: .title){
                         if snippet.updatedDate != nil {
-                            Text("**Updated:** \(snippet.updatedDate?.formatted(date: .complete, time: .omitted) ?? Date.now.formatted(date: .complete, time: .omitted) )")
+                            Text("**Updated:** \(snippet.updatedDate?.formatted(date: .abbreviated, time: .omitted) ?? Date.now.formatted(date: .abbreviated, time: .omitted))")
                                 .font(.custom("IBMPlexMono-Medium", size: 12))
                         } else {
-                            Text("**Created:** \(snippet.creationDate?.formatted(date: .complete, time: .omitted) ?? Date.now.formatted(date: .complete, time: .omitted) )")
+                            Text("**Created:** \(snippet.creationDate?.formatted(date: .abbreviated, time: .omitted) ?? Date.now.formatted(date: .abbreviated, time: .omitted))")
                                 .font(.custom("IBMPlexMono-Medium", size: 12))
                         }
                         

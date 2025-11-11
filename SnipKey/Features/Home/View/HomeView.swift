@@ -28,6 +28,10 @@ struct HomeView: View {
     private let createSnippetTip = CreateSnippetTip()
     private let iCloudTip = CloudIndicatorTip()
     
+    
+    @Namespace private var namespaceLeft
+    @Namespace private var namespaceRight
+    
     @State var viewModel = SnippetViewModel()
     @State  var selectedSnippet: SnippetItem? = nil
     @State private var columnVisibility =
@@ -152,36 +156,36 @@ struct HomeView: View {
                                 ], color: Color.label)
                             }
                             
-                            Spacer()
-                            Button {
-                                self.isPresentedFormModal.toggle()
-                            } label: {
-                                Image(systemName: "plus.square.fill")
-                                    .foregroundStyle(Color.label.gradient)
-                                    .font(.system(size: 62))
-                                
-                            }
-                            .pressable()
-                            .popoverTip(createSnippetTip)
-                            .sheet(isPresented: $isPresentedFormModal) {
-                                NavigationStack {
-                                    SnippetForm(snippet: nil, isFormVisible: $isPresentedFormModal)
-                                }
-                                .presentationBackground(Color.clear)
-                            }
-                            Spacer()
-                            Button {
-                                self.isPresentingSettings.toggle()
-                            } label: {
-                                Image(systemName: "gearshape.circle.fill")
-                                    .font(.system(size:36, weight: .heavy))
-                                    .foregroundStyle(Color.label.gradient)
-                            }
-                            .pressable()
-                            .sheet(isPresented: $isPresentingSettings) {
-                                SettingsView(isPresentingSettings: $isPresentingSettings)
-                                
-                            }
+//                            Spacer()
+//                            Button {
+//                                self.isPresentedFormModal.toggle()
+//                            } label: {
+//                                Image(systemName: "plus.square.fill")
+//                                    .foregroundStyle(Color.label.gradient)
+//                                    .font(.system(size: 62))
+//                                
+//                            }
+//                            .pressable()
+//                            .popoverTip(createSnippetTip)
+//                            .sheet(isPresented: $isPresentedFormModal) {
+//                                NavigationStack {
+//                                    SnippetForm(snippet: nil, isFormVisible: $isPresentedFormModal)
+//                                }
+//                                .presentationBackground(Color.clear)
+//                            }
+//                            Spacer()
+//                            Button {
+//                                self.isPresentingSettings.toggle()
+//                            } label: {
+//                                Image(systemName: "gearshape.circle.fill")
+//                                    .font(.system(size:36, weight: .heavy))
+//                                    .foregroundStyle(Color.label.gradient)
+//                            }
+//                            .pressable()
+//                            .sheet(isPresented: $isPresentingSettings) {
+//                                SettingsView(isPresentingSettings: $isPresentingSettings)
+//                                
+//                            }
                             
                         }
                         .padding()
@@ -203,6 +207,81 @@ struct HomeView: View {
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .bottomBar) {
+//                    GlassEffectContainer(spacing: 40.0) {
+                        HStack(spacing: 10.0) {
+                            GlassEffectContainer(spacing: 10.0) {
+                                HStack(spacing: 10.0){
+                                    Button {
+                                        self.isPresentedWelcomeInfo.toggle()
+                                    } label: {
+                                        Image(systemName: "info.circle.fill")
+                                            .font(.system(size:36, weight: .heavy))
+                                            .foregroundStyle(Color.label.gradient)
+                                    }
+                                    .pressable()
+                                    .sheet(isPresented: $isPresentedWelcomeInfo) {
+                                        OnboardingView(appName: "SnipKey", showOnboarding: $isPresentedWelcomeInfo, features: [
+                                            Feature(title: "Create & Use Snippets", description: "Craft snippets, use them anywhere.", icon: "doc.on.doc.fill"),
+                                            Feature(title: "Keyboard Extension", description: "Access snippets directly from keyboard.", icon: "keyboard.fill"),
+                                            Feature(title: "Organize with Tags", description: "Sort snippets using quick tags.", icon: "tag.fill"),
+                                            Feature(title: "Secure Data", description: "Encrypt sensitive snippets.", icon: "lock.fill"),
+                                            Feature(title: "iCloud Sync", description: "Access across all your devices.", icon: "cloud.fill"),
+                                        ], color: Color.label)
+                                    }
+
+                                    Button {
+                                        self.isPresentingSettings.toggle()
+                                    } label: {
+                                        Image(systemName: "gearshape.circle.fill")
+                                            .font(.system(size:36, weight: .heavy))
+                                            .foregroundStyle(Color.label.gradient)
+                                    }
+                                    .pressable()
+                                    .sheet(isPresented: $isPresentingSettings) {
+                                        SettingsView(isPresentingSettings: $isPresentingSettings)
+                                        
+                                    }
+                                }
+                                .glassEffect()
+                                .glassEffectUnion(id: "settings", namespace: namespaceLeft)
+                                .buttonStyle(.glass)
+                                
+                               
+                            }
+                            
+                            
+                            Spacer()
+                            Button {
+                                self.isPresentedFormModal.toggle()
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundStyle(Color.label.gradient)
+                                    .font(.system(size: 46))
+                                
+                            }
+                            .popoverTip(createSnippetTip)
+                            .sheet(isPresented: $isPresentedFormModal) {
+                                NavigationStack {
+                                    SnippetForm(snippet: nil, isFormVisible: $isPresentedFormModal)
+                                }
+                                .presentationBackground(Color.clear)
+                            }
+                            .glassEffect()
+                            .glassEffectUnion(id: "create", namespace: namespaceLeft)
+                         
+                     
+                      
+                        }
+//                    }
+                    
+                 
+                    
+//                    .buttonStyle(.glass)
+                }
+                    .sharedBackgroundVisibility(.hidden)
+                
+                
                 ToolbarItem(placement: .topBarLeading) {
                     if !snippets.isEmpty {
                         EditButton()

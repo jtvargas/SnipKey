@@ -152,23 +152,23 @@ struct SettingsView: View {
                         
                     }
                 }
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            isPresentingSettings.toggle()
-                        } label: {
-                            Text("close")
-                                .foregroundColor(Color.secondary)
-                                .underline()
-                                .bold()
-                        }
-                        
-                    }
-                    ToolbarItem(placement: .bottomBar) {
-                        Text("SnipKey")
-                            .foregroundColor(Color.secondary)
-                    }
-                }
+//                .toolbar {
+//                    ToolbarItem(placement: .topBarLeading) {
+//                        Button {
+//                            isPresentingSettings.toggle()
+//                        } label: {
+//                            Text("close")
+//                                .foregroundColor(Color.secondary)
+//                                .underline()
+//                                .bold()
+//                        }
+//                        
+//                    }
+//                    ToolbarItem(placement: .bottomBar) {
+//                        Text("SnipKey")
+//                            .foregroundColor(Color.secondary)
+//                    }
+//                }
                 .navigationTitle("Settings")
                 .font(.custom("IBMPlexMono-Bold", size: 16))
                 .onAppear {
