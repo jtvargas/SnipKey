@@ -27,6 +27,7 @@ struct TagsView: View {
     @State private var showCreateTagSheet = false
     @State private var newTagName = ""
     @State private var newTagIcon = "tag.fill"
+    @State private var newTagColorHex: String? = nil
     
     var body: some View {
         VStack {
@@ -45,7 +46,9 @@ struct TagsView: View {
                     Section {
                         List {
                             ForEach(tags, id: \.self) { tag in
-                                HStack(alignment: .center) {
+                                HStack(alignment: .center, spacing: 10) {
+                                    TagColorIndicator(colorHex: tag.colorHex, size: 10)
+                                    
                                     Label(
                                         "\(tag.name ?? "")",
                                         systemImage: (tag.imageTag!.isEmpty ? "tag.fill" : tag.imageTag) ?? "tag.fill"
@@ -80,11 +83,12 @@ struct TagsView: View {
             CreateTagSheet(
                 tagName: $newTagName,
                 tagIcon: $newTagIcon,
+                tagColorHex: $newTagColorHex,
                 onSave: {
                     createNewTag()
                 }
             )
-            .presentationDetents([.height(300)])
+            .presentationDetents([.height(480)])
             .presentationDragIndicator(.visible)
         }
         .navigationTitle("Tags")
@@ -116,7 +120,7 @@ struct TagsView: View {
         let tagExists = tags.contains { $0.name == newTagName }
         
         if !tagExists {
-            let newTag = SnipTag(name: newTagName, imageTag: newTagIcon)
+            let newTag = SnipTag(name: newTagName, imageTag: newTagIcon, colorHex: newTagColorHex)
             modelContext.insert(newTag)
             
             // Save context
@@ -130,6 +134,7 @@ struct TagsView: View {
         // Reset form
         newTagName = ""
         newTagIcon = "tag.fill"
+        newTagColorHex = nil
         showCreateTagSheet = false
     }
     

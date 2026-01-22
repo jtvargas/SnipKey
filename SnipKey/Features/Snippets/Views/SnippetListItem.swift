@@ -35,10 +35,13 @@ struct SnippetListItem: View {
                 .bold()
                 .font(.custom("IBMPlexMono-Medium", size: 14))
 
-                Text("#\(item.customTag?.name ?? "None")")
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundColor(Color.secondaryLabel)
-                .font(.subheadline)
+              HStack(spacing: 4) {
+                  Text("#\(item.customTag?.name ?? "None")")
+                      .foregroundColor(Color.secondaryLabel)
+                      .font(.subheadline)
+                  TagColorIndicator(colorHex: item.customTag?.colorHex, size: 8)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
           }
 
           if item.isSecure {
@@ -103,10 +106,13 @@ struct SnippetListItemMinimal: View {
                 }
                 
 //                if item.customTag?.name != nil {
+                HStack(spacing: 4) {
                     Text("#\(item.customTag?.name ?? "None")")
                         .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(Color.primary.opacity(0.5))
                         .lineLimit(1)
+                    TagColorIndicator(colorHex: item.customTag?.colorHex, size: 6)
+                }
 //                }
              
             }

@@ -14,6 +14,7 @@ struct EditTagView: View {
     
     @State private var tagName: String
     @State private var tagIcon: String
+    @State private var tagColorHex: String?
     @State private var isSymbolPickerPresented = false
     @State private var showDeleteConfirmation = false
     
@@ -23,6 +24,7 @@ struct EditTagView: View {
         self._tag = tag
         _tagName = State(initialValue: tag.wrappedValue.name ?? "")
         _tagIcon = State(initialValue: tag.wrappedValue.imageTag ?? "tag.fill")
+        _tagColorHex = State(initialValue: tag.wrappedValue.colorHex)
     }
     
     var body: some View {
@@ -72,6 +74,39 @@ struct EditTagView: View {
                     }
                 }
                 
+                // Color Picker Section
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Color")
+                                .font(.custom("IBMPlexMono-Medium", size: 14))
+                            Spacer()
+                            if let hex = tagColorHex {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color(hex: hex) ?? .gray)
+                                        .frame(width: 16, height: 16)
+                                    Text(TagColor.from(hex: hex)?.displayName ?? "Custom")
+                                        .font(.custom("IBMPlexMono-Regular", size: 14))
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                Text("None")
+                                    .font(.custom("IBMPlexMono-Regular", size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        TagColorPicker(selectedColorHex: $tagColorHex)
+                    }
+                } header: {
+                    Text("Tag Color")
+                        .font(.custom("IBMPlexMono-Bold", size: 12))
+                } footer: {
+                    Text("Choose a color to help identify this tag quickly.")
+                        .font(.custom("IBMPlexMono-Regular", size: 10))
+                }
+                
                 // Tag Preview Section
                 Section {
                     HStack {
@@ -81,13 +116,16 @@ struct EditTagView: View {
                                 .font(.custom("IBMPlexMono-Medium", size: 12))
                                 .foregroundColor(.secondary)
                             
-                            Label(tagName.isEmpty ? "Tag Name" : tagName, systemImage: tagIcon)
-                                .font(.custom("IBMPlexMono-Medium", size: 16))
-                                .foregroundStyle(tagName.isEmpty ? Color.secondary : Color.label)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(Color.secondarySystemBackground)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            HStack(spacing: 8) {
+                                TagColorIndicator(colorHex: tagColorHex, size: 10)
+                                Label(tagName.isEmpty ? "Tag Name" : tagName, systemImage: tagIcon)
+                                    .font(.custom("IBMPlexMono-Medium", size: 16))
+                                    .foregroundStyle(tagName.isEmpty ? Color.secondary : Color.label)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.secondarySystemBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                         Spacer()
                     }
@@ -142,7 +180,7 @@ struct EditTagView: View {
                     Button("Save") {
                         saveChanges()
                     }
-                    .disabled(tagName.isEmpty || tagName == tag.name && tagIcon == tag.imageTag)
+                    .disabled(tagName.isEmpty || (tagName == tag.name && tagIcon == tag.imageTag && tagColorHex == tag.colorHex))
                     .bold()
                     .font(.custom("IBMPlexMono-Medium", size: 15))
                 }
@@ -169,9 +207,10 @@ struct EditTagView: View {
         guard !tagName.isEmpty else { return }
         
         // Check if anything actually changed
-        if tagName != tag.name || tagIcon != tag.imageTag {
+        if tagName != tag.name || tagIcon != tag.imageTag || tagColorHex != tag.colorHex {
             tag.name = tagName
             tag.imageTag = tagIcon
+            tag.colorHex = tagColorHex
             
             // Save context
             do {

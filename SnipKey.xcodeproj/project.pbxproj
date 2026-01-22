@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		060399962BB8836E00A6E818 /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 060399952BB8836E00A6E818 /* AlertToast */; };
+		0617D0722F22B8F200E6480C /* TagColorPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0617D0712F22B8F200E6480C /* TagColorPicker.swift */; };
+		0617D0732F22B8F200E6480C /* TagColorPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0617D0712F22B8F200E6480C /* TagColorPicker.swift */; };
+		0617D0752F22B90300E6480C /* TagColorIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0617D0742F22B90300E6480C /* TagColorIndicator.swift */; };
+		0617D0762F22B90300E6480C /* TagColorIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0617D0742F22B90300E6480C /* TagColorIndicator.swift */; };
 		061ED3CE2BC43611006A6E47 /* Biometrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061ED3CD2BC43611006A6E47 /* Biometrics.swift */; };
 		061ED3CF2BC44384006A6E47 /* Biometrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061ED3CD2BC43611006A6E47 /* Biometrics.swift */; };
 		0627678B2BBCDE3000B3993B /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */; };
@@ -115,6 +119,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0617D0712F22B8F200E6480C /* TagColorPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagColorPicker.swift; sourceTree = "<group>"; };
+		0617D0742F22B90300E6480C /* TagColorIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagColorIndicator.swift; sourceTree = "<group>"; };
 		061ED3CD2BC43611006A6E47 /* Biometrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Biometrics.swift; sourceTree = "<group>"; };
 		0630BC0D2C6E747100E8493B /* SnippetContentForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetContentForm.swift; sourceTree = "<group>"; };
 		0630BC0F2C6E89D700E8493B /* SnippetContentViewDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetContentViewDisplay.swift; sourceTree = "<group>"; };
@@ -378,6 +384,8 @@
 		06D428E22CA4E56A005A5445 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				0617D0742F22B90300E6480C /* TagColorIndicator.swift */,
+				0617D0712F22B8F200E6480C /* TagColorPicker.swift */,
 				06D428E32CA4E580005A5445 /* StaggeredImagesList.swift */,
 				06D428E52CA4E5AB005A5445 /* LoopVideoView.swift */,
 				06CA67192CA4E81500CAD9E0 /* MorphingSymbolView.swift */,
@@ -592,6 +600,8 @@
 				06E7E2BA2BD97FB40058D11E /* Keyboard.swift in Sources */,
 				066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */,
 				061ED3CF2BC44384006A6E47 /* Biometrics.swift in Sources */,
+				0617D0762F22B90300E6480C /* TagColorIndicator.swift in Sources */,
+				0617D0732F22B8F200E6480C /* TagColorPicker.swift in Sources */,
 				066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */,
 				06C6FE2D2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
 				06AE13132BBB0D8B008EAE98 /* SettingsModel.swift in Sources */,
@@ -631,6 +641,7 @@
 				064D8A142BDC1F0100B9B65F /* SnippetFilesView.swift in Sources */,
 				0669529B2EBEFD3800CC89BC /* SnippetTagForm.swift in Sources */,
 				06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */,
+				0617D0752F22B90300E6480C /* TagColorIndicator.swift in Sources */,
 				066E69CF2BB8E45A00D971E8 /* Splashscreen.swift in Sources */,
 				06E7E2B92BD97FB40058D11E /* Keyboard.swift in Sources */,
 				06F4F3212BB720AF00399C78 /* OnBoardingModel.swift in Sources */,
@@ -644,6 +655,7 @@
 				066E69E32BB9896400D971E8 /* KeyboardViewController.swift in Sources */,
 				061ED3CE2BC43611006A6E47 /* Biometrics.swift in Sources */,
 				068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */,
+				0617D0722F22B8F200E6480C /* TagColorPicker.swift in Sources */,
 				066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */,
 				06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */,
 				066B83122CA707FE00B95904 /* RevenueCatManager.swift in Sources */,

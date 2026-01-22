@@ -468,17 +468,30 @@ struct KeyboardView: View {
                 Button(action: {
                     selectedFilter = tag
                 }) {
-                    HStack {
-                        Image(systemName: tag.imageTag!)
-                        Text(tag.name ?? "") // Assuming tag has a 'name' property
-                        if tag == selectedFilter {
-                            Image(systemName: "checkmark")
+                    Label {
+                        HStack {
+                            Text(tag.name ?? "")
+                            if tag == selectedFilter {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    } icon: {
+                        HStack(spacing: 2) {
+                            if let colorHex = tag.colorHex, let color = Color(hex: colorHex) {
+                                Image(systemName: "circle.fill")
+                                    .foregroundColor(color)
+                                    .font(.system(size: 8))
+                            }
+                            Image(systemName: tag.imageTag!)
                         }
                     }
                 }
             }
         } label: {
             HStack {
+                if let filter = selectedFilter, let colorHex = filter.colorHex {
+                    TagColorIndicator(colorHex: colorHex, size: 8)
+                }
                 Image(systemName: selectedFilter?.imageTag ?? "line.3.horizontal.decrease.circle")
                 Text(selectedFilter?.name ?? "Filter")
                     .foregroundStyle(.blue.gradient)

@@ -93,22 +93,55 @@ enum Tags: String, CaseIterable, Identifiable, Codable   {
     }
 }
 
+// MARK: - Tag Color Palette
+enum TagColor: String, CaseIterable, Identifiable {
+    case red, orange, yellow, green, mint, teal, blue, indigo, purple, pink, brown, gray
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        rawValue.capitalized
+    }
+    
+    var hexValue: String {
+        switch self {
+        case .red: return "#FF3B30"
+        case .orange: return "#FF9500"
+        case .yellow: return "#FFCC00"
+        case .green: return "#34C759"
+        case .mint: return "#00C7BE"
+        case .teal: return "#30B0C7"
+        case .blue: return "#007AFF"
+        case .indigo: return "#5856D6"
+        case .purple: return "#AF52DE"
+        case .pink: return "#FF2D55"
+        case .brown: return "#A2845E"
+        case .gray: return "#8E8E93"
+        }
+    }
+    
+    static func from(hex: String?) -> TagColor? {
+        guard let hex = hex else { return nil }
+        return TagColor.allCases.first { $0.hexValue.lowercased() == hex.lowercased() }
+    }
+}
+
 @Model
 final class SnipTag {
     var creationDate: Date = Date.now
     var name: String?
     var imageTag: String?
     var id: String?
+    var colorHex: String?  // Optional color in hex format (e.g., "#FF3B30")
     
     @Relationship(inverse: \SnippetItem.customTag)
     var snippets: [SnippetItem]?
-  
     
-    
-    init(name: String, imageTag: String) {
+    init(name: String, imageTag: String, colorHex: String? = nil) {
         self.id = UUID().uuidString
         self.name = name
         self.imageTag = imageTag
+        self.colorHex = colorHex
     }
 }
 

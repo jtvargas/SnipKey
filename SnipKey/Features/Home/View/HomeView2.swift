@@ -328,10 +328,17 @@ struct HomeView2: View {
                 content: {
                     Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
                         ForEach(tags, id: \.id) { tag in
-                            HStack {
+                            Label {
                                 Text(tag.name!)
-                                Spacer()
-                                Image(systemName: tag.imageTag!)
+                            } icon: {
+                                HStack(spacing: 4) {
+                                    if tag.colorHex != nil {
+                                        Image(systemName: "circle.fill")
+                                            .foregroundColor(Color(hex: tag.colorHex!) ?? .gray)
+                                            .font(.system(size: 8))
+                                    }
+                                    Image(systemName: tag.imageTag!)
+                                }
                             }
                             .tag(Optional(tag))
                         }
@@ -375,8 +382,7 @@ struct HomeView2: View {
             isPresentingTipsView = true
         } label : {
             Image(systemName: "gift.fill")
-            //                .symbolEffect(.bounce.up.byLayer, options: .repeat(.continuous))
-                .foregroundStyle(Color.label.gradient)
+                .foregroundStyle(Color.yellow)
         }
     }
     
@@ -405,8 +411,16 @@ struct HomeView2: View {
             ZStack(alignment: .bottomTrailing) {
                 Color.clear.ignoresSafeArea()
                 
-                VStack(alignment: .leading,) {
-                    HStack {
+                VStack(alignment: .leading) {
+                    HStack(spacing: 8) {
+                        // Support/Tip Button (far left)
+                        SupportTipButton(action: {
+                            isPresentingTipsView = true
+                        })
+                        .padding(12)
+                        .buttonStyle(.glass)
+                        .clipShape(Circle())
+                        .contentShape(Circle())
                         
                         KeyboardStatusView(
                             isShortcutsActive: isKeyboardShortcutEnabled,
@@ -479,6 +493,19 @@ struct HomeView2: View {
     
     func handleDeleteSnippet(offsets: IndexSet, items: [SnippetItem]) {
         viewModel.deleteItems(offsets: offsets, snippets: items)
+    }
+}
+
+// MARK: - Support Tip Button Component
+struct SupportTipButton: View {
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "gift.fill")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color.yellow)
+        }
     }
 }
 

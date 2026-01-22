@@ -15,6 +15,7 @@ struct CreateOrSelectTag: View {
     @State private var showCreateTagSheet = false
     @State private var newTagName = ""
     @State private var newTagIcon = "tag.fill"
+    @State private var newTagColorHex: String? = nil
     @State private var iconPickerPresented = false
     
     @Environment(\.modelContext) var modelContext
@@ -86,11 +87,12 @@ struct CreateOrSelectTag: View {
             CreateTagSheet(
                 tagName: $newTagName,
                 tagIcon: $newTagIcon,
+                tagColorHex: $newTagColorHex,
                 onSave: {
                     createAndSelectTag()
                 }
             )
-            .presentationDetents([.height(300)])
+            .presentationDetents([.height(480)])
             .presentationDragIndicator(.visible)
         }
     }
@@ -103,7 +105,7 @@ struct CreateOrSelectTag: View {
             snippetTag = existingTag
         } else {
             // Create new tag
-            let newTag = SnipTag(name: newTagName, imageTag: newTagIcon)
+            let newTag = SnipTag(name: newTagName, imageTag: newTagIcon, colorHex: newTagColorHex)
             modelContext.insert(newTag)
             snippetTag = newTag
         }
@@ -111,6 +113,7 @@ struct CreateOrSelectTag: View {
         // Reset form
         newTagName = ""
         newTagIcon = "tag.fill"
+        newTagColorHex = nil
         showCreateTagSheet = false
     }
 }
@@ -119,10 +122,19 @@ struct CreateOrSelectTag: View {
 struct CreateTagSheet: View {
     @Binding var tagName: String
     @Binding var tagIcon: String
+    @Binding var tagColorHex: String?
     var onSave: () -> Void
     
     @State private var iconPickerPresented = false
     @Environment(\.dismiss) var dismiss
+    
+    // Convenience initializer for backward compatibility
+    init(tagName: Binding<String>, tagIcon: Binding<String>, tagColorHex: Binding<String?> = .constant(nil), onSave: @escaping () -> Void) {
+        self._tagName = tagName
+        self._tagIcon = tagIcon
+        self._tagColorHex = tagColorHex
+        self.onSave = onSave
+    }
     
     var body: some View {
         NavigationStack {
@@ -161,6 +173,34 @@ struct CreateTagSheet: View {
                     Text("Characters: \(tagName.count)/\(tagCharLimit)")
                         .font(.caption)
                 }
+                
+                // Color Picker Section
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Color")
+                            Spacer()
+                            if let hex = tagColorHex {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color(hex: hex) ?? .gray)
+                                        .frame(width: 16, height: 16)
+                                    Text(TagColor.from(hex: hex)?.displayName ?? "Custom")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                Text("None")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        TagColorPicker(selectedColorHex: $tagColorHex)
+                    }
+                } header: {
+                    Text("Tag Color")
+                }
             }
             .navigationTitle("Create Tag")
             .navigationBarTitleDisplayMode(.inline)
@@ -169,6 +209,7 @@ struct CreateTagSheet: View {
                     Button("Cancel") {
                         tagName = ""
                         tagIcon = "tag.fill"
+                        tagColorHex = nil
                         dismiss()
                     }
                 }
@@ -198,6 +239,7 @@ struct MoveOrCreateTagSheet: View {
     @State private var isCreatingNewTag = false
     @State private var newTagName = ""
     @State private var newTagIcon = "tag.fill"
+    @State private var newTagColorHex: String? = nil
     @State private var iconPickerPresented = false
     
     @Environment(\.dismiss) var dismiss
@@ -215,6 +257,7 @@ struct MoveOrCreateTagSheet: View {
                         // Existing Tags List
                         ForEach(tags, id: \.id) { tag in
                             HStack {
+                                TagColorIndicator(colorHex: tag.colorHex, size: 10)
                                 Image(systemName: tag.imageTag ?? "tag.fill")
                                     .foregroundStyle(Color.accentColor)
                                 Text(tag.name ?? "")
@@ -251,6 +294,7 @@ struct MoveOrCreateTagSheet: View {
                                 isCreatingNewTag = false
                                 newTagName = ""
                                 newTagIcon = "tag.fill"
+                                newTagColorHex = nil
                             }
                             .font(.caption)
                         }
@@ -296,6 +340,34 @@ struct MoveOrCreateTagSheet: View {
                         Text("Characters: \(newTagName.count)/\(tagCharLimit)")
                             .font(.caption)
                     }
+                    
+                    // Color Picker Section
+                    Section {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Color")
+                                Spacer()
+                                if let hex = newTagColorHex {
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(Color(hex: hex) ?? .gray)
+                                            .frame(width: 16, height: 16)
+                                        Text(TagColor.from(hex: hex)?.displayName ?? "Custom")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                } else {
+                                    Text("None")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            TagColorPicker(selectedColorHex: $newTagColorHex)
+                        }
+                    } header: {
+                        Text("Tag Color")
+                    }
                 }
             }
             .navigationTitle("Move to Tag")
@@ -337,7 +409,7 @@ struct MoveOrCreateTagSheet: View {
                 targetTag = existingTag
             } else {
                 // Create new tag
-                let newTag = SnipTag(name: newTagName, imageTag: newTagIcon)
+                let newTag = SnipTag(name: newTagName, imageTag: newTagIcon, colorHex: newTagColorHex)
                 modelContext.insert(newTag)
                 targetTag = newTag
             }

@@ -48,15 +48,23 @@ class RevenueCatManager: ObservableObject {
             }
         }
     
-    func purchase(package: Package) {
+    func purchase(package: Package, completion: ((Bool) -> Void)? = nil) {
         Purchases.shared.purchase(package: package) { (transaction, customerInfo, error, userCancelled) in
-            if let customerInfo = customerInfo {
+            if let customerInfo = customerInfo, !userCancelled, error == nil {
                 DispatchQueue.main.async {
                     self.customerInfo = customerInfo
+                    completion?(true)
                 }
                 print("Purchase successful!")
             } else if let error = error {
                 print("Error making purchase: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion?(false)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    completion?(false)
+                }
             }
         }
     }
