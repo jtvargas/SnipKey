@@ -7,7 +7,32 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
+// MARK: - App Appearance
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+    
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
+// MARK: - Keyboard After Paste Action
 enum KeyboardAfterPasteAction: String, CaseIterable, Identifiable, Codable {
     case rtrn, space, change, changeReturn, nothing
     var id: String { return self.rawValue }

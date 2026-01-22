@@ -22,6 +22,7 @@ struct SnipKeyApp: App {
     @AppStorage("isWelcomeAlreadyDisplayed") var isWelcomeAlreadyDisplayed: Bool = false
     
     @AppStorage("isKeyboardShortcutEnabled") var isKeyboardShortcutEnabled: Bool = false
+    @AppStorage("appAppearance") var appAppearance: String = AppAppearance.system.rawValue
     
     @State private var showSplashScreen = true
     @State private var isInPaymentScreen = false
@@ -46,19 +47,20 @@ struct SnipKeyApp: App {
     
     var body: some Scene {
         WindowGroup {
-            if showSplashScreen {
-                Splashscreen()
-                    .onAppear(){
-                        showTipDev = false
-                        snippetViewModel.modelContext = container.mainContext
-                        DispatchQueue.main
-                            .asyncAfter(deadline: .now() +  1.2){
-                                showSplashScreen.toggle()
-                            }
-                    }
-                
-            } else {
-                HomeView2()
+            Group {
+                if showSplashScreen {
+                    Splashscreen()
+                        .onAppear(){
+                            showTipDev = false
+                            snippetViewModel.modelContext = container.mainContext
+                            DispatchQueue.main
+                                .asyncAfter(deadline: .now() +  1.2){
+                                    showSplashScreen.toggle()
+                                }
+                        }
+                    
+                } else {
+                    HomeView2()
                     .sheet(isPresented: $showAboutApp){
                         DevAbout()
                     }.sheet(isPresented: $showWelcomeView){
@@ -91,9 +93,14 @@ struct SnipKeyApp: App {
                             print("Background")
                         }
                     }
-                
+                }
             }
+            .preferredColorScheme(selectedAppearance.colorScheme)
         }
         .modelContainer(container)
+    }
+    
+    private var selectedAppearance: AppAppearance {
+        AppAppearance(rawValue: appAppearance) ?? .system
     }
 }

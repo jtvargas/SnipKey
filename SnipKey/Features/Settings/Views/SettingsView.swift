@@ -8,10 +8,51 @@
 import SwiftData
 import SwiftUI
 
+// MARK: - Settings Row Component
+struct SettingsRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    var subtitle: String? = nil
+    var showChevron: Bool = true
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.white)
+                .frame(width: 28, height: 28)
+                .background(iconColor)
+                .cornerRadius(6)
+            
+            Text(title)
+                .font(.custom("IBMPlexMono-Medium", size: 15))
+                .foregroundColor(.label)
+            
+            Spacer()
+            
+            if let subtitle {
+                Text(subtitle)
+                    .foregroundColor(.secondary)
+                    .font(.custom("IBMPlexMono-Regular", size: 14))
+            }
+            
+            if showChevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.tertiaryLabel)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Settings View
 struct SettingsView: View {
     @AppStorage("showWelcomeView") var showWelcomeView: Bool = false
     @AppStorage("showAboutApp") var showAboutApp: Bool = false
     @AppStorage("showTipDev") var showTipDev: Bool = false
+    @AppStorage("appAppearance") var appAppearance: String = AppAppearance.system.rawValue
     
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
@@ -21,191 +62,249 @@ struct SettingsView: View {
     @Query() private var settings: [SettingsModel]
     @Query() private var tags: [SnipTag]
     
-//    let settingsViewModel = SettingsViewModel()
     let snippetViewModel = SnippetViewModel()
     
     @Binding var isPresentingSettings: Bool
     
     @State private var showingAlert = false
-    @State private var action: KeyboardAfterPasteAction = .rtrn
     @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .rtrn)
-    @State var isPresentedGuide: Bool = false
+    @State private var isPresentedGuide: Bool = false
     
-    @State private var keyboardValueTest: String = ""
+    private var selectedAppearance: AppAppearance {
+        AppAppearance(rawValue: appAppearance) ?? .system
+    }
     
     var body: some View {
-        ZStack {
-            VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                .edgesIgnoringSafeArea(.all)
-            NavigationStack {
-                List {
-                    Section("Snippets") {
-                        NavigationLink("Tags (\(tags.count))", destination: TagsView())
-                    }
-                    
-                    Section("Keyboard Settings") {
-                        Section(
-                            footer:
-                                Group{
-                                    Label {
-                                        Text("Customize what happens after pasting a snippet.")
-                                            .font(.custom("IBMPlexMono-Medium", size: 14))
-                                    } icon: {
-                                        Image(systemName: "doc.badge.arrow.up.fill")
-                                            .font(.system(size: 16, weight: .light, design: .rounded))
-                                        
-                                    }
-                                }
-                                .font(.custom("IBMPlexMono-Medium", size: 12))
-                                .foregroundColor(.label)
-                        ) {
-                            Picker(
-                                selection: $currentSettings.afterPasteAction,
-                                label:
-                                    Text("Paste Action")
-                                    .font(.custom("IBMPlexMono-Medium", size: 14))
-                            ) {
-                                ForEach(KeyboardAfterPasteAction.allCases, id: \.id) { keyboardAction in
-                                    Text("\(keyboardAction.displayText)").tag(keyboardAction)
-                                }
-                            }
+        NavigationStack {
+            List {
+                // MARK: - General Section
+                Section {
+                    Picker(selection: $appAppearance) {
+                        ForEach(AppAppearance.allCases) { appearance in
+                            Text(appearance.displayName).tag(appearance.rawValue)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "circle.lefthalf.filled")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
                             
+                            Text("Appearance")
+                                .font(.custom("IBMPlexMono-Medium", size: 15))
                         }
                     }
-                    
-                   
-                    
-                    Section("About") {
-                        Button {
-                            isPresentingSettings = false
-                            showTipDev.toggle()
-                        } label: {
-                            Label("Support Development", systemImage: "wrench.and.screwdriver.fill")
-                        }
-                        
-                        Button {
-                            isPresentingSettings = false
-                            showAboutApp.toggle()
-                        } label: {
-                            Label("More About The App", systemImage: "person.crop.circle.badge.fill")
-                        }
-                        
-                        Button {
-//                            isPresentingSettings = false
-                            isPresentedGuide.toggle()
-                        } label: {
-                            Label("Set Up Keyboard Extension", systemImage: "gear.circle")
-                        }
-                        
-                        Button {
-                            isPresentingSettings = false
-                            showWelcomeView.toggle()
-                        } label: {
-                            Label("Show Welcome Message", systemImage: "hand.wave.fill")
-                        }
-                        
-                        Button {
-                            if let url = URL(string: "https://snipkey.jrtv.online") {
-                                openURL(url)
-                            }
-                        } label: {
-                            
-                            Label("SnipKey Website", systemImage: "network")
-                        }
-                        Button {
-                            if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
-                                openURL(url)
-                            }
-                        } label: {
-                            
-                            Label("Privacy Policy", systemImage: "hand.raised.circle.fill")
-                        }
-                        Button {
-                            let urlString = "https://snipkey.jrtv.online/feedback-login?companyID=6611dc80cc35d4304dff22cd&redirect=https%3A%2F%2Fsnipkey.canny.io"
-                            print("url: \(urlString)")
-                            if let url = URL(string: urlString) {
-                                openURL(url)
-                            }
-                        } label: {
-                            Label("Suggest Feature", systemImage: "square.and.pencil.circle.fill")
-                        }
-                        
-                        Button {
-                            let urlString = "https://snipkey.jrtv.online/contact-us"
-                            print("url: \(urlString)")
-                            if let url = URL(string: urlString) {
-                                openURL(url)
-                            }
-                        } label: {
-                            Label("Contact Us", systemImage: "tray.circle.fill")
-                        }
-                    }
-                    
-                    Section(footer: Text("Reset to default settings")) {
-                        Button {
-                            showingAlert.toggle()
-                        } label: {
-                            
-                            Label("Reset Keyboard Settings", systemImage: "xmark.bin.circle.fill")
-                                .foregroundColor(.customError)
-                        }
-                        
-                    }
+                } header: {
+                    Text("General")
                 }
-//                .toolbar {
-//                    ToolbarItem(placement: .topBarLeading) {
-//                        Button {
-//                            isPresentingSettings.toggle()
-//                        } label: {
-//                            Text("close")
-//                                .foregroundColor(Color.secondary)
-//                                .underline()
-//                                .bold()
-//                        }
-//                        
-//                    }
-//                    ToolbarItem(placement: .bottomBar) {
-//                        Text("SnipKey")
-//                            .foregroundColor(Color.secondary)
-//                    }
-//                }
-                .navigationTitle("Settings")
-                .font(.custom("IBMPlexMono-Bold", size: 16))
-                .onAppear {
-                    settingsViewModel.modelContext = modelContext
-                    if let myCurrentSettings = settings.first {
-                        currentSettings = myCurrentSettings
-                        action = myCurrentSettings.afterPasteAction
+                
+                // MARK: - Snippets Section
+                Section {
+                    NavigationLink {
+                        TagsView()
+                    } label: {
+                        SettingsRow(
+                            icon: "tag.fill",
+                            iconColor: .blue,
+                            title: "Tags",
+                            subtitle: "\(tags.count)",
+                            showChevron: false
+                        )
                     }
+                } header: {
+                    Text("Snippets")
+                }
+                
+                // MARK: - Keyboard Section
+                Section {
+                    Picker(selection: $currentSettings.afterPasteAction) {
+                        ForEach(KeyboardAfterPasteAction.allCases, id: \.id) { action in
+                            Text(action.displayText).tag(action)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "keyboard.fill")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.gray)
+                                .cornerRadius(6)
+                            
+                            Text("Paste Action")
+                                .font(.custom("IBMPlexMono-Medium", size: 15))
+                        }
+                    }
+                } header: {
+                    Text("Keyboard")
+                } footer: {
+                    Text("Customize what happens after pasting a snippet from the keyboard extension.")
+                        .font(.custom("IBMPlexMono-Regular", size: 12))
+                }
+                
+                // MARK: - Help & Support Section
+                Section {
+                    Button {
+                        isPresentedGuide.toggle()
+                    } label: {
+                        SettingsRow(
+                            icon: "gear",
+                            iconColor: .gray,
+                            title: "Set Up Keyboard"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        isPresentingSettings = false
+                        showWelcomeView.toggle()
+                    } label: {
+                        SettingsRow(
+                            icon: "hand.wave.fill",
+                            iconColor: .orange,
+                            title: "Show Welcome Message"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Help & Support")
+                }
+                
+                // MARK: - About Section
+                Section {
+                    Button {
+                        isPresentingSettings = false
+                        showTipDev.toggle()
+                    } label: {
+                        SettingsRow(
+                            icon: "heart.fill",
+                            iconColor: .pink,
+                            title: "Support Development"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        isPresentingSettings = false
+                        showAboutApp.toggle()
+                    } label: {
+                        SettingsRow(
+                            icon: "info.circle.fill",
+                            iconColor: .blue,
+                            title: "About the App"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        if let url = URL(string: "https://snipkey.jrtv.online") {
+                            openURL(url)
+                        }
+                    } label: {
+                        SettingsRow(
+                            icon: "globe",
+                            iconColor: .teal,
+                            title: "SnipKey Website"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
+                            openURL(url)
+                        }
+                    } label: {
+                        SettingsRow(
+                            icon: "hand.raised.fill",
+                            iconColor: .green,
+                            title: "Privacy Policy"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        let urlString = "https://snipkey.jrtv.online/feedback-login?companyID=6611dc80cc35d4304dff22cd&redirect=https%3A%2F%2Fsnipkey.canny.io"
+                        if let url = URL(string: urlString) {
+                            openURL(url)
+                        }
+                    } label: {
+                        SettingsRow(
+                            icon: "lightbulb.fill",
+                            iconColor: .yellow,
+                            title: "Suggest Feature"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        if let url = URL(string: "https://snipkey.jrtv.online/contact-us") {
+                            openURL(url)
+                        }
+                    } label: {
+                        SettingsRow(
+                            icon: "envelope.fill",
+                            iconColor: .blue,
+                            title: "Contact Us"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("About")
+                }
+                
+                // MARK: - Reset Section
+                Section {
+                    Button {
+                        showingAlert.toggle()
+                    } label: {
+                        SettingsRow(
+                            icon: "arrow.counterclockwise",
+                            iconColor: .red,
+                            title: "Reset Keyboard Settings",
+                            showChevron: false
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } footer: {
+                    Text("Reset keyboard settings to their default values.")
+                        .font(.custom("IBMPlexMono-Regular", size: 12))
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Settings")
+            .onAppear {
+                settingsViewModel.modelContext = modelContext
+                if let myCurrentSettings = settings.first {
+                    currentSettings = myCurrentSettings
                 }
             }
         }
-        .sheet(
-            isPresented: $isPresentedGuide,
-            content: {
-                KeyboardHelpGuideView(isPresented: $isPresentedGuide)
-            })
-        .alert("Are you sure you want to reset the keyboard settings?", isPresented: $showingAlert) {
-            Button("Reset Settings", role: .destructive) {
+        .sheet(isPresented: $isPresentedGuide) {
+            KeyboardHelpGuideView(isPresented: $isPresentedGuide)
+        }
+        .alert("Reset Keyboard Settings?", isPresented: $showingAlert) {
+            Button("Reset", role: .destructive) {
                 resetKeyboardSettings()
             }
             Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will reset the paste action to its default value.")
         }
-        
-        
     }
     
-    func resetKeyboardSettings(){
+    private func resetKeyboardSettings() {
         currentSettings.afterPasteAction = .space
     }
 }
 
 #Preview {
+    @Previewable @State var isPresentingSettings: Bool = false
     let tempSettingsContainer = SnipKeyDataManager().makeSharedContainer()
     let settingsViewModel = SettingsViewModel(modelContext: tempSettingsContainer.mainContext)
-    @State var isPresentingSettings: Bool = false
+   
     
-    return SettingsView(isPresentingSettings: $isPresentingSettings)
+    SettingsView(isPresentingSettings: $isPresentingSettings)
         .onAppear {
             settingsViewModel.modelContext = tempSettingsContainer.mainContext
             settingsViewModel.setupKeyboardSettings()
