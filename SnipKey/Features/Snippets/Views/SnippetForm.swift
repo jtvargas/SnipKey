@@ -11,94 +11,105 @@ import SymbolPicker
 import UIKit
 import PhotosUI
 
-struct CustomRadioButtonGroup<T: Hashable>: View {
-    let items: [T]
-      @Binding var selection: T
-      let labels: [T: String]
-      let disabledItems: Set<T>  // New parameter to specify disabled items
-      
-      private let columns = 3
-      
-      init(items: [T], selection: Binding<T>, labels: [T: String], disabledItems: Set<T> = []) {
-          self.items = items
-          self._selection = selection
-          self.labels = labels
-          self.disabledItems = disabledItems
-      }
-      
-      var body: some View {
-          ScrollView {
-              VStack(spacing: 20) {
-                  ForEach(0..<rowCount, id: \.self) { rowIndex in
-                      HStack(spacing: 20) {
-                          ForEach(itemsForRow(rowIndex), id: \.self) { item in
-                              radioButton(for: item)
-                          }
-                      }
-                      .frame(maxWidth: .infinity, alignment: rowIndex == rowCount - 1 && lastRowItemCount < 3 ? .center : .leading)
-                  }
-              }
-              .padding()
-          }
-      }
-      
-      private var rowCount: Int {
-          (items.count + columns - 1) / columns
-      }
-      
-      private var lastRowItemCount: Int {
-          items.count % columns == 0 ? columns : items.count % columns
-      }
-      
-      private func itemsForRow(_ row: Int) -> [T] {
-          let startIndex = row * columns
-          let endIndex = min(startIndex + columns, items.count)
-          return Array(items[startIndex..<endIndex])
-      }
-      
-      private func radioButton(for item: T) -> some View {
-          Button(action: {
-              if !disabledItems.contains(item) {
-                  let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                  impactMed.impactOccurred()
-                  self.selection = item
-                  hideKeyboard()
-              }
-          }) {
-              VStack {
-                  SnippetImage(type: item as! SnipType)
-                      .frame(width: 35, height: 35)
-                      .background(
-                          Color.secondarySystemBackground,
-                          in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                      )
-                      .foregroundStyle(disabledItems.contains(item) ? .gray : .white)
-                  Text(self.labels[item] ?? "")
-                      .foregroundColor(disabledItems.contains(item) ? .gray : (selection == item ? Color.label : .gray))
-                  if selection == item && !disabledItems.contains(item) {
-                      Circle()
-                          .fill(Color.label)
-                          .frame(width: 10, height: 10)
-                  } else {
-                      Circle()
-                          .stroke(disabledItems.contains(item) ? Color.gray : Color.label, lineWidth: 1)
-                          .frame(width: 10, height: 10)
-                  }
-              }
-              .padding()
-              .frame(width: 100)  // Adjust this value as needed
-              .contentShape(Rectangle())
-          }
-          .buttonStyle(PlainButtonStyle())
-          .overlay(
-              selection == item && !disabledItems.contains(item)
-              ? RoundedRectangle(cornerRadius: 8)
-                  .stroke(Color.secondarySystemBackground, lineWidth: 4) : nil
-          )
-          .opacity(disabledItems.contains(item) ? 0.5 : 1.0)
-          .disabled(disabledItems.contains(item))
-      }
-  }
+// MARK: - Snippet Type Selector
+struct SnippetTypeSelector: View {
+    @Binding var selection: SnipType
+    let disabledItems: Set<SnipType>
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // Segmented Picker with icons
+            Picker("Snippet Type", selection: $selection) {
+                ForEach(options, id: \.self) { type in
+                    Image(systemName: type.snipTypeImage)
+                        .tag(type)
+                }
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: selection) { _, _ in
+                let impactMed = UIImpactFeedbackGenerator(style: .light)
+                impactMed.impactOccurred()
+            }
+            
+            // Type label with icon below segmented control
+            HStack(spacing: 6) {
+                Image(systemName: selection.snipTypeImage)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.label)
+                
+                Text(selection.displayText)
+                    .font(.custom("IBMPlexMono-Medium", size: 14))
+                    .foregroundStyle(Color.label)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.secondarySystemBackground)
+            .clipShape(Capsule())
+            .animation(.easeInOut(duration: 0.2), value: selection)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Title Character Counter
+struct TitleCharacterCounter: View {
+    let title: String
+    let limit: Int
+    
+    private var remaining: Int {
+        limit - title.count
+    }
+    
+    private var progress: CGFloat {
+        CGFloat(title.count) / CGFloat(limit)
+    }
+    
+    private var progressColor: Color {
+        if remaining <= 5 {
+            return .red
+        } else if remaining <= limit / 4 {
+            return .orange
+        }
+        return .secondary
+    }
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            // Progress ring
+            ZStack {
+                Circle()
+                    .stroke(Color.tertiaryLabel.opacity(0.3), lineWidth: 3)
+                
+                Circle()
+                    .trim(from: 0, to: min(progress, 1.0))
+                    .stroke(progressColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeInOut(duration: 0.2), value: progress)
+            }
+            .frame(width: 16, height: 16)
+            
+            // Character count text
+            Text("\(title.count)/\(limit)")
+                .font(.custom("IBMPlexMono-Regular", size: 11))
+                .foregroundStyle(progressColor)
+                .monospacedDigit()
+            
+            Spacer()
+            
+            // Warning when near limit
+            if remaining <= 5 && remaining > 0 {
+                Text("\(remaining) left")
+                    .font(.custom("IBMPlexMono-Medium", size: 10))
+                    .foregroundStyle(.orange)
+            } else if remaining == 0 {
+                Label("Limit reached", systemImage: "exclamationmark.circle.fill")
+                    .font(.custom("IBMPlexMono-Medium", size: 10))
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(.top, 4)
+    }
+}
 
 
 let options: [SnipType] = [.txt, .url, .image, .file]
@@ -248,6 +259,7 @@ struct SnippetForm: View {
     @State var snippetViewModel = SnippetViewModel()
     
     @State var isSecure: Bool = false
+    @State private var isSecurityExpanded: Bool = false
     
     @Environment(\.modelContext) var modelContext
     //    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
@@ -279,18 +291,25 @@ struct SnippetForm: View {
                     .edgesIgnoringSafeArea(.all)
                 
                 
-                VStack {
+                VStack(spacing: 0) {
+                    // Creation mode picker (only for new snippets)
                     if isCreatingNewOne {
-                        Picker("What is your favorite color?", selection: $formCreation) {
-                            Text("Single").tag(0)
-                            Text("Bulk").tag(1)
+                        VStack(spacing: 8) {
+                            Picker("Creation Mode", selection: $formCreation) {
+                                Label("Single", systemImage: "doc")
+                                    .tag(0)
+                                Label("Bulk", systemImage: "doc.on.doc")
+                                    .tag(1)
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal)
+                            .padding(.top, 12)
+                            
+                            // Mode description
+                            Text(formCreation == 0 ? "Create one snippet at a time" : "Create multiple snippets from a list")
+                                .font(.custom("IBMPlexMono-Regular", size: 11))
+                                .foregroundStyle(.secondary)
                         }
-                        .padding()
-                        .pickerStyle(.segmented)
-                    } else {
-                        Label("Don't forget to click Save!", systemImage: "info.square.fill")
-                            .bold()
-                            .font(.custom("IBMPlexMono-Medium", size: 15))
                     }
                     
                     if formCreation == 0 {
@@ -298,11 +317,6 @@ struct SnippetForm: View {
                     } else {
                         BulkSnippetFormView()
                     }
-                   
-                    
-                    
-
-                   
                 }
                 
                 // Progress overlay
@@ -317,36 +331,53 @@ struct SnippetForm: View {
         .font(.custom("IBMPlexMono-Bold", size: 14))
         .navigationBarTitleDisplayMode(.inline)
         .interactiveDismissDisabled()
-        .bold()
-        .font(.custom("IBMPlexMono-Medium", size: 15))
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") {
+                Button {
                     hideKeyboard()
+                } label: {
+                    Text("Done")
+                        .font(.custom("IBMPlexMono-Bold", size: 14))
+                        .foregroundStyle(Color.label)
                 }
-                .font(.custom("IBMPlexMono-Bold", size: 14))
-                .tint(Color.black)
-
             }
+            
             ToolbarItem(placement: .topBarLeading) {
                 Button(action: onClosePress) {
-                    Text("Close")
-                        .tint(Color.label)
-                        .bold()
-                        .underline()
+                    Text("Cancel")
                         .font(.custom("IBMPlexMono-Medium", size: 15))
+                        .foregroundStyle(Color.label)
+                }
+            }
+            
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 2) {
+                    Text(editorTitle)
+                        .font(.custom("IBMPlexMono-Bold", size: 16))
+                    
+                    // Editing badge for edit mode
+                    if !isCreatingNewOne {
+                        Text("Editing")
+                            .font(.custom("IBMPlexMono-Medium", size: 10))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.2))
+                            .foregroundStyle(.orange)
+                            .clipShape(Capsule())
+                    }
                 }
             }
             
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: save) {
-                    Text("Save")
-                        .tint(Color.label)
-                        .bold()
-                        .underline()
-                    
-                        .font(.custom("IBMPlexMono-Medium", size: 15))
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14))
+                        Text("Save")
+                            .font(.custom("IBMPlexMono-SemiBold", size: 15))
+                    }
+                    .foregroundStyle(getDisabledSaveAction() ? Color.secondary : Color.label)
                 }
                 .disabled(getDisabledSaveAction())
             }
@@ -358,10 +389,18 @@ struct SnippetForm: View {
                 content = snippet.content!
                 type = snippet.type!
                 isSecure = snippet.isSecure
+                isSecurityExpanded = snippet.isSecure // Auto-expand security section if snippet is secure
                 contentFileData = snippet.file?.fileData
                 customTagName = snippet.customTag?.name ?? ""
                 customTagIconName = snippet.customTag?.imageTag ?? "tag.fill"
                 snippetTag = snippet.customTag ?? SnipTag(name: "", imageTag: "tag.fill")
+            }
+            
+            // Auto-focus title field for new snippets
+            if isCreatingNewOne && formCreation == 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    focusedField = .snippetTitle
+                }
             }
         }
         .onChange(of: type) { oldType , newType in
@@ -397,135 +436,134 @@ struct SnippetForm: View {
     @ViewBuilder
     func BulkSnippetFormView() -> some View {
         Form {
-            Section(
-                header: Text("Tag"),
-                footer: Label(
-                    "All snippets will be organized under this tag",
-                    systemImage: "info.circle"
-                )
-            ) {
+            // MARK: - Tag Section
+            Section {
                 CreateOrSelectTag(snippetTag: $snippetTag)
+            } header: {
+                Label("Tag", systemImage: "tag")
+                    .font(.custom("IBMPlexMono-SemiBold", size: 12))
+                    .textCase(.uppercase)
+            } footer: {
+                Label("All snippets will be organized under this tag", systemImage: "info.circle")
+                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                    .foregroundStyle(.secondary)
             }
-            .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+            .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
             
-            Section(
-                header: VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Snippets")
-                                .font(.headline)
-                            Text("Each line becomes a new snippet")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .textCase(nil)
-                        }
-                        Spacer()
-                            Button(action: pasteBulkContentFromClipboard) {
-                                Label("Paste", systemImage: "doc.on.clipboard.fill")
-                                    .tint(.label)
-                                    .bold()
-                                    .font(.custom("IBMPlexMono-Medium", size: 14))
-                                    .underline()
-                                    .tint(Color.label)
-                            }
-                    }
-                    
-
-                }
-                .textCase(nil),
-                footer: Text("\(bulkSnippetsToCreateCount) snippet\(bulkSnippetsToCreateCount == 1 ? "" : "s") will be created")
-            ) {
+            // MARK: - Bulk Content Section
+            Section {
                 ZStack(alignment: .topLeading) {
                     if bulkContent.isEmpty {
-                        Text("Add here one snippet per line...\n\nExample:\nHello World\nLorem ipsum\nKaomoji\n٩(ˊᗜˋ*)و ♡")
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 16)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Enter one snippet per line...")
+                                .foregroundStyle(.tertiary)
+                            
+                            Text("Example:")
+                                .font(.custom("IBMPlexMono-Medium", size: 12))
+                                .foregroundStyle(Color.quaternaryLabel)
+                            
+                            Text("Hello World\nLorem ipsum\nKaomoji\n٩(ˊᗜˋ*)و ♡")
+                                .font(.custom("IBMPlexMono-Regular", size: 13))
+                                .foregroundStyle(Color.quaternaryLabel)
+                        }
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 12)
                     }
                     
                     TextEditor(text: $bulkContent)
-                        .frame(height: 220)
+                        .font(.custom("IBMPlexMono-Regular", size: 14))
+                        .frame(minHeight: 200)
                         .scrollContentBackground(.hidden)
-                        .padding(8)
-                        .opacity(bulkContent.isEmpty ? 0.5 : 1)
+                        .opacity(bulkContent.isEmpty ? 0.25 : 1)
                 }
+            } header: {
+                HStack {
+                    Label("Snippets", systemImage: "list.bullet.rectangle")
+                        .font(.custom("IBMPlexMono-SemiBold", size: 12))
+                        .textCase(.uppercase)
+                    
+                    Spacer()
+                    
+                    Button(action: pasteBulkContentFromClipboard) {
+                        Label("Paste", systemImage: "doc.on.clipboard")
+                            .font(.custom("IBMPlexMono-Medium", size: 12))
+                            .foregroundStyle(Color.label)
+                    }
+                }
+            } footer: {
+                BulkSnippetCounter(count: bulkSnippetsToCreateCount)
             }
-            .listRowBackground(Color.tertiarySystemBackground)
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
         }
+        .scrollContentBackground(.hidden)
+    }
+    
+    // MARK: - Bulk Snippet Counter Component
+    @ViewBuilder
+    func BulkSnippetCounter(count: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: count > 0 ? "checkmark.circle.fill" : "circle.dashed")
+                .foregroundStyle(count > 0 ? .green : .secondary)
+                .font(.system(size: 14))
+            
+            Text("\(count) snippet\(count == 1 ? "" : "s") will be created")
+                .font(.custom("IBMPlexMono-Medium", size: 12))
+                .foregroundStyle(count > 0 ? Color.label : .secondary)
+            
+            Spacer()
+            
+            if count > 0 {
+                Text("Ready")
+                    .font(.custom("IBMPlexMono-Bold", size: 10))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.green.opacity(0.2))
+                    .foregroundStyle(.green)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.top, 8)
+        .animation(.easeInOut, value: count)
     }
     
     @ViewBuilder
     func SingleSnippetFormView() -> some View {
         Form {
-            Section(
-                header: Label(
-                    "Security",
-                    systemImage: "lock.fill"
-                ),
-                footer: Text(
-                    "Enabling this will safeguard your snippet with FaceID/TouchID for secure access."
-                )
-            ) {
-                Toggle(
-                    "Sensitive Data",
-                    isOn: $isSecure
-                )
-                .disabled(
-                    !deviceBiometrics.hasBiometricsCapability
-                )
+            // MARK: - Snippet Type Section (Top priority)
+            Section {
+                SnippetTypeSelector(selection: $type, disabledItems: disabledItems)
+            } header: {
+                Label("Type", systemImage: "square.grid.2x2")
+                    .font(.custom("IBMPlexMono-SemiBold", size: 12))
+                    .textCase(.uppercase)
             }
-            .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+            .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
             
-            Section(header: Text("snippet type")) {
-                CustomRadioButtonGroup(items: options, selection: $type, labels: labels,  disabledItems: disabledItems)
-                
-            }
-            .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
-            
-            Section(
-                header: Text("snippet title *"),
-                footer: HStack{
-                    if title.count > (titleCharLimit / 2) {
-                            footer
-                    }
-                    
-                }
-            ) {
-                TextField("Title", text: $title)
+            // MARK: - Title Section with always-visible character counter
+            Section {
+                TextField("Enter a title for your snippet", text: $title)
                     .disableAutocorrection(true)
                     .focused($focusedField, equals: .snippetTitle)
                     .submitLabel(.return)
                     .limitText($title, to: titleCharLimit)
-                
-                
+                    .font(.custom("IBMPlexMono-Regular", size: 15))
+            } header: {
+                HStack {
+                    Label("Title", systemImage: "textformat")
+                        .font(.custom("IBMPlexMono-SemiBold", size: 12))
+                        .textCase(.uppercase)
+                    
+                    Text("*")
+                        .foregroundStyle(.red)
+                        .font(.custom("IBMPlexMono-Bold", size: 12))
+                }
+            } footer: {
+                TitleCharacterCounter(title: title, limit: titleCharLimit)
             }
-            .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+            .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
             
-            Section(header: HStack {
-                Group{
-                    Text("snippet content")
-                    
-                    Spacer()
-                    if type == .txt || type == .url {
-                        Button(action: pasteContentFromClipboard) {
-                            Label("Paste", systemImage: "doc.on.clipboard.fill")
-                                .tint(.label)
-                                .bold()
-                                .font(.custom("IBMPlexMono-Medium", size: 14))
-                                .underline()
-                                .tint(Color.label)
-                        }
-                    }
-                    
-                    
-                    
-                }
-            }, footer: VStack {
-                if !isKeyboardExtensionEnabled() && (type == .image || type == .file){
-                    KeyboardAccessWarning()
-                }
-            }) {
+            // MARK: - Content Section with dynamic header
+            Section {
                 SnippetContentForm(
                     type: type,
                     contentValue: $content,
@@ -533,23 +571,100 @@ struct SnippetForm: View {
                     selectedImage: $selectedImage,
                     selectedFileMimeType: $contentFileFormatType
                 )
-                
+            } header: {
+                HStack {
+                    Label("Content (\(type.displayText))", systemImage: type.snipTypeImage)
+                        .font(.custom("IBMPlexMono-SemiBold", size: 12))
+                        .textCase(.uppercase)
+                    
+                    Spacer()
+                    
+                    if type == .txt || type == .url {
+                        Button(action: pasteContentFromClipboard) {
+                            Label("Paste", systemImage: "doc.on.clipboard")
+                                .font(.custom("IBMPlexMono-Medium", size: 12))
+                                .foregroundStyle(Color.label)
+                        }
+                    }
+                }
+            } footer: {
+                if !isKeyboardExtensionEnabled() && (type == .image || type == .file) {
+                    KeyboardAccessWarning()
+                        .padding(.top, 8)
+                }
             }
-            .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+            .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
             
-                           
-            
-            Section(
-                header: Text("tag"),
-                footer: Label(
-                    "Categorize your snippets for easy access",
-                    systemImage: "questionmark.circle"
-                )
-            ) {
+            // MARK: - Tag Section
+            Section {
                 CreateOrSelectTag(snippetTag: $snippetTag)
+            } header: {
+                Label("Tag", systemImage: "tag")
+                    .font(.custom("IBMPlexMono-SemiBold", size: 12))
+                    .textCase(.uppercase)
+            } footer: {
+                Text("Organize your snippets for quick access")
+                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                    .foregroundStyle(.secondary)
             }
-            .listRowBackground(EmptyView().background(Color.tertiarySystemBackground))
+            .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
+            
+            // MARK: - Security Section (Bottom, Collapsible)
+            Section {
+                DisclosureGroup(isExpanded: $isSecurityExpanded) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle(isOn: $isSecure) {
+                            HStack(spacing: 10) {
+                                Image(systemName: isSecure ? "faceid" : "lock.open")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(isSecure ? .green : .secondary)
+                                    .animation(.easeInOut, value: isSecure)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Require Authentication")
+                                        .font(.custom("IBMPlexMono-Medium", size: 14))
+                                    
+                                    Text("FaceID / TouchID")
+                                        .font(.custom("IBMPlexMono-Regular", size: 11))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .disabled(!deviceBiometrics.hasBiometricsCapability)
+                        .tint(.green)
+                        
+                        if !deviceBiometrics.hasBiometricsCapability {
+                            Label("Biometrics not available on this device", systemImage: "exclamationmark.triangle")
+                                .font(.custom("IBMPlexMono-Regular", size: 11))
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: isSecure ? "lock.fill" : "lock.open")
+                            .font(.system(size: 16))
+                            .foregroundStyle(isSecure ? .green : .secondary)
+                        
+                        Text("Security")
+                            .font(.custom("IBMPlexMono-Medium", size: 14))
+                        
+                        if isSecure {
+                            Text("ON")
+                                .font(.custom("IBMPlexMono-Bold", size: 10))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.green.opacity(0.2))
+                                .foregroundStyle(.green)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .tint(Color.label)
+            }
+            .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
         }
+        .scrollContentBackground(.hidden)
     }
     
     @ViewBuilder
@@ -619,27 +734,7 @@ struct SnippetForm: View {
         }
     }
     
-    private var footer: some View {
-        HStack {
-            Text("Remaining: ")
-            ZStack {
-                Circle()
-                    .stroke(Color.tertiaryLabel, lineWidth: 5)
-                Text("\(titleCharLimit - title.count)")
-                    .font(.custom("IBMPlexMono-Medium", size: 10))
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke((titleCharLimit - title.count) < titleCharLimit / 4 ? Color.red.gradient : Color.label.gradient, lineWidth: 5)
-                    .rotationEffect(.init(degrees: -90))
-            }
-            .frame(width: 20, height: 20)
-        }
-        .transition(.opacity) // Add transition effect
-    }
-    
-    var progress: CGFloat {
-        return max(min(CGFloat(title.count) / CGFloat(titleCharLimit), 1), 0)
-    }
+
     
     func toggleFormVisibility() {
         isFormVisible.toggle()
