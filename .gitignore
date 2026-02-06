@@ -1,0 +1,77 @@
+# ===========================
+# Xcode
+# ===========================
+
+# User-specific Xcode data
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+
+# Build artifacts
+DerivedData/
+build/
+*.build/
+
+# Index data
+IndexStores/
+
+# Playground data
+timeline.xctimeline
+playground.xcworkspace
+
+# ===========================
+# Swift Package Manager
+# ===========================
+
+.build/
+.swiftpm/
+
+# ===========================
+# CocoaPods (just in case)
+# ===========================
+
+Pods/
+
+# ===========================
+# Secrets & Signing
+# ===========================
+
+*.env
+.env.*
+*.p8
+*.p12
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.key
+*.pem
+
+# ===========================
+# macOS
+# ===========================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ===========================
+# IDE & Editor
+# ===========================
+
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# ===========================
+# Archives & exports
+# ===========================
+
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.xcarchive

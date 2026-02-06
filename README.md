@@ -289,7 +289,8 @@ SnipKeyboard/                           # Keyboard Extension Target
 
 ### Notes
 
-- **RevenueCat (tip jar)**: The tip jar feature requires a valid RevenueCat API key. Without one, the app works perfectly — the tips section just won't load products. Contributors don't need to set up RevenueCat.
+- **Code Signing**: The project's `DEVELOPMENT_TEAM` is intentionally left blank. Before building on a physical device, open the project in Xcode, go to **Signing & Capabilities** for both the `SnipKey` and `SnipKeyboard` targets, and select your own development team. Simulator builds work without this step.
+- **RevenueCat (tip jar)**: The tip jar feature uses a public RevenueCat API key that ships with the app. Contributors don't need to set up their own RevenueCat account — the tips section will work as-is.
 - **iCloud Sync**: Requires an active iCloud account. On the simulator, sign into iCloud via Settings to test sync.
 - **Keyboard Extension**: After building, go to **Settings > General > Keyboard > Keyboards > Add New Keyboard** and enable SnipKey. The app includes a guided setup walkthrough.
 

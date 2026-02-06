@@ -23,6 +23,10 @@ class RevenueCatManager: ObservableObject {
     }
     
     private func setupRevenueCat() {
+        // This is a RevenueCat PUBLIC API key (prefixed "appl_"). By RevenueCat's design,
+        // public keys are intended to ship in client apps — they can only fetch offerings
+        // and process purchases, not access the dashboard or modify account settings.
+        // The tip jar will not load products if this key is replaced or removed.
         Purchases.configure(withAPIKey: "appl_otSqwAryUYKsMuWwBCACxYdwYuT")
         self.fetchOfferings()
 //        Purchases.shared.delegate = self

@@ -683,7 +683,7 @@
 				CODE_SIGN_ENTITLEMENTS = SnipKeyboard/SnipKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J7K9Z79S5F;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnipKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Shortcuts;
@@ -710,7 +710,7 @@
 				CODE_SIGN_ENTITLEMENTS = SnipKeyboard/SnipKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J7K9Z79S5F;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnipKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Shortcuts;
@@ -861,7 +861,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
-				DEVELOPMENT_TEAM = J7K9Z79S5F;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnipKey/Info.plist;
@@ -903,7 +903,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
-				DEVELOPMENT_TEAM = J7K9Z79S5F;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnipKey/Info.plist;
