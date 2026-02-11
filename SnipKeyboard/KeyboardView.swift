@@ -165,6 +165,9 @@ struct KeyboardView: View {
     @AppStorage("sortBySelection") var sortBySelection: SortOption = .dateCreated
     
     @Environment(SettingsViewModel.self) private var settingsViewModel
+    
+    // Optional: QWERTY state from environment (nil if running without QWERTY support)
+    @Environment(QWERTYKeyboardState.self) private var qwertyStateFromEnvironment: QWERTYKeyboardState?
     @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
     @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
     @Query(sort: \SnipTag.name) private var tags: [SnipTag]
@@ -265,15 +268,27 @@ struct KeyboardView: View {
                     
                     
                     Spacer()
-                    Button {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name(rawValue: "switchKey"), object: nil)
-                        
-                    } label: {
-                        Label("Keyboard", systemImage: "keyboard.fill")
-                            .underline()
-                            .foregroundStyle(.blue.gradient)
-                            .font(.custom("IBMPlexMono-Bold", size: 14))
+                    // Toggle back to QWERTY keyboard mode
+                    if let qState = qwertyStateFromEnvironment {
+                        Button {
+                            qState.showingSnippets = false
+                        } label: {
+                            Label("Keyboard", systemImage: "keyboard.fill")
+                                .underline()
+                                .foregroundStyle(.blue.gradient)
+                                .font(.custom("IBMPlexMono-Bold", size: 14))
+                        }
+                    } else {
+                        // Fallback: switch to next keyboard (pre-QWERTY behavior)
+                        Button {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name(rawValue: "switchKey"), object: nil)
+                        } label: {
+                            Label("Keyboard", systemImage: "keyboard.fill")
+                                .underline()
+                                .foregroundStyle(.blue.gradient)
+                                .font(.custom("IBMPlexMono-Bold", size: 14))
+                        }
                     }
                     
                 }
@@ -352,7 +367,7 @@ struct KeyboardView: View {
                 
             }
         }
-        .frame(height: 260)
+        .frame(height: KeyboardDimensions.totalHeight(forScreenWidth: UIScreen.main.bounds.width))
 //        .background(Color.clear)
         .sensoryFeedback(.increase, trigger: selectedFilter)
         .onAppear {
@@ -737,13 +752,27 @@ struct LiquidButtonStyle: ButtonStyle {
 struct KeyboardViewExt: View {
     let container = SnipKeyDataManager().makeSharedContainer()
     @State private var settingsViewModel: SettingsViewModel?
+
+    // QWERTY keyboard state and actions, passed from KeyboardViewController
+    var qwertyState: QWERTYKeyboardState
+    var keyboardActions: KeyboardActions
     
     var body: some View {
         Group {
             if let settingsViewModel = settingsViewModel {
-                KeyboardView()
-                    .modelContainer(container)
-                    .environment(settingsViewModel)
+                Group {
+                    if qwertyState.showingSnippets {
+                        // Existing snippet grid view
+                        KeyboardView()
+                    } else {
+                        // New QWERTY keyboard view
+                        QWERTYKeyboardView()
+                    }
+                }
+                .modelContainer(container)
+                .environment(settingsViewModel)
+                .environment(qwertyState)
+                .environment(\.keyboardActions, keyboardActions)
             } else {
                 ProgressView()
                     .onAppear {
@@ -764,13 +793,15 @@ struct KeyboardViewExt: View {
 #Preview {
     let tempSettingsContainer = SnipKeyDataManager().makeSharedContainer()
     let settingsViewModel = SettingsViewModel(modelContext: tempSettingsContainer.mainContext)
-    @State var isPresentingSettings: Bool = false
     
-    return KeyboardViewExt()
-        .onAppear {
-            settingsViewModel.modelContext = tempSettingsContainer.mainContext
-            settingsViewModel.setupKeyboardSettings()
-        }
-        .modelContainer(tempSettingsContainer)
-        .environment(settingsViewModel)
+    return KeyboardViewExt(
+        qwertyState: QWERTYKeyboardState(),
+        keyboardActions: KeyboardActions.noop
+    )
+    .onAppear {
+        settingsViewModel.modelContext = tempSettingsContainer.mainContext
+        settingsViewModel.setupKeyboardSettings()
+    }
+    .modelContainer(tempSettingsContainer)
+    .environment(settingsViewModel)
 }
