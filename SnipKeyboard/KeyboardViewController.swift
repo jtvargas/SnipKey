@@ -11,6 +11,14 @@ import SwiftUI
 import MobileCoreServices
 import UniformTypeIdentifiers
 
+/// Protocol matching UIApplication.open(_:options:completionHandler:).
+/// Declared at file scope so the ObjC runtime registers it globally,
+/// enabling dynamic conformance checking via `as?` against UIApplication.
+/// This is the standard approach used by major third-party keyboards (Gboard, SwiftKey).
+@objc protocol KeyboardExtensionOpenURL {
+    @objc func open(_ url: URL, options: [String: Any], completionHandler: ((Bool) -> Void)?)
+}
+
 class KeyboardViewController: UIInputViewController {
     
     @IBOutlet var nextKeyboardButton: UIButton!
@@ -54,6 +62,11 @@ class KeyboardViewController: UIInputViewController {
             },
             hidePopup: { [weak self] in
                 self?.popupView.hide()
+            },
+            openApp: { [weak self] in
+                if let url = URL(string: "snipkey://open") {
+                    self?.openURL(url)
+                }
             }
         )
     }()
@@ -317,6 +330,27 @@ class KeyboardViewController: UIInputViewController {
         qwertyState.applyAutoCapitalization(shouldCapitalize: shouldCap)
     }
     
+    /// Open a URL from the keyboard extension by walking the responder chain.
+    /// Tries the modern 3-argument open method first (via protocol cast),
+    /// then falls back to the deprecated single-argument openURL: selector.
+    private func openURL(_ url: URL) {
+        var responder: UIResponder? = self
+        while let r = responder {
+            // Try modern open(_:options:completionHandler:) via file-scope protocol cast
+            if let app = r as? KeyboardExtensionOpenURL {
+                app.open(url, options: [:], completionHandler: nil)
+                return
+            }
+            // Fallback: deprecated openURL: (still functional through iOS 26)
+            let sel = NSSelectorFromString("openURL:")
+            if r.responds(to: sel) {
+                _ = r.perform(sel, with: url as NSURL)
+                return
+            }
+            responder = r.next
+        }
+    }
+
     private func updateReturnKeyLabel() {
         let returnType = textDocumentProxy.returnKeyType ?? .default
         

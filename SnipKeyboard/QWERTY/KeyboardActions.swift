@@ -33,6 +33,9 @@ struct KeyboardActions {
     /// Hide the character pop-up balloon
     let hidePopup: () -> Void
 
+    /// Open the main SnipKey app (for settings access from the keyboard)
+    let openApp: () -> Void
+
     /// No-op instance for previews and default values
     static let noop = KeyboardActions(
         insertText: { _ in },
@@ -41,7 +44,8 @@ struct KeyboardActions {
         documentContextBeforeInput: { nil },
         screenWidth: 393,
         showPopup: { _, _, _ in },
-        hidePopup: {}
+        hidePopup: {},
+        openApp: {}
     )
 }
 

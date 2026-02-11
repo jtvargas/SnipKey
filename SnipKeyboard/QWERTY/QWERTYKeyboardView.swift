@@ -44,35 +44,27 @@ struct QWERTYKeyboardView: View {
 
 // MARK: - Keyboard Toolbar
 
-/// Top toolbar with snippet toggle button.
-/// This bar will also serve as the foundation for the future suggestion/autocomplete bar.
+/// Top toolbar with settings button (right-aligned).
+/// The snippets toggle is available via the dedicated key in the bottom row.
+/// This toolbar has zero @Observable dependencies — it never re-renders during typing.
 struct KeyboardToolbarView: View {
     let dimensions: KeyboardDimensions
-    @Environment(QWERTYKeyboardState.self) private var state
+    @Environment(\.keyboardActions) private var actions
 
     var body: some View {
         HStack {
-            // Snippet toggle button
+            Spacer()
+
+            // Settings button — opens main SnipKey app
             Button {
-                state.showingSnippets = true
+                actions.openApp()
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "text.badge.star")
-                        .font(.system(size: 14, weight: .medium))
-                    Text("Snippets")
-                        .font(.custom("IBMPlexMono-Medium", size: 13))
-                }
-                .foregroundStyle(.blue)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.blue.opacity(0.1))
-                )
+                Image(systemName: "gearshape")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color(.secondaryLabel))
+                    .padding(6)
             }
             .buttonStyle(.plain)
-
-            Spacer()
         }
         .frame(height: dimensions.toolbarHeight)
         .padding(.horizontal, 12)

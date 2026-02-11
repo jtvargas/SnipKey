@@ -360,8 +360,10 @@ struct KeyButtonView: View {
         switch state.shiftState {
         case .disabled:
             return keyForegroundColor
-        case .enabled, .locked:
-            return isDarkMode ? .black : .white
+        case .enabled:
+            return isDarkMode ? .white : .white
+        case .locked:
+            return .white
         }
     }
 

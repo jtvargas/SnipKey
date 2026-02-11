@@ -16,8 +16,8 @@ struct KeyboardDimensions: Equatable {
 
     /// Height of a single key row (scales with screen width)
     var keyHeight: CGFloat {
-        // iOS 26: more compact keys (~41pt on 393pt, ~39pt on 375pt, ~43pt on 430pt)
-        return max(round(screenWidth * 0.105), 37)
+        // Match native iOS keyboard: ~42pt on 393pt, ~40pt on 375pt, ~46pt on 430pt
+        return max(round(screenWidth * 0.107), 38)
     }
 
     /// Horizontal gap between keys (visual gap — used for padding inside each key)
@@ -25,8 +25,8 @@ struct KeyboardDimensions: Equatable {
 
     /// Vertical gap between rows
     var rowGap: CGFloat {
-        // iOS 26: tighter row spacing for compact look
-        return 8
+        // Match native iOS keyboard row spacing (~11-12pt)
+        return 12
     }
 
     /// Left/right margin from screen edge to first/last key
@@ -36,7 +36,8 @@ struct KeyboardDimensions: Equatable {
 
     /// Top padding above the first row
     var topEdge: CGFloat {
-        return screenWidth < 400 ? 8 : 6
+        // Match native iOS keyboard top padding (~6pt)
+        return 6
     }
 
     /// Bottom padding below the last row
@@ -98,7 +99,8 @@ struct KeyboardDimensions: Equatable {
     }
 
     /// Height of the toolbar above the keys (snippet toggle, future suggestion bar)
-    var toolbarHeight: CGFloat { 34 }
+    /// Matches native iOS prediction/suggestion bar height (~44pt)
+    var toolbarHeight: CGFloat { 44 }
 
     /// Total keyboard height (toolbar + keys area)
     var totalHeight: CGFloat {
