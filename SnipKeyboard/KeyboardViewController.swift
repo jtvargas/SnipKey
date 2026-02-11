@@ -272,16 +272,21 @@ class KeyboardViewController: UIInputViewController {
         // Update QWERTY keyboard state from text document proxy
         updateQWERTYState()
         
-        let selectedText = getSelectedText()
-        
-        if !selectedText.isEmpty{
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "selectText"), object: selectedText)
-        }
-        
-        if selectedText.isEmpty{
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil)
+        // Only post selection notifications when snippet view is active.
+        // These are consumed by KeyboardView's observers and serve no purpose
+        // during QWERTY typing — skipping them avoids N observer calls per keystroke.
+        if qwertyState.showingSnippets {
+            let selectedText = getSelectedText()
+            
+            if !selectedText.isEmpty{
+                NotificationCenter.default.post(
+                    name: NSNotification.Name(rawValue: "selectText"), object: selectedText)
+            }
+            
+            if selectedText.isEmpty{
+                NotificationCenter.default.post(
+                    name: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil)
+            }
         }
     }
     

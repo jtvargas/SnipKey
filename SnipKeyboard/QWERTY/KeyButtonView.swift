@@ -8,6 +8,15 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Deletion Counter (non-observable, avoids @State re-renders)
+
+/// Reference-type counter for rapid deletion acceleration.
+/// Using a class instead of @State Int avoids scheduling SwiftUI body
+/// re-evaluations 10x/second during backspace long-press.
+final class DeletionCounter {
+    var count: Int = 0
+}
+
 // MARK: - Haptic Feedback Manager
 
 /// Lightweight haptic feedback for key presses.
@@ -134,7 +143,10 @@ struct KeyButtonView: View {
     // Long-press state (delete + snippet toggle globe)
     @State private var isLongPressing = false
     @State private var deleteTimer: Timer?
-    @State private var deletionCount = 0
+    // NOTE: deletionCount is NOT @State — it's only used inside the Timer closure
+    // and stopRapidDeletion(). Making it @State would schedule unnecessary SwiftUI
+    // body re-evaluations 10x/second during long-press delete.
+    @State private var deletionCounter = DeletionCounter()
 
     /// Total tappable width including padding into gaps
     private var totalWidth: CGFloat {
@@ -189,7 +201,7 @@ struct KeyButtonView: View {
                         LongPressGesture(minimumDuration: 0.4)
                             .onEnded { _ in
                                 isLongPressing = true
-                                deletionCount = 0
+                                deletionCounter.count = 0
                                 startRapidDeletion()
                             }
                     )
@@ -410,8 +422,8 @@ struct KeyButtonView: View {
 
     private func startRapidDeletion() {
         deleteTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            deletionCount += 1
-            let charsToDelete = min(deletionCount, 10)
+            deletionCounter.count += 1
+            let charsToDelete = min(deletionCounter.count, 10)
             for _ in 0..<charsToDelete {
                 actions.deleteBackward()
             }
@@ -420,7 +432,7 @@ struct KeyButtonView: View {
 
     private func stopRapidDeletion() {
         isLongPressing = false
-        deletionCount = 0
+        deletionCounter.count = 0
         deleteTimer?.invalidate()
         deleteTimer = nil
     }

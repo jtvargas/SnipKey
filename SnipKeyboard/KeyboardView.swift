@@ -377,6 +377,9 @@ struct KeyboardView: View {
             setupSelectTextObserver()
             
         }
+        .onDisappear {
+            removeSelectTextObservers()
+        }
         .toast(isPresenting: $showToast) {
             AlertToast(
                 displayMode: .banner(
@@ -706,29 +709,35 @@ struct KeyboardView: View {
     
     
     
+    /// Stored observer tokens so we can remove them in onDisappear.
+    /// Without cleanup, each appearance of the snippet view would accumulate
+    /// duplicate observers — causing N handler calls per notification after N toggles.
+    @State private var notificationObservers: [Any] = []
+    
     func setupSelectTextObserver() {
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectText"), object: nil, queue: nil){ notification in
-            
+        // Remove any existing observers first (safety net for rapid toggle)
+        removeSelectTextObservers()
+        
+        let o1 = NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectText"), object: nil, queue: nil){ notification in
             
             if let text = notification.object as? String {
                 
                 if !text.isEmpty {
                     showCreateSnippetCTA = true
                     selectedText = text
-                    print("TEXT VALUE: \(text)")
                 }
                 
             }
             
         }
         
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil, queue: nil){ notification in
+        let o2 = NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil, queue: nil){ notification in
             
             showCreateSnippetCTA = false
             
         }
         
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "hasFullAccess"), object: nil, queue: nil){ notification in
+        let o3 = NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "hasFullAccess"), object: nil, queue: nil){ notification in
             
             if let fullAccess = notification.object as? Bool {
                 hasFullAccess = fullAccess
@@ -736,6 +745,15 @@ struct KeyboardView: View {
             }
             
         }
+        
+        notificationObservers = [o1, o2, o3]
+    }
+    
+    func removeSelectTextObservers() {
+        for observer in notificationObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        notificationObservers.removeAll()
     }
 }
 
