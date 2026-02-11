@@ -11,14 +11,87 @@ import SwiftUI
 import MobileCoreServices
 import UniformTypeIdentifiers
 
+/// Protocol matching UIApplication.open(_:options:completionHandler:).
+/// Declared at file scope so the ObjC runtime registers it globally,
+/// enabling dynamic conformance checking via `as?` against UIApplication.
+/// This is the standard approach used by major third-party keyboards (Gboard, SwiftKey).
+@objc protocol KeyboardExtensionOpenURL {
+    @objc func open(_ url: URL, options: [String: Any], completionHandler: ((Bool) -> Void)?)
+}
+
 class KeyboardViewController: UIInputViewController {
     
     @IBOutlet var nextKeyboardButton: UIButton!
     
     var isLongPressing = false
     var deletionCount = 0
-    //    let container = SnipKeyDataManager().makeSharedContainer()
-    //    private let keyboardView = KeyboardViewExt()
+    
+    // MARK: - QWERTY Keyboard State & Actions
+    
+    /// Shared state for the QWERTY keyboard, injected into SwiftUI environment
+    let qwertyState = QWERTYKeyboardState()
+    
+    /// Height constraint for the keyboard extension input view
+    private var heightConstraint: NSLayoutConstraint?
+    
+    /// Track last known screen width to avoid redundant updateQWERTYState() calls from viewWillLayoutSubviews
+    private var lastKnownWidth: CGFloat = 0
+    
+    /// Character pop-up balloon — single reusable UIKit view, positioned above pressed keys.
+    /// Pure CALayer operations, zero SwiftUI state changes.
+    private let popupView = KeyPopupView()
+    
+    // MARK: - Slash Command
+    
+    /// Slash command detection — plain class, zero SwiftUI re-renders per keystroke.
+    /// Only promotes to @Observable state when the active/query status actually changes.
+    private let slashCommandTracker = SlashCommandTracker()
+    
+    /// Observable slash command state — shared with SwiftUI toolbar for suggestions display.
+    let slashCommandState = SlashCommandState()
+    
+    /// Wraps textDocumentProxy operations as closures for the SwiftUI QWERTY keyboard
+    private lazy var keyboardActionsStruct: KeyboardActions = {
+        KeyboardActions(
+            insertText: { [weak self] text in
+                self?.textDocumentProxy.insertText(text)
+            },
+            deleteBackward: { [weak self] in
+                self?.textDocumentProxy.deleteBackward()
+            },
+            advanceToNextInputMode: { [weak self] in
+                self?.advanceToNextInputMode()
+            },
+            documentContextBeforeInput: { [weak self] in
+                self?.textDocumentProxy.documentContextBeforeInput
+            },
+            screenWidth: UIScreen.main.bounds.width,
+            showPopup: { [weak self] character, keyFrame, isDark in
+                self?.popupView.show(character: character, keyFrame: keyFrame, isDark: isDark)
+            },
+            hidePopup: { [weak self] in
+                self?.popupView.hide()
+            },
+            openApp: { [weak self] in
+                if let url = URL(string: "snipkey://open") {
+                    self?.openURL(url)
+                }
+            },
+            evaluateSlashCommand: { [weak self] in
+                guard let self = self else { return }
+                // Skip evaluation when showing snippet grid (not in QWERTY mode)
+                guard !self.qwertyState.showingSnippets else { return }
+                let context = self.textDocumentProxy.documentContextBeforeInput
+                let result = self.slashCommandTracker.evaluate(context: context)
+                if result.changed {
+                    self.slashCommandState.updateActivation(
+                        isActive: result.isActive,
+                        query: result.query
+                    )
+                }
+            }
+        )
+    }()
     
     override func updateViewConstraints() {
         super.updateViewConstraints()
@@ -94,16 +167,38 @@ class KeyboardViewController: UIInputViewController {
         self.nextKeyboardButton.leftAnchor.constraint(equalTo: self.view.leftAnchor).isActive = true
         self.nextKeyboardButton.bottomAnchor.constraint(equalTo: self.view.bottomAnchor).isActive = true
         
-        let contentView = UIHostingController(rootView: KeyboardViewExt())
+        // Host SwiftUI keyboard with QWERTY state and actions injected
+        let contentView = UIHostingController(
+            rootView: KeyboardViewExt(
+                qwertyState: qwertyState,
+                keyboardActions: keyboardActionsStruct,
+                slashCommandState: slashCommandState
+            )
+        )
         
         contentView.view.backgroundColor = .clear
         
         view.addKeyboardSubview(contentView.view)
-//        view.isOpaque = true
         
+        // Add popup view on top of the SwiftUI content (renders above all keys)
+        popupView.translatesAutoresizingMaskIntoConstraints = true
+        view.addSubview(popupView)
         
-        //        Alternative way to inject swiftdata context to view
-        //        view.addKeyboardSubview(UIHostingController(rootView: keyboardView.modelContext(container.mainContext)).view)
+        // Set explicit height constraint so the system knows how tall the keyboard should be.
+        // Without this, GeometryReader (now removed) would fail to communicate height upward.
+        let desiredHeight = KeyboardDimensions.totalHeight(forScreenWidth: UIScreen.main.bounds.width)
+        let constraint = NSLayoutConstraint(
+            item: self.view!,
+            attribute: .height,
+            relatedBy: .equal,
+            toItem: nil,
+            attribute: .notAnAttribute,
+            multiplier: 1.0,
+            constant: desiredHeight
+        )
+        constraint.priority = UILayoutPriority(999) // Just below .required to avoid conflicts
+        self.view.addConstraint(constraint)
+        self.heightConstraint = constraint
         
         // insert text to textInput
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ notification in
@@ -181,6 +276,15 @@ class KeyboardViewController: UIInputViewController {
     
     override func viewWillLayoutSubviews() {
         self.nextKeyboardButton.isHidden = !self.needsInputModeSwitchKey
+        // Update height constraint on layout changes (rotation, different device)
+        let newWidth = UIScreen.main.bounds.width
+        heightConstraint?.constant = KeyboardDimensions.totalHeight(forScreenWidth: newWidth)
+        // Only update QWERTY state when screen width actually changed (rotation)
+        // This avoids doubling observable mutations since textDidChange also calls updateQWERTYState
+        if newWidth != lastKnownWidth {
+            lastKnownWidth = newWidth
+            updateQWERTYState()
+        }
         super.viewWillLayoutSubviews()
     }
     
@@ -201,16 +305,129 @@ class KeyboardViewController: UIInputViewController {
         }
         self.nextKeyboardButton.setTitleColor(textColor, for: [])
         
-        let selectedText = getSelectedText()
+        // Update QWERTY keyboard state from text document proxy
+        updateQWERTYState()
         
-        if !selectedText.isEmpty{
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "selectText"), object: selectedText)
+        // Only post selection notifications when snippet view is active.
+        // These are consumed by KeyboardView's observers and serve no purpose
+        // during QWERTY typing — skipping them avoids N observer calls per keystroke.
+        if qwertyState.showingSnippets {
+            let selectedText = getSelectedText()
+            
+            if !selectedText.isEmpty{
+                NotificationCenter.default.post(
+                    name: NSNotification.Name(rawValue: "selectText"), object: selectedText)
+            }
+            
+            if selectedText.isEmpty{
+                NotificationCenter.default.post(
+                    name: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil)
+            }
+        }
+    }
+    
+    // MARK: - QWERTY State Updates
+    
+    /// Push text input context from textDocumentProxy into the QWERTY keyboard state.
+    /// Called on textDidChange and viewWillLayoutSubviews.
+    private func updateQWERTYState() {
+        let proxy = self.textDocumentProxy
+        
+        // Keyboard appearance (light/dark) — only mutate if changed
+        let newMode: KeyboardAppearanceMode = proxy.keyboardAppearance == .dark ? .dark : .light
+        if qwertyState.appearanceMode != newMode {
+            qwertyState.appearanceMode = newMode
         }
         
-        if selectedText.isEmpty{
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil)
+        // Globe key visibility — only mutate if changed
+        let newNeedsSwitch = self.needsInputModeSwitchKey
+        if qwertyState.needsInputModeSwitchKey != newNeedsSwitch {
+            qwertyState.needsInputModeSwitchKey = newNeedsSwitch
+        }
+        
+        // Return key label — only mutate if changed
+        updateReturnKeyLabel()
+        
+        // Auto-capitalization
+        let shouldCap = computeAutoCapitalization()
+        qwertyState.applyAutoCapitalization(shouldCapitalize: shouldCap)
+    }
+    
+    /// Open a URL from the keyboard extension by walking the responder chain.
+    /// Tries the modern 3-argument open method first (via protocol cast),
+    /// then falls back to the deprecated single-argument openURL: selector.
+    private func openURL(_ url: URL) {
+        var responder: UIResponder? = self
+        while let r = responder {
+            // Try modern open(_:options:completionHandler:) via file-scope protocol cast
+            if let app = r as? KeyboardExtensionOpenURL {
+                app.open(url, options: [:], completionHandler: nil)
+                return
+            }
+            // Fallback: deprecated openURL: (still functional through iOS 26)
+            let sel = NSSelectorFromString("openURL:")
+            if r.responds(to: sel) {
+                _ = r.perform(sel, with: url as NSURL)
+                return
+            }
+            responder = r.next
+        }
+    }
+
+    private func updateReturnKeyLabel() {
+        let returnType = textDocumentProxy.returnKeyType ?? .default
+        
+        let newLabel: String
+        let newProminent: Bool
+        
+        switch returnType {
+        case .go:
+            newLabel = "Go"; newProminent = true
+        case .join:
+            newLabel = "Join"; newProminent = true
+        case .next:
+            newLabel = "Next"; newProminent = false
+        case .search, .google, .yahoo:
+            newLabel = "Search"; newProminent = true
+        case .send:
+            newLabel = "Send"; newProminent = true
+        case .done:
+            newLabel = "Done"; newProminent = true
+        case .route:
+            newLabel = "Route"; newProminent = true
+        case .continue:
+            newLabel = "Continue"; newProminent = true
+        default:
+            newLabel = "return"; newProminent = false
+        }
+        
+        if qwertyState.returnKeyLabel != newLabel {
+            qwertyState.returnKeyLabel = newLabel
+        }
+        if qwertyState.returnKeyIsProminent != newProminent {
+            qwertyState.returnKeyIsProminent = newProminent
+        }
+    }
+    
+    private func computeAutoCapitalization() -> Bool {
+        let proxy = textDocumentProxy
+        let autocapType = proxy.autocapitalizationType ?? .none
+        
+        switch autocapType {
+        case .none:
+            return false
+        case .allCharacters:
+            return true
+        case .words:
+            let before = proxy.documentContextBeforeInput ?? ""
+            return before.isEmpty || before.last?.isWhitespace == true
+        case .sentences:
+            let before = proxy.documentContextBeforeInput ?? ""
+            return before.isEmpty
+                || before.hasSuffix(". ") || before.hasSuffix("? ") || before.hasSuffix("! ")
+                || before.hasSuffix("\n")
+        @unknown default:
+            return false
         }
     }
 }

@@ -9,465 +9,338 @@ import SwiftData
 import SwiftUI
 import AlertToast
 
-class KeyboardObserver: ObservableObject {
-    @Published var isShowing = false
-    @Published var height: CGFloat = 0
-    
-    func addObserver() {
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(self.keyboardWillShow(_:)),
-            name: UIResponder.keyboardWillShowNotification, object: nil)
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(self.keyboardWillHide(_:)),
-            name: UIResponder.keyboardWillHideNotification, object: nil)
-    }
-    
-    func removeObserver() {
-        NotificationCenter.default.removeObserver(
-            self, name: UIResponder.keyboardWillShowNotification, object: nil)
-        NotificationCenter.default.removeObserver(
-            self, name: UIResponder.keyboardWillHideNotification, object: nil)
-    }
-    
-    @objc func keyboardWillShow(_ notification: Notification) {
-        isShowing = true
-        guard let userInfo = notification.userInfo as? [String: Any] else {
-            return
-        }
-        guard let keyboardInfo = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue else {
-            return
-        }
-        let keyboardSize = keyboardInfo.cgRectValue.size
-        //        print("[keyboardWillShow] HEIGHT: \(keyboardSize.height)")
-        height = keyboardSize.height
-        
-    }
-    
-    @objc func keyboardWillHide(_ notification: Notification) {
-        isShowing = false
-        height = 0
-    }
-}
-
-let layout = [
-    GridItem(.adaptive(minimum: 135, maximum: 200))
-]
-
-struct SnippetImageKeyboard: View {
-    var body: some View {
-        Image(systemName: "character.cursor.ibeam")
-            .background(Color.black, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .foregroundStyle(.white)
-    }
-}
-
-struct SnippetListItemKeyboard: View {
-    
-    var body: some View {
-        HStack {
-            SnippetImageKeyboard()
-                .frame(width: 35, height: 35)
-                .background(Color.black, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .foregroundStyle(.white)
-            
-            VStack {
-                Text("Snippet Title")
-                    .bold()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .tint(Color.black)
-                    .bold()
-                    .font(.custom("IBMPlexMono-Medium", size: 14))
-                
-                Text("#TAG")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundColor(Color.gray)
-                    .font(.custom("IBMPlexMono-Medium", size: 12))
-            }
-        }
-        
-    }
-}
-
-struct OverflowContentViewModifier: ViewModifier {
-    @State private var contentOverflow: Bool = false
-    
-    func body(content: Content) -> some View {
-        GeometryReader { geometry in
-            content
-                .background(
-                    GeometryReader { contentGeometry in
-                        Color.clear.onAppear {
-                            contentOverflow = contentGeometry.size.height > geometry.size.height
-                        }
-                    }
-                )
-                .wrappedInScrollView(when: contentOverflow)
-        }
-    }
-}
-
-func firstFourteenCharacters(of inputString: String) -> String {
-    if inputString.count >= 14 {
-        let index = inputString.index(inputString.startIndex, offsetBy: 14)
-        return String(inputString[..<index])
-    } else {
-        return inputString
-    }
-}
-
-extension View {
-    @ViewBuilder
-    func wrappedInScrollView(when condition: Bool) -> some View {
-        if condition {
-            ScrollView {
-                self
-            }
-        } else {
-            self
-        }
-    }
-}
-
-extension View {
-    func scrollOnOverflow() -> some View {
-        modifier(OverflowContentViewModifier())
-    }
-}
-
-
-struct VisualEffectViewKeyboard: UIViewRepresentable {
-    var effect: UIVisualEffect?
-    func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
-    func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
-}
+// MARK: - Sort Option
 
 enum SortOption: String, CaseIterable {
-    case alphabetical = "Albabetical"
+    case alphabetical = "Alphabetical"
     case dateCreated = "Date Created"
     case recentlyUsed = "Recently Used"
-  
-    
+
     var imageName: String {
         switch self {
-        case .dateCreated:
-            return "calendar.circle"
-        case .recentlyUsed:
-            return "timer.circle"
-        case .alphabetical:
-            return "textformat.abc"
+        case .dateCreated:   return "calendar.circle"
+        case .recentlyUsed:  return "timer.circle"
+        case .alphabetical:  return "textformat.abc"
         }
     }
 }
 
+// MARK: - Keyboard Snippet View
+
 struct KeyboardView: View {
-    @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
-    @AppStorage("sortBySelection") var sortBySelection: SortOption = .dateCreated
-    
     @Environment(SettingsViewModel.self) private var settingsViewModel
-    @ObservedObject var keyboard: KeyboardObserver = KeyboardObserver()
+    @Environment(QWERTYKeyboardState.self) private var qwertyStateFromEnvironment: QWERTYKeyboardState?
+
     @Query(sort: \SnippetItem.creationDate, order: .reverse) private var snippets: [SnippetItem]
     @Query(sort: \SnipTag.name) private var tags: [SnipTag]
     @Query() private var settings: [SettingsModel]
-    
-    let columns = [GridItem(.adaptive(minimum: 135, maximum: 175), spacing: 6)]
-    let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
-//    let settingsViewModel = SettingsViewModel()
-    
+
+    let deviceBiometrics = DeviceBiometrics()
+
+    // Snippet interaction state
     @State private var isUnlocked: Bool = false
-    @State private var hasFullAccess: Bool = false
     @State private var showCreateSnippetCTA = false
     @State private var showCreatedToast = false
-    @State var snippetsTest: [SnippetItem] = [SnippetItem.dummy]
     @State private var showToast = false
-    @State var snippetViewModel = SnippetViewModel()
-    @State private var text: String = ""
-    @State private var selectedFilter: SnipTag? = nil
     @State private var selectedText: String = ""
-    
-//    delete functionality
-    @State private var isLongPressing = false
-     @State private var deleteTimer: Timer?
-    
-    // sort functionality
+    @State var snippetViewModel = SnippetViewModel()
+
+    // Tag filter
+    @State private var selectedFilter: SnipTag? = nil
+
+    // Sort
     @State private var sortOption: SortOption = .recentlyUsed
-    @State private var sortOrder: SortOrder =  .forward
-        
-    var currentKeyboardSettings: SettingsModel {
-        if let myCurrentSettings = settings.first {
-            return myCurrentSettings
+    @State private var sortOrder: SortOrder = .forward
+
+    // Delete long-press
+    @State private var isLongPressing = false
+    @State private var deleteTimer: Timer?
+
+    // Notification observers
+    @State private var notificationObservers: [Any] = []
+
+    // MARK: - Computed Properties
+
+    private var currentKeyboardSettings: SettingsModel {
+        settings.first ?? SettingsModel(afterPasteAction: .space)
+    }
+
+    private var sortedSnippets: [SnippetItem] {
+        let filtered: [SnippetItem]
+        if let filter = selectedFilter {
+            filtered = snippets.filter { $0.customTag == filter }
+        } else {
+            filtered = Array(snippets)
         }
-        
-        return SettingsModel(afterPasteAction: .space)
-    }
-    
-    var hasSecureSnippets: Bool {
-        return snippets.contains { $0.isSecure }
-    }
-    
-    
-    var body: some View {
-        ZStack {
-            
-//            VisualEffectViewKeyboard(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-            Color.clear
-                .edgesIgnoringSafeArea(.all)
-            VStack {
-                //            For multiple/custom tags use this style, or a toggle list button
-                HStack(alignment: .center) {
-//                    Label("\(selectedFilter?.name ?? "All")", systemImage: selectedFilter?.imageTag ?? "circle")
-//                        .tint(Color.label)
-                    
-                    
-                    Menu {
-                        Picker("Sort by", selection: $sortOption) {
-                            ForEach(SortOption.allCases, id: \.self) { option in
-                                HStack {
-                                    Text(option.rawValue)
-                                    Spacer()
-                                    Image(systemName: option.imageName)
-                                }
-                                .tag(option)
-                            }
-                        }
-                        
-                        Picker("Order", selection: $sortOrder) {
-                            switch sortOption {
-                            case .dateCreated:
-                                Label("Earliest First", systemImage: "arrow.up")
-                                    .tag(SortOrder.forward)
-                                Label("Latest First", systemImage: "arrow.down")
-                                    .tag(SortOrder.reverse)
-                            case .recentlyUsed:
-                                Label("Most Recent First", systemImage: "arrow.up")
-                                    .tag(SortOrder.reverse)
-                                Label("Least Recent First", systemImage: "arrow.down")
-                                    .tag(SortOrder.forward)
-                            case .alphabetical:
-                                Label("A to Z", systemImage: "arrow.up")
-                                    .tag(SortOrder.forward)
-                                Label("Z to A", systemImage: "arrow.down")
-                                    .tag(SortOrder.reverse)
-                            }
-                        }
-                    } label: {
-                        Label("Sort", systemImage: "arrow.up.arrow.down")
-                            .foregroundStyle(.blue.gradient)
-                    }
-                    EmptyView()
-                    Spacer()
-                    
-                    if hasSecureSnippets {
-                        Label("\(isUnlocked ? "Vault Open" : "Vault Locked")", systemImage: "\(isUnlocked ? "lock.open" : "lock")")
-                            .foregroundStyle(Color.secondaryLabel)
-                    }
-                   
-                    
-                    
-                    Spacer()
-                    Button {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name(rawValue: "switchKey"), object: nil)
-                        
-                    } label: {
-                        Label("Keyboard", systemImage: "keyboard.fill")
-                            .underline()
-                            .foregroundStyle(.blue.gradient)
-                            .font(.custom("IBMPlexMono-Bold", size: 14))
-                    }
-                    
-                }
-                .font(.custom("IBMPlexMono-Medium", size: 14))
-                .padding(.top, 4)
-                .padding(.horizontal)
-                
-                
-                
-                
-                ScrollView {
-                    if showCreateSnippetCTA {
-                        if checkFullAccess() {
-                            floatingButton
-                                .transition(.scale.combined(with: .opacity))
-                                .animation(.easeInOut, value: showCreateSnippetCTA)
-                        } else {
-                            Text("Enable Full Access to quickly create snippets from selected text.")
-                                .foregroundColor(.secondary)
-                                .font(.custom("IBMPlexMono-Regular", size: 12))
-                                .padding(.top)
-                            
-                            
-                        }
-                       
-                    }
-                    
-                    LazyVGrid(columns: layout, spacing: 20) {
-                        ForEach(getSnippets(), id: \.self.id) { snippet in
-                            Button {
-                                sentValue(snippet: snippet)
-                            } label: {
-                                SnippetListItemMinimal(item: snippet)
-                                    .truncationMode(.tail)
-                            }
-                            
-                        }
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    
-                }
-                
-                if selectedFilter != nil {
-                    Button {
-                        selectedFilter = nil
-                    } label: {
-                        HStack {
-                            Image(systemName: "minus.circle.fill")
-                            Text("Remove Filter")
-                                .font(.custom("IBMPlexMono-Medium", size: 12))
-                        }.tint(Color.label).underline()
-                        
-                    }
-                }
-                HStack(alignment: .center) {
-                    
-                    if !tags.isEmpty {
-                        MenuTags()
-                    }else {
-                        Text("Add tags for quick snippet search.")
-                            .foregroundColor(.secondary)
-                            .font(.custom("IBMPlexMono-Regular", size: 12))
-                        
-                        Spacer()
-                    }
-                    
-                   
-                    ButtonActionsView()
-                   
-                    
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 10)
-                
-                
+        return filtered.sorted { first, second in
+            switch sortOption {
+            case .dateCreated:
+                let d1 = first.creationDate ?? .distantPast
+                let d2 = second.creationDate ?? .distantPast
+                return sortOrder == .forward ? d1 > d2 : d1 < d2
+            case .recentlyUsed:
+                let d1 = first.lastTimeUsed ?? .distantPast
+                let d2 = second.lastTimeUsed ?? .distantPast
+                return sortOrder == .forward ? d1 > d2 : d1 < d2
+            case .alphabetical:
+                let t1 = first.title?.lowercased() ?? ""
+                let t2 = second.title?.lowercased() ?? ""
+                return sortOrder == .forward ? t1 < t2 : t1 > t2
             }
         }
-        .frame(height: 260)
-//        .background(Color.clear)
-        .sensoryFeedback(.increase, trigger: selectedFilter)
+    }
+
+    // MARK: - Grid Layout
+
+    private let gridColumns = [
+        GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 8)
+    ]
+
+    // MARK: - Body
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Top toolbar
+            ToolbarView()
+
+            // Scrollable snippet grid
+            ScrollView {
+                // Create snippet CTA (when text is selected)
+                CreateSnippetCTA()
+
+                LazyVGrid(columns: gridColumns, spacing: 8) {
+                    ForEach(sortedSnippets, id: \.self.id) { snippet in
+                        Button {
+                            sentValue(snippet: snippet)
+                        } label: {
+                            SnippetListItemMinimal(item: snippet)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
+
+            // Bottom bar: filter + actions
+            BottomBar()
+        }
+        .frame(height: KeyboardDimensions.totalHeight(forScreenWidth: UIScreen.main.bounds.width))
         .onAppear {
             settingsViewModel.modelContext = modelContext
             snippetViewModel.modelContext = modelContext
-            
-            setupSelectTextObserver()
-            
+            setupNotificationObservers()
+        }
+        .onDisappear {
+            removeNotificationObservers()
+            stopRapidDeletion()
         }
         .toast(isPresenting: $showToast) {
             AlertToast(
-                displayMode: .banner(
-                    .pop
-                ),
-                type: .systemImage(
-                    "doc.on.clipboard",
-                    .label
-                ),
-                title: !checkFullAccess() ? "Enable full keyboard access to copy/paste images." : "File copied to your clipboard. Paste to use it.",
+                displayMode: .banner(.pop),
+                type: .systemImage("doc.on.clipboard", .label),
+                title: !checkFullAccess()
+                    ? "Enable full keyboard access to copy/paste images."
+                    : "File copied to your clipboard. Paste to use it.",
                 style: .style(
-                    backgroundColor: Color.tertiarySystemBackground,
-                    titleFont: .custom(
-                        "IBMPlexMono-Medium",
-                        size: 14
-                    )
+                    backgroundColor: Color(.tertiarySystemBackground),
+                    titleColor: .primary,
+                    titleFont: .custom("IBMPlexMono-Medium", size: 14)
                 )
             )
         }
         .toast(isPresenting: $showCreatedToast) {
             AlertToast(
-                displayMode: .banner(
-                    .pop
-                ),
-                type: .systemImage(
-                    "checkmark.circle.fill",
-                    .label
-                ),
+                displayMode: .banner(.pop),
+                type: .systemImage("checkmark.circle.fill", .green),
                 title: "New Snippet created!",
                 style: .style(
-                    backgroundColor: Color.tertiarySystemBackground,
-                    titleFont: .custom(
-                        "IBMPlexMono-Medium",
-                        size: 14
-                    )
+                    backgroundColor: Color(.tertiarySystemBackground),
+                    titleColor: .primary,
+                    titleFont: .custom("IBMPlexMono-Medium", size: 14)
                 )
             )
-            
         }
-        
     }
-    
+
+    // MARK: - Toolbar
+
     @ViewBuilder
-    func ButtonActionsView() -> some View {
-        Button {
-            spaceAction()
-        } label: {
-            Image(systemName: "space")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 52, height: 20)
-                .foregroundStyle(.blue.gradient)
-                .padding(10)
-                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-        }
-        .glassEffect()
-        
-        Button {
-            returnAction()
-        } label: {
-            Image(systemName: "return")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 30, height: 20)
-                .foregroundStyle(.blue.gradient)
-                .padding(10)
-        }
-        .glassEffect()
-        
-        Button {
-            deleteCharacter(isLongPress: false)
-        } label: {
-            Image(systemName: "delete.left")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 20, height: 20)
-                .foregroundStyle(.blue.gradient)
-                .padding(10)
-        }
-        .glassEffect()
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.5)
-                .onEnded { _ in
-                    isLongPressing = true
-                    deleteCharacter(isLongPress: true)
-                    startRapidDeletion()
-                }
-        )
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onEnded { _ in
-                    if isLongPressing {
-                        isLongPressing = false
-                        stopRapidDeletion()
+    private func ToolbarView() -> some View {
+        HStack(spacing: 16) {
+            // Sort menu — icon only
+            Menu {
+                Picker("Sort by", selection: $sortOption) {
+                    ForEach(SortOption.allCases, id: \.self) { option in
+                        HStack {
+                            Text(option.rawValue)
+                            Spacer()
+                            Image(systemName: option.imageName)
+                        }
+                        .tag(option)
                     }
                 }
-        )
+                Picker("Order", selection: $sortOrder) {
+                    switch sortOption {
+                    case .dateCreated:
+                        Label("Earliest First", systemImage: "arrow.up").tag(SortOrder.forward)
+                        Label("Latest First", systemImage: "arrow.down").tag(SortOrder.reverse)
+                    case .recentlyUsed:
+                        Label("Most Recent First", systemImage: "arrow.up").tag(SortOrder.reverse)
+                        Label("Least Recent First", systemImage: "arrow.down").tag(SortOrder.forward)
+                    case .alphabetical:
+                        Label("A to Z", systemImage: "arrow.up").tag(SortOrder.forward)
+                        Label("Z to A", systemImage: "arrow.down").tag(SortOrder.reverse)
+                    }
+                }
+            } label: {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color(.secondaryLabel))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+
+            // Tag filter menu
+            if !tags.isEmpty {
+                TagFilterMenu()
+            } else {
+                Text("Add tags for quick search")
+                    .font(.system(size: 10, weight: .regular))
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
+
+            // Clear filter
+            if selectedFilter != nil {
+                Button {
+                    selectedFilter = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(.tertiaryLabel))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Vault lock indicator — icon only, shown when secure snippets exist
+            if snippets.contains(where: { $0.isSecure }) {
+                Image(systemName: isUnlocked ? "lock.open" : "lock")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color(.secondaryLabel))
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 0)
     }
-    
+
+    // MARK: - Create Snippet CTA
+
     @ViewBuilder
-    func MenuTags() -> some View {
+    private func CreateSnippetCTA() -> some View {
+        if showCreateSnippetCTA {
+            if checkFullAccess() {
+                Button {
+                    createNewSnippetFromKeyboard(content: selectedText)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14, weight: .medium))
+                        Text("Save as snippet")
+                            .font(.custom("IBMPlexMono-Medium", size: 12))
+                    }
+                    .foregroundStyle(Color(.label))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+                .padding(.bottom, 4)
+                .transition(.scale.combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.2), value: showCreateSnippetCTA)
+            } else {
+                Text("Enable Full Access to create snippets from selected text.")
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .font(.system(size: 11))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 4)
+            }
+        }
+    }
+
+    // MARK: - Bottom Bar
+
+    @ViewBuilder
+    private func BottomBar() -> some View {
+        HStack(spacing: 8) {
+            // Back to keyboard
+            if let qState = qwertyStateFromEnvironment {
+                Button {
+                    qState.showingSnippets = false
+                } label: {
+                    HStack() {
+                        Image(systemName: "keyboard")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color(.secondaryLabel))
+                            .frame(width: 44, height: 32)
+                            .contentShape(Rectangle())
+                        Text("Switch to keyboard")
+                            .underline()
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color(.secondaryLabel))
+                    }
+                    .foregroundStyle(selectedFilter != nil ? Color(.label) : Color(.secondaryLabel))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                  
+                    
+                }
+            } else {
+                // Legacy fallback: switch to next system keyboard
+                Button {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name(rawValue: "switchKey"), object: nil)
+                } label: {
+                    Image(systemName: "keyboard")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color(.secondaryLabel))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+            }
+
+            Spacer()
+
+            // Action buttons
+            ActionButtons()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+    }
+
+    // MARK: - Tag Filter Menu
+
+    @ViewBuilder
+    private func TagFilterMenu() -> some View {
         Menu {
             ForEach(tags, id: \.id) { tag in
-                Button(action: {
+                Button {
                     selectedFilter = tag
-                }) {
+                } label: {
                     Label {
                         HStack {
                             Text(tag.name ?? "")
@@ -482,161 +355,133 @@ struct KeyboardView: View {
                                     .foregroundColor(color)
                                     .font(.system(size: 8))
                             }
-                            Image(systemName: tag.imageTag!)
+                            Image(systemName: tag.imageTag ?? "tag")
                         }
                     }
                 }
             }
         } label: {
-            HStack {
+            HStack(spacing: 4) {
                 if let filter = selectedFilter, let colorHex = filter.colorHex {
-                    TagColorIndicator(colorHex: colorHex, size: 8)
+                    TagColorIndicator(colorHex: colorHex, size: 6)
                 }
                 Image(systemName: selectedFilter?.imageTag ?? "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 13))
                 Text(selectedFilter?.name ?? "Filter")
-                    .foregroundStyle(.blue.gradient)
-                Image(systemName: "chevron.up")
-                    .foregroundStyle(.blue.gradient)
+                    .font(.system(size: 12))
             }
-            .frame(maxWidth: .infinity)
+            .foregroundStyle(selectedFilter != nil ? Color(.label) : Color(.secondaryLabel))
             .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-//            .background(Color.secondary.opacity(0.1))
-//            .cornerRadius(8)
-           
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(.secondarySystemBackground))
+            )
         }
-        .glassEffect()
-      
     }
-    
-    private func getSnippets() -> [SnippetItem] {
-        // Filter snippets based on selectedFilter
-            let filteredSnippets: [SnippetItem]
-            if let filter = selectedFilter {
-                filteredSnippets = snippets.filter { $0.customTag == filter }
-            } else {
-                filteredSnippets = snippets
+
+    // MARK: - Action Buttons
+
+    @ViewBuilder
+    private func ActionButtons() -> some View {
+        HStack(spacing: 6) {
+            // Space
+            Button { spaceAction() } label: {
+                Image(systemName: "space")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 24, height: 14)
+                    .foregroundStyle(Color(.label))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .contentShape(Rectangle())
             }
-        
-        // Sort snippets
-        return filteredSnippets.sorted { first, second in
-            switch sortOption {
-            case .dateCreated:
-                let firstDate = first.creationDate ?? .distantPast
-                let secondDate = second.creationDate ?? .distantPast
-                // Most recent first when forward, oldest first when reverse
-                return sortOrder == .forward ? firstDate > secondDate : firstDate < secondDate
-                
-            case .recentlyUsed:
-                let firstDate = first.lastTimeUsed ?? .distantPast
-                let secondDate = second.lastTimeUsed ?? .distantPast
-                // Most recent first when forward, oldest first when reverse
-                return sortOrder == .forward ? firstDate > secondDate : firstDate < secondDate
-                
-            case .alphabetical:
-                let firstTitle = first.title?.lowercased() ?? ""
-                let secondTitle = second.title?.lowercased() ?? ""
-                // A-Z when forward, Z-A when reverse
-                return sortOrder == .forward ? firstTitle < secondTitle : firstTitle > secondTitle
+            .buttonStyle(.plain)
+
+            // Return
+            Button { returnAction() } label: {
+                Image(systemName: "return")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 18, height: 14)
+                    .foregroundStyle(Color(.label))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .contentShape(Rectangle())
             }
-        }
-    }
-    
-    private var floatingButton: some View {
-        Button(action: {
-            createNewSnippetFromKeyboard(content: selectedText)
-        }) {
-            VStack{
-                Text("Create New Snippet")
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(width: 220, height: 50)
-                    .background(Color.blue)
-                    .cornerRadius(25)
-                    .shadow(radius: 10)
-                    .font(.custom("IBMPlexMono-Medium", size: 16))
-                Text("(with value selected)")
-                    .font(.custom("IBMPlexMono-Medium", size: 10))
+            .buttonStyle(.plain)
+
+            // Delete (with long-press for rapid deletion)
+            Button {
+                deleteCharacter(isLongPress: false)
+            } label: {
+                Image(systemName: "delete.left")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 18, height: 14)
+                    .foregroundStyle(Color(.label))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .contentShape(Rectangle())
             }
-            .fixedSize()
-            .padding(.top)
-            
+            .buttonStyle(.plain)
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.5)
+                    .onEnded { _ in
+                        isLongPressing = true
+                        deleteCharacter(isLongPress: true)
+                        startRapidDeletion()
+                    }
+            )
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onEnded { _ in
+                        if isLongPressing {
+                            isLongPressing = false
+                            stopRapidDeletion()
+                        }
+                    }
+            )
         }
     }
-    
-    func actionPerform() {
-        print("snippets: \(snippets)")
-    }
-    
-    private func emoji(_ value: Int) -> String {
-        guard let scalar = UnicodeScalar(value) else { return "?" }
-        return String(Character(scalar))
-    }
-    
-//    to be able to send a notification to keyboard and verify if has full access and set on variable key
-    func keyboardAppearCheck() {
-        print("keyboard appear")
-        NotificationCenter.default.post(
-            name: NSNotification.Name(rawValue: "onAppearKeyboard"), object: String(UnicodeScalar(0x0020)!))
-    }
-    
-    func actionKeyboardAfterPaste(actionKey: KeyboardAfterPasteAction) {
-        switch actionKey {
-        case .rtrn:
-            // Unicode scalar value for 'Return' (Carriage Return)
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
-            break
-        case .changeReturn:
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "switchKey"), object: nil)
-            break
-        case .change:
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "switchKey"), object: nil)
-            break
-        case .space:
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
-            break
-        case .nothing:
-            break
-        }
-    }
-    
-    func sentValue(snippet: SnippetItem){
+
+    // MARK: - Snippet Actions
+
+    private func sentValue(snippet: SnippetItem) {
         snippetViewModel.trackSnippetUsage(snippet: snippet)
-        
+
         if snippet.isSecure {
             sentSecureValue(snippet: snippet)
-        }else {
+        } else {
             sentValueToKeyboard(snippet: snippet)
         }
     }
-    
-    
-    
-    func sentSecureValue(snippet: SnippetItem) {
-        deviceBiometrics.authenticate(successHandler: {
-            isUnlocked = true
-            
-            sentValueToKeyboard(snippet: snippet)
-        }, unSuccessHandler: { error in
-            isUnlocked = false
-            print("Can't access")
-            
-        })
+
+    private func sentSecureValue(snippet: SnippetItem) {
+        deviceBiometrics.authenticate(
+            successHandler: {
+                isUnlocked = true
+                sentValueToKeyboard(snippet: snippet)
+            },
+            unSuccessHandler: { _ in
+                isUnlocked = false
+            }
+        )
     }
-    
-    func sentValueToKeyboard(snippet: SnippetItem) {
+
+    private func sentValueToKeyboard(snippet: SnippetItem) {
         NotificationCenter.default.post(
             name: NSNotification.Name(rawValue: "addKey"), object: snippet)
 
@@ -645,105 +490,130 @@ struct KeyboardView: View {
         } else {
             actionKeyboardAfterPaste(actionKey: currentKeyboardSettings.afterPasteAction)
         }
-        
-       
     }
-    
-    
-    
-    func deleteCharacter(isLongPress: Bool) {
+
+    private func actionKeyboardAfterPaste(actionKey: KeyboardAfterPasteAction) {
+        switch actionKey {
+        case .rtrn:
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
+        case .changeReturn:
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "switchKey"), object: nil)
+        case .change:
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "switchKey"), object: nil)
+        case .space:
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
+        case .nothing:
+            break
+        }
+    }
+
+    // MARK: - Keyboard Actions
+
+    private func deleteCharacter(isLongPress: Bool) {
         NotificationCenter.default.post(
-            name: NSNotification.Name(rawValue: "deleteKey"),
-            object: isLongPress
-        )
+            name: NSNotification.Name(rawValue: "deleteKey"), object: isLongPress)
     }
-    
-    func spaceAction() {
+
+    private func spaceAction() {
         NotificationCenter.default.post(
             name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
     }
-    
-    func returnAction() {
+
+    private func returnAction() {
         NotificationCenter.default.post(
             name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
     }
-    
-    func startRapidDeletion() {
+
+    private func startRapidDeletion() {
         deleteTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             deleteCharacter(isLongPress: true)
         }
     }
-    
-    func stopRapidDeletion() {
+
+    private func stopRapidDeletion() {
+        isLongPressing = false
         deleteTimer?.invalidate()
         deleteTimer = nil
     }
-    
-    
-    //    TODO: For some reason manipulating swiftdata from keyboard/extension the DB is not updating correctly
-    func createNewSnippetFromKeyboard(content: String) {
-        let title = firstFourteenCharacters(of: content)
-        let content = content
-        
+
+    // MARK: - Create Snippet
+
+    private func createNewSnippetFromKeyboard(content: String) {
+        let title = String(content.prefix(14))
         snippetViewModel.createSnippet(title, content: content, type: .txt, isSecure: false)
-        showCreatedToast.toggle()
+        showCreatedToast = true
     }
-    
-    
-    
-    func setupSelectTextObserver() {
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectText"), object: nil, queue: nil){ notification in
-            
-            
-            if let text = notification.object as? String {
-                
-                if !text.isEmpty {
-                    showCreateSnippetCTA = true
-                    selectedText = text
-                    print("TEXT VALUE: \(text)")
-                }
-                
+
+    // MARK: - Notification Observers
+
+    private func setupNotificationObservers() {
+        removeNotificationObservers()
+
+        let o1 = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name(rawValue: "selectText"),
+            object: nil, queue: nil
+        ) { notification in
+            if let text = notification.object as? String, !text.isEmpty {
+                showCreateSnippetCTA = true
+                selectedText = text
             }
-            
         }
-        
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil, queue: nil){ notification in
-            
+
+        let o2 = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name(rawValue: "selectTextEmpty"),
+            object: nil, queue: nil
+        ) { _ in
             showCreateSnippetCTA = false
-            
         }
-        
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "hasFullAccess"), object: nil, queue: nil){ notification in
-            
-            if let fullAccess = notification.object as? Bool {
-                hasFullAccess = fullAccess
-                
-            }
-            
+
+        notificationObservers = [o1, o2]
+    }
+
+    private func removeNotificationObservers() {
+        for observer in notificationObservers {
+            NotificationCenter.default.removeObserver(observer)
         }
+        notificationObservers.removeAll()
     }
 }
 
-// Custom button style for liquid press effect
-struct LiquidButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
-    }
-}
+// MARK: - Keyboard View Extension (Root Entry Point)
 
 struct KeyboardViewExt: View {
     let container = SnipKeyDataManager().makeSharedContainer()
     @State private var settingsViewModel: SettingsViewModel?
-    
+
+    var qwertyState: QWERTYKeyboardState
+    var keyboardActions: KeyboardActions
+    var slashCommandState: SlashCommandState
+
     var body: some View {
         Group {
             if let settingsViewModel = settingsViewModel {
-                KeyboardView()
-                    .modelContainer(container)
-                    .environment(settingsViewModel)
+                Group {
+                    if qwertyState.showingSnippets {
+                        KeyboardView()
+                    } else {
+                        QWERTYKeyboardView()
+                    }
+                }
+                .modelContainer(container)
+                .environment(settingsViewModel)
+                .environment(qwertyState)
+                .environment(\.keyboardActions, keyboardActions)
+                .environment(\.slashCommandState, slashCommandState)
             } else {
                 ProgressView()
                     .onAppear {
@@ -754,23 +624,29 @@ struct KeyboardViewExt: View {
             }
         }
     }
-    
+
     private func loadSettingsViewModel() async {
         let modelContext = await container.mainContext
         let viewModel = SettingsViewModel(modelContext: modelContext)
         settingsViewModel = viewModel
     }
 }
+
+// MARK: - Preview
+
 #Preview {
     let tempSettingsContainer = SnipKeyDataManager().makeSharedContainer()
     let settingsViewModel = SettingsViewModel(modelContext: tempSettingsContainer.mainContext)
-    @State var isPresentingSettings: Bool = false
-    
-    return KeyboardViewExt()
-        .onAppear {
-            settingsViewModel.modelContext = tempSettingsContainer.mainContext
-            settingsViewModel.setupKeyboardSettings()
-        }
-        .modelContainer(tempSettingsContainer)
-        .environment(settingsViewModel)
+
+    return KeyboardViewExt(
+        qwertyState: QWERTYKeyboardState(),
+        keyboardActions: KeyboardActions.noop,
+        slashCommandState: SlashCommandState()
+    )
+    .onAppear {
+        settingsViewModel.modelContext = tempSettingsContainer.mainContext
+        settingsViewModel.setupKeyboardSettings()
+    }
+    .modelContainer(tempSettingsContainer)
+    .environment(settingsViewModel)
 }

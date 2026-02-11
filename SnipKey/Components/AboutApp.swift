@@ -143,16 +143,19 @@ struct DevAbout: View {
     )
 
     let aboutSections = [
-        "Hi, I’m JT! 👋",
+        "Hi, I'm JT! 👋",
         "I created SnipKey to streamline how I access and manage snippets of text and images.",
-        "As a solo developer, I built SnipKey without tracking or ads, and it’s completely free—because everyone deserves a secure tool without a paywall! ✨",
-        "I’ll continue maintaining SnipKey for as long as I use it, ensuring it remains a reliable and free tool for everyone.",
+        "As a solo developer, I built SnipKey without tracking or ads, and it's completely free—because everyone deserves a secure tool without a paywall! ✨",
+        "SnipKey is now open source! You can view the full source code, report issues, and contribute on GitHub. I believe in transparency and community-driven development. 🛠️",
+        "I'll continue maintaining SnipKey for as long as I use it, ensuring it remains a reliable and free tool for everyone.",
         "With SnipKey, you can easily store and retrieve your snippets directly from your keyboard, keeping everything at your fingertips."
     ]
     
     let otherLinks = [
         AppLink(name: "Hit21", description: "Minimalistic Blackjack - Free", iconName: "hit21-icon", url: URL(string: "https://go.jrtv.space/hit21-download")!, isSystemIcon: false),
         AppLink(name: "More Free Apps", description: "Browse all my published apps", iconName: "store-icon", url: URL(string: "https://go.jrtv.space/apps")!, isSystemIcon: false),
+        AppLink(name: "SnipKey on GitHub", description: "Open source — contribute or star the project", iconName: "chevron.left.forwardslash.chevron.right", url: URL(string: "https://github.com/jtvargas/SnipKey")!, isSystemIcon: true),
+
     ]
     
     

@@ -161,10 +161,20 @@ SnipKey/
             └── KeyboardHelpGuideView.swift # 3-step keyboard setup guide
 
 SnipKeyboard/                           # Keyboard Extension Target
-├── KeyboardViewController.swift        # UIInputViewController (text injection, file paste)
-├── KeyboardView.swift                  # SwiftUI keyboard UI (snippet grid, sort, filter, actions)
+├── KeyboardViewController.swift        # UIInputViewController + QWERTY state management
+├── KeyboardView.swift                  # SwiftUI keyboard UI (snippet grid + QWERTY toggle)
 ├── SnipKeyboard.entitlements           # Extension entitlements
-└── Info.plist                          # Extension config (RequestsOpenAccess: true)
+├── Info.plist                          # Extension config (RequestsOpenAccess: true)
+└── QWERTY/                             # Full QWERTY keyboard implementation
+    ├── KeyboardDimensions.swift        # Responsive key measurements from screen width
+    ├── QWERTYKeyboardState.swift       # @Observable render state + plain input tracking
+    ├── KeyboardActions.swift           # textDocumentProxy closures via SwiftUI environment
+    ├── QWERTYKeyboardLayout.swift      # Static key definitions for letters/numbers/symbols
+    ├── KeyButtonView.swift             # Key rendering with UIKit KeyTouchArea (touch lifecycle)
+    ├── KeyRowView.swift                # HStack row with zero-dead-zone padding
+    ├── QWERTYKeyboardView.swift        # Main keyboard view + toolbar + slash suggestions
+    ├── KeyPopupView.swift              # UIKit balloon popup for key press visual feedback
+    └── SlashCommandEngine.swift        # Slash command tracker + state + fuzzy matching engine
 ```
 
 ---
@@ -400,17 +410,72 @@ User preferences stored via `@AppStorage`:
 
 ## Keyboard Extension
 
-The keyboard extension (`SnipKeyboard` target) is a `UIInputViewController` that hosts a SwiftUI view.
+The keyboard extension (`SnipKeyboard` target) is a `UIInputViewController` that hosts a SwiftUI view. It operates in two modes: **QWERTY typing** and **snippet browsing**, toggled via a button in the toolbar or the bottom-row snippet key.
 
-### How it works
+### Architecture Overview
 
-1. `KeyboardViewController` subclasses `UIInputViewController`
-2. It hosts `KeyboardViewExt` (SwiftUI) via `UIHostingController`
-3. Text is inserted via `textDocumentProxy.insertText()` — this is how text bypasses paste restrictions
+1. `KeyboardViewController` subclasses `UIInputViewController` and owns:
+   - `QWERTYKeyboardState` (`@Observable`) — shared render state injected into SwiftUI environment
+   - `KeyboardActions` (struct of closures) — wraps `textDocumentProxy` operations, passed via SwiftUI `@Environment`
+   - `KeyPopupView` (UIKit) — singleton balloon popup added as a subview above the SwiftUI hosting controller
+   - Explicit `NSLayoutConstraint` for keyboard height (no GeometryReader)
+2. `KeyboardViewExt` (SwiftUI) conditionally renders `QWERTYKeyboardView` or the snippet grid based on `qwertyState.showingSnippets`
+3. Text is inserted via `textDocumentProxy.insertText()` — this bypasses paste restrictions
 4. Images and PDFs are copied to `UIPasteboard.general` (requires Full Access)
-5. Communication between SwiftUI and UIKit uses `NotificationCenter` with named notifications
 
-### NotificationCenter Channels
+### QWERTY Keyboard Design
+
+The QWERTY keyboard is built in `SnipKeyboard/QWERTY/` with 8 files. Key architecture decisions:
+
+**State management:**
+- `QWERTYKeyboardState` (`@Observable`) holds only view-affecting properties: `currentPage`, `shiftState`, `returnKeyLabel`, `returnKeyIsProminent`, `appearanceMode`, `needsInputModeSwitchKey`, `showingSnippets`
+- `QWERTYInputTracking` (plain class, NOT `@Observable`) holds internal tracking for auto-period detection and shift double-tap timing. Mutations here cause zero SwiftUI re-renders.
+- All `@Observable` mutations from `KeyboardViewController` use equality guards (`if value != newValue`) to prevent unnecessary re-renders.
+- `viewWillLayoutSubviews()` only calls `updateQWERTYState()` when screen width changes; `textDidChange()` handles per-keystroke updates.
+
+**Touch handling:**
+- Character keys and the space bar use `KeyTouchArea` — a `UIViewRepresentable` wrapping `UIControl` with full touch lifecycle (`touchDown`/`touchUpInside`/`touchUpOutside`/`touchCancel`).
+- Character insertion fires on `.touchDown` (not `.touchUpInside`) for ~30-80ms lower latency.
+- `KeyTouchArea` also handles visual highlight via `UIControl.backgroundColor` changes — pure CALayer, no SwiftUI state.
+- Special keys (shift, backspace, snippet toggle) use SwiftUI `Button` for long-press gesture support.
+
+**Key press visual feedback (balloon popup):**
+- `KeyPopupView` is a single `UIView` instance reused for all keys. It contains a `UILabel` + `CAShapeLayer` drawing a balloon shape with a downward-pointing tail.
+- Show/hide is done via `CALayer` property changes (`isHidden`, `frame`, `transform`) — zero SwiftUI state mutations, zero layout passes.
+- Spring scale animation runs on the Core Animation render server, not the main thread.
+- Character/digit/symbol keys get balloon popup + background highlight on press.
+- Space bar gets background highlight only (no popup), and dismisses any active popup.
+- Special keys (shift, backspace, return, etc.) have no visual feedback currently.
+- Popup is positioned using `KeyboardDimensions.keyFrame()` — pure math from row/column index, no GeometryReader.
+
+### Slash Command Architecture
+
+The slash command system detects `/query` patterns during typing and shows matching snippet suggestions in the keyboard toolbar. It uses a two-phase evaluation design to avoid per-keystroke SwiftUI re-renders:
+
+**Phase 1 — Detection (UIKit side, per-keystroke):**
+- `SlashCommandTracker` (plain class, NOT `@Observable`) reads `documentContextBeforeInput` after each character/backspace/space/return
+- Walks backwards from cursor to find `/`, validates it's at string start or after whitespace
+- Compares against last known state — only promotes to Phase 2 if `isActive` or `query` actually changed
+- Zero SwiftUI re-renders on the hot path
+
+**Phase 2 — Matching (SwiftUI side, reactive):**
+- `SlashCommandState` (`@Observable`) holds `isActive`, `query`, and `matchedSnippets`
+- `KeyboardToolbarView` uses `.onChange(of: slashState.query)` to trigger fuzzy matching
+- Snippets fetched via `@Query` in the toolbar view (not re-fetched per keystroke)
+- Fuzzy matching scores: prefix (100) > word-prefix (80) > substring (60) > ordered chars (40)
+- Only text/URL snippet types are eligible (image/PDF excluded)
+- Secure snippets shown but require biometric auth on tap
+
+**Key files:**
+- `SlashCommandEngine.swift` — `SlashCommandTracker` + `SlashCommandState` + fuzzy matching + environment key
+- `KeyboardActions.swift` — `evaluateSlashCommand` closure
+- `KeyboardViewController.swift` — creates tracker/state, wires evaluation closure
+- `QWERTYKeyboardView.swift` — `KeyboardToolbarView` with suggestions UI + `SlashTriggerButton`
+- `KeyButtonView.swift` — calls `evaluateSlashCommand()` after character/backspace/return/space
+
+### NotificationCenter Channels (Legacy — Snippet View)
+
+These channels are used by the snippet browsing view (`KeyboardView.swift`). The QWERTY keyboard uses direct closures via `KeyboardActions` instead.
 
 | Notification | Purpose |
 |---|---|
@@ -421,12 +486,14 @@ The keyboard extension (`SnipKeyboard` target) is a `UIInputViewController` that
 | `selectText` / `selectTextEmpty` | Text selection events |
 | `hasFullAccess` | Full Access status broadcast |
 
-### Key constraints
+### Key Constraints
 
 - Keyboard extensions run in a **constrained memory environment** (~48 MB limit)
-- Keep the UI lightweight — the current keyboard view is fixed at 260pt height
+- Keep the UI lightweight — avoid adding `@State` or `@Observable` properties for per-keystroke visual effects
 - Full Access is required for `UIPasteboard` operations but not for text insertion
 - The extension shares the same SwiftData container via the `group.snipkey` App Group
+- The keyboard extension cannot render views above its frame boundary (no private window access like Apple's native keyboard)
+- For visual feedback, always prefer UIKit/CALayer approaches over SwiftUI state changes
 
 ---
 
@@ -507,6 +574,7 @@ When modifying `KeyboardView.swift` or `KeyboardViewController.swift`:
 |---|---|---|
 | Dead code: unused ContentView | `ContentView.swift` | Default Xcode template, references nonexistent `Item` model |
 | Dead code: legacy home view | `HomeView.swift` | Replaced by `HomeView2.swift` |
+| Dead code: KeyboardHaptics enum | `KeyButtonView.swift` | Haptic feedback disabled for iOS 26; enum kept for future settings toggle |
 | No tests | — | Test targets exist in scheme but have no test files |
 | Minimal error handling | Throughout | Most errors use `print()` and `try?` |
 | Missing privacy manifest | — | `.xcprivacy` file not present; may be needed for App Store (UIPasteboard, UserDefaults declarations) |
@@ -518,8 +586,8 @@ When modifying `KeyboardView.swift` or `KeyboardViewController.swift`:
 
 The project has a multi-phase roadmap to evolve SnipKey from a snippet-only keyboard into a full replacement keyboard (similar to Grammarly's iOS keyboard approach). The planned phases are:
 
-1. **Full QWERTY Keyboard** — a complete keyboard with all keys working 1:1 with the native iOS keyboard, plus a toggle button to switch between typing and the snippets list
-2. **Slash Commands** — type `/snippetName` to trigger inline autocomplete and paste snippets without leaving the typing flow
+1. ~~**Full QWERTY Keyboard**~~ **(COMPLETE)** — full QWERTY keyboard with letters/numbers/symbols pages, auto-capitalization, auto-period, caps lock, snippet toggle (tap) / globe (long-press), and key press visual feedback (balloon popup + highlight). Performance-optimized with UIKit touch handling, `@Observable` equality guards, and CALayer-based visual feedback.
+2. ~~**Slash Commands**~~ **(COMPLETE)** — type `/snippetName` to trigger inline autocomplete in the toolbar. Two-phase evaluation (plain tracker + @Observable state) for zero per-keystroke re-renders. Fuzzy matching (prefix/word-prefix/substring/ordered chars). Biometric support for secure snippets. Usage tracking on selection. Slash trigger button in toolbar for quick activation.
 3. **Emoji Shortcodes** — type `:emojiName` to autocomplete and inject emojis (Slack/Discord/GitHub-style shortcodes)
 
 See the [Roadmap & Vision](README.md#roadmap--vision) section in `README.md` for full details, examples, and contribution guidance.
@@ -531,6 +599,7 @@ See the [Roadmap & Vision](README.md#roadmap--vision) section in `README.md` for
 | | |
 |---|---|
 | **App Store** | https://apps.apple.com/us/app/snipkey/id6480381137 |
+| **GitHub** | https://github.com/jtvargas/SnipKey |
 | **Website** | https://snipkey.jrtv.online |
 | **Privacy Policy** | https://snipkey.jrtv.online/privacy-policy |
 | **Feature Requests** | https://snipkey.canny.io |

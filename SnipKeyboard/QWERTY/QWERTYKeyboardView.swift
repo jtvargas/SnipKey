@@ -1,0 +1,240 @@
+//
+//  QWERTYKeyboardView.swift
+//  SnipKeyboard
+//
+//  Created by Jonathan Taveras Vargas on 2/10/26.
+//
+
+import SwiftUI
+import SwiftData
+
+// MARK: - Main QWERTY Keyboard View
+
+struct QWERTYKeyboardView: View {
+    @Environment(QWERTYKeyboardState.self) private var state
+    @Environment(\.keyboardActions) private var actions
+
+    var body: some View {
+        let dimensions = KeyboardDimensions(screenWidth: actions.screenWidth)
+
+        VStack(spacing: 0) {
+            KeyboardToolbarView(dimensions: dimensions)
+
+            VStack(spacing: dimensions.rowGap) {
+                let rows = QWERTYKeyboardLayout.rows(for: state.currentPage)
+                ForEach(Array(rows.enumerated()), id: \.element) { index, row in
+                    KeyRowView(
+                        actions: row,
+                        rowIndex: index,
+                        dimensions: dimensions
+                    )
+                }
+            }
+            .padding(.top, dimensions.topEdge)
+            .padding(.bottom, dimensions.bottomEdge)
+        }
+        .frame(height: dimensions.totalHeight)
+    }
+}
+
+// MARK: - Keyboard Toolbar
+
+/// Top toolbar with slash command suggestions (left) and settings button (right).
+/// When no slash command is active, the suggestions area is empty (Spacer).
+/// When a slash command IS active, horizontally scrollable snippet pills appear.
+struct KeyboardToolbarView: View {
+    let dimensions: KeyboardDimensions
+    @Environment(\.keyboardActions) private var actions
+    @Environment(\.slashCommandState) private var slashState
+    @Environment(\.modelContext) private var modelContext
+
+    /// All snippets from SwiftData — used for slash command matching.
+    /// This @Query only triggers re-evaluation when snippet data changes in the DB,
+    /// NOT on every keystroke. The matching runs in onChange(of: slashState.query).
+    @Query(sort: \SnippetItem.creationDate, order: .reverse) private var allSnippets: [SnippetItem]
+
+    let deviceBiometrics = DeviceBiometrics()
+
+    @Environment(QWERTYKeyboardState.self) private var state
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if slashState.isActive {
+                // Slash is active — show suggestions (button hidden)
+                if !slashState.matchedSnippets.isEmpty {
+                    SlashSuggestionsView(
+                        snippets: slashState.matchedSnippets,
+                        onSelect: { snippet in
+                            handleSnippetSelection(snippet)
+                        },
+                        onDismiss: {
+                            slashState.dismiss()
+                        }
+                    )
+                } else {
+                    // Active but no matches yet (still typing query)
+                    Spacer()
+                }
+            } else {
+                // Slash trigger button (top-left) + spacer
+                SlashTriggerButton(isDarkMode: state.appearanceMode == .dark) {
+                    actions.insertText("/")
+                    actions.evaluateSlashCommand()
+                }
+                Spacer()
+            }
+
+//            // Settings button — opens main SnipKey app
+//            Button {
+//                actions.openApp()
+//            } label: {
+//                Image(systemName: "gearshape")
+//                    .font(.system(size: 16, weight: .medium))
+//                    .foregroundStyle(Color(.secondaryLabel))
+//                    .padding(6)
+//            }
+//            .buttonStyle(.plain)
+        }
+        .frame(height: dimensions.toolbarHeight)
+        .padding(.horizontal, 12)
+        // React to slash command activation and query changes
+        .onChange(of: slashState.isActive) { _, isActive in
+            if isActive {
+                slashState.updateMatches(allSnippets: allSnippets)
+            }
+        }
+        .onChange(of: slashState.query) { _, _ in
+            if slashState.isActive {
+                slashState.updateMatches(allSnippets: allSnippets)
+            }
+        }
+    }
+
+    // MARK: - Snippet Selection
+
+    private func handleSnippetSelection(_ snippet: SnippetItem) {
+        if snippet.isSecure {
+            deviceBiometrics.authenticate(
+                successHandler: {
+                    insertSnippet(snippet)
+                },
+                unSuccessHandler: { _ in }
+            )
+        } else {
+            insertSnippet(snippet)
+        }
+    }
+
+    private func insertSnippet(_ snippet: SnippetItem) {
+        // 1. Delete the slash command text (e.g., "/addr" = 5 chars including the slash)
+        let charsToDelete = slashState.query.count + 1 // +1 for the "/" character
+        for _ in 0..<charsToDelete {
+            actions.deleteBackward()
+        }
+
+        // 2. Insert the snippet content
+        if let content = snippet.content {
+            actions.insertText(content)
+        }
+
+        // 3. Track usage
+        snippet.lastTimeUsed = Date.now
+        snippet.usedCount += 1
+        try? modelContext.save()
+
+        // 4. Dismiss slash command mode
+        slashState.dismiss()
+    }
+}
+
+// MARK: - Slash Suggestions View
+
+/// Horizontally scrollable row of snippet suggestion pills.
+/// Mimics the native iOS autocomplete suggestion bar appearance.
+// MARK: - Slash Trigger Button
+
+/// Compact button that inserts `/` to start a slash command.
+/// Styled to match the native iOS keyboard key appearance.
+/// Hidden when slash commands are active (suggestions take its place).
+struct SlashTriggerButton: View {
+    let isDarkMode: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            Image(systemName: "chevron.left.forwardslash.chevron.right")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color(.secondaryLabel))
+                .frame(width: 34, height: 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isDarkMode
+                            ? Color(white: 0.35).opacity(0.55)
+                            : Color(UIColor.systemGray6).opacity(0.6)
+                        )
+                        .shadow(color: .black.opacity(0.06), radius: 0, x: 0, y: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Slash Suggestions View
+
+struct SlashSuggestionsView: View {
+    let snippets: [SnippetItem]
+    let onSelect: (SnippetItem) -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(Array(snippets.enumerated()), id: \.element.id) { index, snippet in
+                        if index > 0 {
+                            // Thin vertical divider between pills (native iOS style)
+                            Rectangle()
+                                .fill(Color(.separator).opacity(0.4))
+                                .frame(width: 0.5)
+                                .padding(.vertical, 8)
+                        }
+
+                        Button {
+                            onSelect(snippet)
+                        } label: {
+                            HStack(spacing: 4) {
+                                if snippet.isSecure {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundStyle(Color(.tertiaryLabel))
+                                }
+                                Text(snippet.title ?? "Untitled")
+                                    .font(.custom("IBMPlexMono-Medium", size: 13))
+                                    .foregroundStyle(Color(.label))
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            // Dismiss button
+            Button {
+                onDismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .frame(width: 28, height: 28)
+                    .background(Color(.tertiarySystemFill))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 4)
+        }
+    }
+}

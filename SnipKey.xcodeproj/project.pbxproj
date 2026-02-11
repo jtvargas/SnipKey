@@ -52,6 +52,24 @@
 		068C77CB2BB4C5FB0008D9A1 /* SnippetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CA2BB4C5FB0008D9A1 /* SnippetModel.swift */; };
 		068C77CD2BB4C60C0008D9A1 /* SnippetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */; };
 		068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */; };
+		06AA10012F30A00100B1C001 /* KeyboardDimensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10082F30A00100B1C001 /* KeyboardDimensions.swift */; };
+		06AA10022F30A00100B1C002 /* QWERTYKeyboardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10092F30A00100B1C002 /* QWERTYKeyboardState.swift */; };
+		06AA10032F30A00100B1C003 /* KeyboardActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100A2F30A00100B1C003 /* KeyboardActions.swift */; };
+		06AA10042F30A00100B1C004 /* QWERTYKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100B2F30A00100B1C004 /* QWERTYKeyboardLayout.swift */; };
+		06AA10052F30A00100B1C005 /* KeyButtonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100C2F30A00100B1C005 /* KeyButtonView.swift */; };
+		06AA10062F30A00100B1C006 /* KeyRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100D2F30A00100B1C006 /* KeyRowView.swift */; };
+		06AA10072F30A00100B1C007 /* QWERTYKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */; };
+		06AA10082F30A00100B1C008 /* KeyPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10182F30A00300B1C008 /* KeyPopupView.swift */; };
+		4314634F36B04D70854CC02D /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
+		3A8B76B2949D48589DC82983 /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
+		06AA10112F30A00200B1C001 /* KeyboardDimensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10082F30A00100B1C001 /* KeyboardDimensions.swift */; };
+		06AA10122F30A00200B1C002 /* QWERTYKeyboardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10092F30A00100B1C002 /* QWERTYKeyboardState.swift */; };
+		06AA10132F30A00200B1C003 /* KeyboardActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100A2F30A00100B1C003 /* KeyboardActions.swift */; };
+		06AA10142F30A00200B1C004 /* QWERTYKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100B2F30A00100B1C004 /* QWERTYKeyboardLayout.swift */; };
+		06AA10152F30A00200B1C005 /* KeyButtonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100C2F30A00100B1C005 /* KeyButtonView.swift */; };
+		06AA10162F30A00200B1C006 /* KeyRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100D2F30A00100B1C006 /* KeyRowView.swift */; };
+		06AA10172F30A00200B1C007 /* QWERTYKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */; };
+		06AA10182F30A00300B1C009 /* KeyPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10182F30A00300B1C008 /* KeyPopupView.swift */; };
 		06AE130E2BBB09B5008EAE98 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */; };
 		06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */; };
 		06AE13122BBB0D16008EAE98 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE13112BBB0D16008EAE98 /* SettingsView.swift */; };
@@ -148,6 +166,15 @@
 		068C77CA2BB4C5FB0008D9A1 /* SnippetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetModel.swift; sourceTree = "<group>"; };
 		068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewModel.swift; sourceTree = "<group>"; };
 		068C77D02BB4C7620008D9A1 /* SnippetListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetListItem.swift; sourceTree = "<group>"; };
+		06AA10082F30A00100B1C001 /* KeyboardDimensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardDimensions.swift; sourceTree = "<group>"; };
+		06AA10092F30A00100B1C002 /* QWERTYKeyboardState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QWERTYKeyboardState.swift; sourceTree = "<group>"; };
+		06AA100A2F30A00100B1C003 /* KeyboardActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardActions.swift; sourceTree = "<group>"; };
+		06AA100B2F30A00100B1C004 /* QWERTYKeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QWERTYKeyboardLayout.swift; sourceTree = "<group>"; };
+		06AA100C2F30A00100B1C005 /* KeyButtonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyButtonView.swift; sourceTree = "<group>"; };
+		06AA100D2F30A00100B1C006 /* KeyRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyRowView.swift; sourceTree = "<group>"; };
+		06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QWERTYKeyboardView.swift; sourceTree = "<group>"; };
+		06AA10182F30A00300B1C008 /* KeyPopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPopupView.swift; sourceTree = "<group>"; };
+		ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandEngine.swift; sourceTree = "<group>"; };
 		06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		06AE13112BBB0D16008EAE98 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -242,6 +269,7 @@
 				066E69D62BB9831900D971E8 /* KeyboardViewController.swift */,
 				066E69D82BB9831900D971E8 /* Info.plist */,
 				066E69E02BB985CF00D971E8 /* KeyboardView.swift */,
+				06AA100F2F30A00100B1C000 /* QWERTY */,
 			);
 			path = SnipKeyboard;
 			sourceTree = "<group>";
@@ -335,6 +363,22 @@
 				0669529A2EBEFD3800CC89BC /* SnippetTagForm.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		06AA100F2F30A00100B1C000 /* QWERTY */ = {
+			isa = PBXGroup;
+			children = (
+				06AA10082F30A00100B1C001 /* KeyboardDimensions.swift */,
+				06AA10092F30A00100B1C002 /* QWERTYKeyboardState.swift */,
+				06AA100A2F30A00100B1C003 /* KeyboardActions.swift */,
+				06AA100B2F30A00100B1C004 /* QWERTYKeyboardLayout.swift */,
+				06AA100C2F30A00100B1C005 /* KeyButtonView.swift */,
+				06AA100D2F30A00100B1C006 /* KeyRowView.swift */,
+				06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */,
+				06AA10182F30A00300B1C008 /* KeyPopupView.swift */,
+				ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */,
+			);
+			path = QWERTY;
 			sourceTree = "<group>";
 		};
 		06AE130C2BBB099B008EAE98 /* Settings */ = {
@@ -608,6 +652,15 @@
 				0681F1D32C9A172E00459FD3 /* AppIconProvider.swift in Sources */,
 				06C6FE2E2BB9EEAB00166AB0 /* SnippetListItem.swift in Sources */,
 				0627678B2BBCDE3000B3993B /* SettingsViewModel.swift in Sources */,
+				06AA10012F30A00100B1C001 /* KeyboardDimensions.swift in Sources */,
+				06AA10022F30A00100B1C002 /* QWERTYKeyboardState.swift in Sources */,
+				06AA10032F30A00100B1C003 /* KeyboardActions.swift in Sources */,
+				06AA10042F30A00100B1C004 /* QWERTYKeyboardLayout.swift in Sources */,
+				06AA10052F30A00100B1C005 /* KeyButtonView.swift in Sources */,
+				06AA10062F30A00100B1C006 /* KeyRowView.swift in Sources */,
+				06AA10072F30A00100B1C007 /* QWERTYKeyboardView.swift in Sources */,
+				06AA10082F30A00100B1C008 /* KeyPopupView.swift in Sources */,
+				4314634F36B04D70854CC02D /* SlashCommandEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -663,6 +716,15 @@
 				06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */,
 				0630BC102C6E89D700E8493B /* SnippetContentViewDisplay.swift in Sources */,
 				06FC79732BC489D900382400 /* OnBoardingView.swift in Sources */,
+				06AA10112F30A00200B1C001 /* KeyboardDimensions.swift in Sources */,
+				06AA10122F30A00200B1C002 /* QWERTYKeyboardState.swift in Sources */,
+				06AA10132F30A00200B1C003 /* KeyboardActions.swift in Sources */,
+				06AA10142F30A00200B1C004 /* QWERTYKeyboardLayout.swift in Sources */,
+				06AA10152F30A00200B1C005 /* KeyButtonView.swift in Sources */,
+				06AA10162F30A00200B1C006 /* KeyRowView.swift in Sources */,
+				06AA10172F30A00200B1C007 /* QWERTYKeyboardView.swift in Sources */,
+				06AA10182F30A00300B1C009 /* KeyPopupView.swift in Sources */,
+				3A8B76B2949D48589DC82983 /* SlashCommandEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -683,7 +745,7 @@
 				CODE_SIGN_ENTITLEMENTS = SnipKeyboard/SnipKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnipKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Shortcuts;
@@ -710,7 +772,7 @@
 				CODE_SIGN_ENTITLEMENTS = SnipKeyboard/SnipKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnipKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Shortcuts;
@@ -861,7 +923,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnipKey/Info.plist;
@@ -903,7 +965,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SnipKey/Preview Content\"";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = J7K9Z79S5F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnipKey/Info.plist;

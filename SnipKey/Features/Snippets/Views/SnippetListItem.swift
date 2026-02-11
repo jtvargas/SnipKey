@@ -57,93 +57,49 @@ struct SnippetListItem: View {
 
 struct SnippetListItemMinimal: View {
     let item: SnippetItem
-    
+
     var body: some View {
         HStack(spacing: 10) {
-            // Compact icon
+            // Type icon — simple circle background, single compositing layer
             Image(systemName: item.type?.snipTypeImage ?? "doc.text")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.primary)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color(.secondaryLabel))
                 .frame(width: 28, height: 28)
-                .background {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.12),
-                                            Color.white.opacity(0.04)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        }
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-                        }
-                }
-            
-            // Content
-            VStack(alignment: .leading, spacing: 2) {
-                HStack() {
-                    Text(item.title ?? "")
-                        .font(.custom("IBMPlexMono-Medium", size: 14))
-                            .foregroundStyle(Color.primary)
-                           .lineLimit(2)
-                           .multilineTextAlignment(.leading)
-                           .frame(width: 110, alignment: .leading)
+                .background(
+                    Circle()
+                        .fill(Color(.tertiarySystemBackground))
+                )
 
-                    
+            // Content — title + metadata
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title ?? "")
+                    .font(.custom("IBMPlexMono-Medium", size: 13))
+                    .foregroundStyle(Color(.label))
+                    .lineLimit(1)
+
+                HStack(spacing: 4) {
+                    if let tagName = item.customTag?.name {
+                        Text("#\(tagName)")
+                            .font(.system(size: 10, weight: .regular))
+                            .foregroundStyle(Color(.tertiaryLabel))
+                        TagColorIndicator(colorHex: item.customTag?.colorHex, size: 5)
+                    }
                     if item.isSecure {
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 6))
-                            .foregroundStyle(Color.primary.opacity(0.6))
+                            .font(.system(size: 8))
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                 }
-                
-//                if item.customTag?.name != nil {
-                HStack(spacing: 4) {
-                    Text("#\(item.customTag?.name ?? "None")")
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundStyle(Color.primary.opacity(0.5))
-                        .lineLimit(1)
-                    TagColorIndicator(colorHex: item.customTag?.colorHex, size: 6)
-                }
-//                }
-             
             }
-            
-            
+
+            Spacer(minLength: 0)
         }
-        .fixedSize(horizontal: true, vertical: false)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background {
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.08),
-                                    Color.white.opacity(0.02)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-                }
-        }
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 }
 

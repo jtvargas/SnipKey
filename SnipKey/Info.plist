@@ -12,7 +12,9 @@
 			<key>CFBundleURLName</key>
 			<string></string>
 			<key>CFBundleURLSchemes</key>
-			<array/>
+			<array>
+				<string>snipkey</string>
+			</array>
 		</dict>
 	</array>
 	<key>UIAppFonts</key>
