@@ -41,6 +41,15 @@ class KeyboardViewController: UIInputViewController {
     /// Pure CALayer operations, zero SwiftUI state changes.
     private let popupView = KeyPopupView()
     
+    // MARK: - Slash Command
+    
+    /// Slash command detection — plain class, zero SwiftUI re-renders per keystroke.
+    /// Only promotes to @Observable state when the active/query status actually changes.
+    private let slashCommandTracker = SlashCommandTracker()
+    
+    /// Observable slash command state — shared with SwiftUI toolbar for suggestions display.
+    let slashCommandState = SlashCommandState()
+    
     /// Wraps textDocumentProxy operations as closures for the SwiftUI QWERTY keyboard
     private lazy var keyboardActionsStruct: KeyboardActions = {
         KeyboardActions(
@@ -66,6 +75,19 @@ class KeyboardViewController: UIInputViewController {
             openApp: { [weak self] in
                 if let url = URL(string: "snipkey://open") {
                     self?.openURL(url)
+                }
+            },
+            evaluateSlashCommand: { [weak self] in
+                guard let self = self else { return }
+                // Skip evaluation when showing snippet grid (not in QWERTY mode)
+                guard !self.qwertyState.showingSnippets else { return }
+                let context = self.textDocumentProxy.documentContextBeforeInput
+                let result = self.slashCommandTracker.evaluate(context: context)
+                if result.changed {
+                    self.slashCommandState.updateActivation(
+                        isActive: result.isActive,
+                        query: result.query
+                    )
                 }
             }
         )
@@ -149,7 +171,8 @@ class KeyboardViewController: UIInputViewController {
         let contentView = UIHostingController(
             rootView: KeyboardViewExt(
                 qwertyState: qwertyState,
-                keyboardActions: keyboardActionsStruct
+                keyboardActions: keyboardActionsStruct,
+                slashCommandState: slashCommandState
             )
         )
         

@@ -211,6 +211,19 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                     
                     Button {
+                        if let url = URL(string: "https://github.com/jtvargas/SnipKey") {
+                            openURL(url)
+                        }
+                    } label: {
+                        SettingsRow(
+                            icon: "chevron.left.forwardslash.chevron.right",
+                            iconColor: .purple,
+                            title: "Source Code (GitHub)"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
                         if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
                             openURL(url)
                         }

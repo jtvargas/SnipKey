@@ -36,6 +36,10 @@ struct KeyboardActions {
     /// Open the main SnipKey app (for settings access from the keyboard)
     let openApp: () -> Void
 
+    /// Evaluate the current text context for slash command patterns.
+    /// Called after character insertion, deletion, and other key events.
+    let evaluateSlashCommand: () -> Void
+
     /// No-op instance for previews and default values
     static let noop = KeyboardActions(
         insertText: { _ in },
@@ -45,7 +49,8 @@ struct KeyboardActions {
         screenWidth: 393,
         showPopup: { _, _, _ in },
         hidePopup: {},
-        openApp: {}
+        openApp: {},
+        evaluateSlashCommand: {}
     )
 }
 

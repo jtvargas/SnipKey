@@ -383,6 +383,7 @@ struct KeyButtonView: View {
             actions.insertText(textToInsert)
             state.inputTracking.recordAction(.character)
             state.handleShiftAfterCharacter()
+            actions.evaluateSlashCommand()
 
         case .shift:
             state.toggleShift()
@@ -390,6 +391,7 @@ struct KeyButtonView: View {
         case .backspace:
             actions.deleteBackward()
             state.inputTracking.recordAction(.other)
+            actions.evaluateSlashCommand()
 
         case .space:
             handleSpaceAction()
@@ -397,6 +399,7 @@ struct KeyButtonView: View {
         case .returnKey:
             actions.insertText("\n")
             state.inputTracking.recordAction(.other)
+            actions.evaluateSlashCommand()
 
         case .modeChange(let page):
             state.currentPage = page
@@ -430,6 +433,8 @@ struct KeyButtonView: View {
         if shouldAutoReturn {
             state.currentPage = .letters
         }
+
+        actions.evaluateSlashCommand()
     }
 
     // MARK: - Rapid Deletion

@@ -5,12 +5,13 @@
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-Framework-blue?logo=swift)](https://developer.apple.com/swiftui/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![App Store](https://img.shields.io/badge/App%20Store-Download-blue?logo=apple)](https://apps.apple.com/us/app/snipkey/id6480381137)
+[![GitHub](https://img.shields.io/badge/GitHub-Open%20Source-black?logo=github)](https://github.com/jtvargas/SnipKey)
 
 **SnipKey** is a native iOS app that lets you save text snippets, URLs, images, and PDFs — then paste them anywhere using a custom keyboard. No more retyping. No more switching apps to copy something. Just tap and type.
 
 Built with **SwiftUI** and **SwiftData**, SnipKey is designed to be fast, private, and simple. Your data stays on your device (with optional iCloud sync through Apple's own CloudKit), and nothing is ever shared with third parties. No analytics. No tracking. No ads.
 
-The app is **completely free** to use. Optional tips are available if you'd like to support ongoing development.
+The app is **completely free** and **open source**. Optional tips are available if you'd like to support ongoing development. View the source code, report issues, or contribute on [GitHub](https://github.com/jtvargas/SnipKey).
 
 ---
 
@@ -97,6 +98,8 @@ Mark any snippet as **secure** and it will require FaceID or TouchID before it c
 | Feature | Description |
 |---|---|
 | **Custom Keyboard** | Access all your snippets from any app via a dedicated keyboard extension |
+| **Full QWERTY Keyboard** | Complete replacement keyboard with letters, numbers, symbols — no need to switch keyboards |
+| **Slash Commands** | Type `/` followed by a snippet name to trigger inline autocomplete and paste snippets without leaving the typing flow |
 | **4 Snippet Types** | Save text, URLs, images, and PDFs |
 | **Tag System** | Organize snippets with custom tags, each with its own name, SF Symbol icon, and color |
 | **Biometric Security** | Lock sensitive snippets behind FaceID or TouchID |
@@ -249,10 +252,20 @@ SnipKey/
             └── KeyboardHelpGuideView.swift # Keyboard setup guide
 
 SnipKeyboard/                           # Keyboard Extension Target
-├── KeyboardViewController.swift        # UIInputViewController
-├── KeyboardView.swift                  # SwiftUI keyboard UI
+├── KeyboardViewController.swift        # UIInputViewController + QWERTY state management
+├── KeyboardView.swift                  # SwiftUI keyboard UI (snippet grid + QWERTY toggle)
 ├── SnipKeyboard.entitlements           # Extension entitlements
-└── Info.plist                          # Extension configuration
+├── Info.plist                          # Extension configuration
+└── QWERTY/                             # Full QWERTY keyboard implementation
+    ├── KeyboardDimensions.swift        # Responsive key sizing from screen width
+    ├── QWERTYKeyboardState.swift       # @Observable render state + input tracking
+    ├── KeyboardActions.swift           # textDocumentProxy closures via SwiftUI environment
+    ├── QWERTYKeyboardLayout.swift      # Static key definitions (letters/numbers/symbols)
+    ├── KeyButtonView.swift             # Key rendering with UIKit touch handling
+    ├── KeyRowView.swift                # Row layout with edge-aware padding
+    ├── QWERTYKeyboardView.swift        # Main keyboard view + toolbar with slash suggestions
+    ├── KeyPopupView.swift              # UIKit balloon popup for key press feedback
+    └── SlashCommandEngine.swift        # Slash command detection, fuzzy matching, state
 ```
 
 ---
@@ -362,27 +375,31 @@ SnipKey today is a snippet-only keyboard — you switch to it when you need a sn
 
 Think of it like [Grammarly's iOS keyboard](https://www.grammarly.com/mobile): a complete QWERTY keyboard that works exactly like the native one, with powerful features layered on top through a suggestion bar. That's where SnipKey is headed — but instead of grammar suggestions, the power layer is **instant snippet access, slash commands, and emoji shortcodes**.
 
-### Phase 1 — Full QWERTY Keyboard
+### Phase 1 — Full QWERTY Keyboard ✅
 
-The foundation for everything else. Build a complete keyboard that behaves 1:1 with the native iOS keyboard:
+> **Status: Complete.**
+
+Built a complete QWERTY keyboard that behaves like the native iOS keyboard:
 
 - **All keys functional** — letters, numbers, symbols, shift, caps lock, delete, return, space, globe/language switch
-- **Layout parity** — match the native iOS key sizing, spacing, and layout for both portrait and landscape
-- **Haptic feedback** — match the native tap-feel behavior
-- **Snippet toggle** — a dedicated button on the keyboard bar to switch between the full QWERTY view and the snippets list, without needing to press the globe icon to change keyboards entirely
-- **Autocomplete bar** — a suggestion bar above the keys (like the native iOS suggestion strip) that will serve as the foundation for slash commands and emoji shortcodes
+- **Layout parity** — matches native iOS key sizing, spacing, and row gaps (~258pt total height)
+- **Key press feedback** — UIKit balloon popup + background highlight using CALayer (zero SwiftUI state)
+- **Snippet toggle** — dedicated button to switch between QWERTY and snippet list views
+- **Performance optimized** — UIKit `KeyTouchArea` for low-latency touch handling, `@Observable` equality guards, `static let` cached layouts
 
-> **Reference:** The Grammarly iOS keyboard is a good model for how this should feel. It provides a full typing experience identical to the native keyboard, with Grammarly's features accessible through a toolbar above the keys. SnipKey would follow the same pattern — full keyboard at the bottom, snippet/command features in the toolbar.
+### Phase 2 — Slash Commands for Quick Snippet Access ✅
 
-### Phase 2 — Slash Commands for Quick Snippet Access
+> **Status: Complete.**
 
-Once the full keyboard is in place, users can trigger snippets without ever leaving the typing flow:
+Type `/` to trigger inline snippet autocomplete without leaving the typing flow:
 
-- Type `/` followed by a snippet name (e.g., `/addressHome`, `/emailSignature`, `/thankYou`) to trigger inline autocomplete
-- Matching snippets appear in the **suggestion bar above the keys** as you type
-- Tap a suggestion to instantly replace the slash command text with the full snippet content
-- Support **fuzzy matching** so you don't need to remember exact names — typing `/addr` would surface "Address - Home", "Address - Work", etc.
-- Configurable trigger character (default `/`, but users could choose `!`, `#`, etc.)
+- Type `/` followed by a snippet name to see matching suggestions in the **toolbar above the keys**
+- **Fuzzy matching** — prefix, word-prefix, substring, and ordered character matching (e.g., `/addr` surfaces "Address - Home")
+- Tap a suggestion to replace the `/query` text with the full snippet content
+- **Biometric support** — secure snippets require FaceID/TouchID before insertion
+- **Usage tracking** — `lastTimeUsed` and `usedCount` updated on each use
+- **Slash trigger button** — toolbar button to quickly insert `/` and activate suggestions
+- Text and URL snippets only (image/PDF not applicable for inline insertion)
 
 **Example flow:**
 ```
@@ -433,10 +450,11 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 | | |
 |---|---|
 | **App Store** | [Download SnipKey](https://apps.apple.com/us/app/snipkey/id6480381137) |
+| **GitHub** | [Source Code](https://github.com/jtvargas/SnipKey) |
 | **Website** | [snipkey.jrtv.online](https://snipkey.jrtv.online) |
 | **Privacy Policy** | [snipkey.jrtv.online/privacy-policy](https://snipkey.jrtv.online/privacy-policy) |
 | **Feature Requests** | [snipkey.canny.io](https://snipkey.canny.io) |
 
 ---
 
-Built with care by [Jonathan Taveras](https://github.com/jtvargas). No tracking. No ads. Just a useful keyboard.
+Built with care by [Jonathan Taveras](https://github.com/jtvargas). Open source. No tracking. No ads. Just a useful keyboard.

@@ -57,38 +57,34 @@ struct OnboardingView: View {
             }
             
             Spacer()
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text("What you can do?")
                     .font(.custom("IBMPlexMono-Medium", size: 18))
                     .padding(.horizontal)
-                    .padding(.bottom)
+                    .padding(.bottom, 10)
 
                 
                 ForEach(features) { feature in
-                    VStack(alignment: .leading) {
-                        HStack {
-                            if let icon = feature.icon {
-                                Image(systemName: icon)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 30, alignment: .center)
-                                    .clipped()
-                                    .foregroundStyle(color ?? Color.blue)
-                                    .padding(.trailing, 15)
-                                    .padding(.vertical, 10)
-                            }
-                            VStack(alignment: .leading) {
-                                Text(feature.title)
-                                    .fontWeight(.bold)
-                                    .font(.custom("IBMPlexMono-Medium", size: 16))
-                                Text(feature.description)
-                            }
-                            Spacer()
+                    HStack(spacing: 12) {
+                        if let icon = feature.icon {
+                            Image(systemName: icon)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 24, height: 24)
+                                .foregroundStyle(color ?? Color.blue)
                         }
-                        .font(.custom("IBMPlexMono-Medium", size: 14))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(feature.title)
+                                .font(.custom("IBMPlexMono-SemiBold", size: 14))
+                            Text(feature.description)
+                                .font(.custom("IBMPlexMono-Regular", size: 12))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal,20)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
                 }
                 Button {
                     showOnboarding = false
@@ -137,9 +133,12 @@ struct OnboardingView: View {
 #Preview {
     @State var showOnboarding = false
     return OnboardingView(appName: "SnipKey", showOnboarding: $showOnboarding, features: [
-        Feature(title: "Create Snippets", description: "Craft and instantly use shortcuts across apps.", icon: "doc.on.doc.fill"),
-        Feature(title: "Tag & Organize", description: "Sort snippets swiftly with tags.", icon: "tag.fill"),
-        Feature(title: "Keyboard Quick-Use", description: "Easily toggle SnipKey for fast typing aid.", icon: "keyboard.fill"),
-        Feature(title: "Lock Snippets", description: "Secure sensitive data with encryption and biometrics.", icon: "lock.fill"),
+        Feature(title: "Snippets", description: "Save text, URLs, images and PDFs.", icon: "doc.on.doc.fill"),
+        Feature(title: "Keyboard", description: "Access snippets from any app.", icon: "keyboard.fill"),
+        Feature(title: "Slash Commands", description: "Type / to find and paste snippets.", icon: "chevron.left.forwardslash.chevron.right"),
+        Feature(title: "Tags", description: "Organize with custom tags.", icon: "tag.fill"),
+        Feature(title: "Biometric Lock", description: "Secure snippets with FaceID.", icon: "lock.fill"),
+        Feature(title: "iCloud Sync", description: "Syncs across all your devices.", icon: "cloud.fill"),
+        Feature(title: "Open Source", description: "View code on GitHub.", icon: "curlybraces"),
     ], color: Color.label)
 }

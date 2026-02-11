@@ -172,8 +172,9 @@ SnipKeyboard/                           # Keyboard Extension Target
     ├── QWERTYKeyboardLayout.swift      # Static key definitions for letters/numbers/symbols
     ├── KeyButtonView.swift             # Key rendering with UIKit KeyTouchArea (touch lifecycle)
     ├── KeyRowView.swift                # HStack row with zero-dead-zone padding
-    ├── QWERTYKeyboardView.swift        # Main keyboard view + toolbar
-    └── KeyPopupView.swift              # UIKit balloon popup for key press visual feedback
+    ├── QWERTYKeyboardView.swift        # Main keyboard view + toolbar + slash suggestions
+    ├── KeyPopupView.swift              # UIKit balloon popup for key press visual feedback
+    └── SlashCommandEngine.swift        # Slash command tracker + state + fuzzy matching engine
 ```
 
 ---
@@ -447,11 +448,30 @@ The QWERTY keyboard is built in `SnipKeyboard/QWERTY/` with 8 files. Key archite
 - Special keys (shift, backspace, return, etc.) have no visual feedback currently.
 - Popup is positioned using `KeyboardDimensions.keyFrame()` — pure math from row/column index, no GeometryReader.
 
-**Layout:**
-- `KeyboardDimensions` computes all measurements from `screenWidth` (passed from UIKit, not GeometryReader).
-- `QWERTYKeyboardLayout` stores key definitions as `static let` arrays (computed once, cached).
-- `ForEach` loops use `id: \.element` (not `\.offset`) for stable SwiftUI identity.
-- `CharacterKeyLabel` is a separate sub-view isolating `shiftState` observation — shift changes only re-render text labels, not entire key view trees.
+### Slash Command Architecture
+
+The slash command system detects `/query` patterns during typing and shows matching snippet suggestions in the keyboard toolbar. It uses a two-phase evaluation design to avoid per-keystroke SwiftUI re-renders:
+
+**Phase 1 — Detection (UIKit side, per-keystroke):**
+- `SlashCommandTracker` (plain class, NOT `@Observable`) reads `documentContextBeforeInput` after each character/backspace/space/return
+- Walks backwards from cursor to find `/`, validates it's at string start or after whitespace
+- Compares against last known state — only promotes to Phase 2 if `isActive` or `query` actually changed
+- Zero SwiftUI re-renders on the hot path
+
+**Phase 2 — Matching (SwiftUI side, reactive):**
+- `SlashCommandState` (`@Observable`) holds `isActive`, `query`, and `matchedSnippets`
+- `KeyboardToolbarView` uses `.onChange(of: slashState.query)` to trigger fuzzy matching
+- Snippets fetched via `@Query` in the toolbar view (not re-fetched per keystroke)
+- Fuzzy matching scores: prefix (100) > word-prefix (80) > substring (60) > ordered chars (40)
+- Only text/URL snippet types are eligible (image/PDF excluded)
+- Secure snippets shown but require biometric auth on tap
+
+**Key files:**
+- `SlashCommandEngine.swift` — `SlashCommandTracker` + `SlashCommandState` + fuzzy matching + environment key
+- `KeyboardActions.swift` — `evaluateSlashCommand` closure
+- `KeyboardViewController.swift` — creates tracker/state, wires evaluation closure
+- `QWERTYKeyboardView.swift` — `KeyboardToolbarView` with suggestions UI + `SlashTriggerButton`
+- `KeyButtonView.swift` — calls `evaluateSlashCommand()` after character/backspace/return/space
 
 ### NotificationCenter Channels (Legacy — Snippet View)
 
@@ -567,7 +587,7 @@ When modifying `KeyboardView.swift` or `KeyboardViewController.swift`:
 The project has a multi-phase roadmap to evolve SnipKey from a snippet-only keyboard into a full replacement keyboard (similar to Grammarly's iOS keyboard approach). The planned phases are:
 
 1. ~~**Full QWERTY Keyboard**~~ **(COMPLETE)** — full QWERTY keyboard with letters/numbers/symbols pages, auto-capitalization, auto-period, caps lock, snippet toggle (tap) / globe (long-press), and key press visual feedback (balloon popup + highlight). Performance-optimized with UIKit touch handling, `@Observable` equality guards, and CALayer-based visual feedback.
-2. **Slash Commands** — type `/snippetName` to trigger inline autocomplete and paste snippets without leaving the typing flow
+2. ~~**Slash Commands**~~ **(COMPLETE)** — type `/snippetName` to trigger inline autocomplete in the toolbar. Two-phase evaluation (plain tracker + @Observable state) for zero per-keystroke re-renders. Fuzzy matching (prefix/word-prefix/substring/ordered chars). Biometric support for secure snippets. Usage tracking on selection. Slash trigger button in toolbar for quick activation.
 3. **Emoji Shortcodes** — type `:emojiName` to autocomplete and inject emojis (Slack/Discord/GitHub-style shortcodes)
 
 See the [Roadmap & Vision](README.md#roadmap--vision) section in `README.md` for full details, examples, and contribution guidance.
@@ -579,6 +599,7 @@ See the [Roadmap & Vision](README.md#roadmap--vision) section in `README.md` for
 | | |
 |---|---|
 | **App Store** | https://apps.apple.com/us/app/snipkey/id6480381137 |
+| **GitHub** | https://github.com/jtvargas/SnipKey |
 | **Website** | https://snipkey.jrtv.online |
 | **Privacy Policy** | https://snipkey.jrtv.online/privacy-policy |
 | **Feature Requests** | https://snipkey.canny.io |

@@ -396,11 +396,13 @@ struct HomeView2: View {
         }
         .sheet(isPresented: $isPresentedWelcomeInfo) {
             OnboardingView(appName: "SnipKey", showOnboarding: $isPresentedWelcomeInfo, features: [
-                Feature(title: "Create & Use Snippets", description: "Craft snippets, use them anywhere.", icon: "doc.on.doc.fill"),
-                Feature(title: "Keyboard Extension", description: "Access snippets directly from keyboard.", icon: "keyboard.fill"),
-                Feature(title: "Organize with Tags", description: "Sort snippets using quick tags.", icon: "tag.fill"),
-                Feature(title: "Secure Data", description: "Encrypt sensitive snippets.", icon: "lock.fill"),
-                Feature(title: "iCloud Sync", description: "Access across all your devices.", icon: "cloud.fill"),
+                Feature(title: "Snippets", description: "Save text, URLs, images and PDFs.", icon: "doc.on.doc.fill"),
+                Feature(title: "Keyboard", description: "Access snippets from any app.", icon: "keyboard.fill"),
+                Feature(title: "Slash Commands", description: "Type / to find and paste snippets.", icon: "chevron.left.forwardslash.chevron.right"),
+                Feature(title: "Tags", description: "Organize with custom tags.", icon: "tag.fill"),
+                Feature(title: "Biometric Lock", description: "Secure snippets with FaceID.", icon: "lock.fill"),
+                Feature(title: "iCloud Sync", description: "Syncs across all your devices.", icon: "cloud.fill"),
+                Feature(title: "Open Source", description: "View code on GitHub.", icon: "curlybraces"),
             ], color: Color.label)
         }
     }

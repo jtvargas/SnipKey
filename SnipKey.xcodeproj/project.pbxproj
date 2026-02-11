@@ -60,6 +60,8 @@
 		06AA10062F30A00100B1C006 /* KeyRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100D2F30A00100B1C006 /* KeyRowView.swift */; };
 		06AA10072F30A00100B1C007 /* QWERTYKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */; };
 		06AA10082F30A00100B1C008 /* KeyPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10182F30A00300B1C008 /* KeyPopupView.swift */; };
+		4314634F36B04D70854CC02D /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
+		3A8B76B2949D48589DC82983 /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
 		06AA10112F30A00200B1C001 /* KeyboardDimensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10082F30A00100B1C001 /* KeyboardDimensions.swift */; };
 		06AA10122F30A00200B1C002 /* QWERTYKeyboardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10092F30A00100B1C002 /* QWERTYKeyboardState.swift */; };
 		06AA10132F30A00200B1C003 /* KeyboardActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100A2F30A00100B1C003 /* KeyboardActions.swift */; };
@@ -172,6 +174,7 @@
 		06AA100D2F30A00100B1C006 /* KeyRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyRowView.swift; sourceTree = "<group>"; };
 		06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QWERTYKeyboardView.swift; sourceTree = "<group>"; };
 		06AA10182F30A00300B1C008 /* KeyPopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPopupView.swift; sourceTree = "<group>"; };
+		ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandEngine.swift; sourceTree = "<group>"; };
 		06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		06AE13112BBB0D16008EAE98 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -373,6 +376,7 @@
 				06AA100D2F30A00100B1C006 /* KeyRowView.swift */,
 				06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */,
 				06AA10182F30A00300B1C008 /* KeyPopupView.swift */,
+				ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -656,6 +660,7 @@
 				06AA10062F30A00100B1C006 /* KeyRowView.swift in Sources */,
 				06AA10072F30A00100B1C007 /* QWERTYKeyboardView.swift in Sources */,
 				06AA10082F30A00100B1C008 /* KeyPopupView.swift in Sources */,
+				4314634F36B04D70854CC02D /* SlashCommandEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -719,6 +724,7 @@
 				06AA10162F30A00200B1C006 /* KeyRowView.swift in Sources */,
 				06AA10172F30A00200B1C007 /* QWERTYKeyboardView.swift in Sources */,
 				06AA10182F30A00300B1C009 /* KeyPopupView.swift in Sources */,
+				3A8B76B2949D48589DC82983 /* SlashCommandEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
