@@ -408,6 +408,13 @@ struct KeyButtonView: View {
     // MARK: - Space / Auto-Period
 
     private func handleSpaceAction() {
+        // Check auto-return condition BEFORE recording the space action,
+        // because recordAction overwrites lastAction.
+        // Native iOS behavior: pressing space after a character in numbers/symbols
+        // mode auto-switches back to the letters page.
+        let shouldAutoReturn = state.currentPage != .letters
+            && state.inputTracking.lastAction == .character
+
         if state.inputTracking.shouldInsertAutoPeriod() {
             actions.deleteBackward()
             actions.insertText(". ")
@@ -415,6 +422,11 @@ struct KeyButtonView: View {
         } else {
             actions.insertText(" ")
             state.inputTracking.recordAction(.space)
+        }
+
+        // Auto-return to letters after space following a character in numbers/symbols
+        if shouldAutoReturn {
+            state.currentPage = .letters
         }
     }
 
