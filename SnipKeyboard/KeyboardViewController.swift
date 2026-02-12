@@ -50,6 +50,15 @@ class KeyboardViewController: UIInputViewController {
     /// Observable slash command state — shared with SwiftUI toolbar for suggestions display.
     let slashCommandState = SlashCommandState()
     
+    // MARK: - Predictive Text
+    
+    /// Predictive text detection — plain class, zero SwiftUI re-renders per keystroke.
+    /// Only promotes to @Observable state when suggestions actually change.
+    private let predictiveTextTracker = PredictiveTextTracker()
+    
+    /// Observable predictive text state — shared with SwiftUI toolbar for suggestions display.
+    let predictiveTextState = PredictiveTextState()
+    
     /// Wraps textDocumentProxy operations as closures for the SwiftUI QWERTY keyboard
     private lazy var keyboardActionsStruct: KeyboardActions = {
         KeyboardActions(
@@ -87,6 +96,24 @@ class KeyboardViewController: UIInputViewController {
                     self.slashCommandState.updateActivation(
                         isActive: result.isActive,
                         query: result.query
+                    )
+                }
+            },
+            evaluatePredictiveText: { [weak self] in
+                guard let self = self else { return }
+                // Skip when showing snippet grid or when slash command is active
+                guard !self.qwertyState.showingSnippets else { return }
+                guard !self.slashCommandState.isActive else {
+                    // Clear suggestions when slash is active
+                    self.predictiveTextState.dismiss()
+                    return
+                }
+                let context = self.textDocumentProxy.documentContextBeforeInput
+                let result = self.predictiveTextTracker.evaluate(context: context)
+                if result.changed {
+                    self.predictiveTextState.updateSuggestions(
+                        suggestions: result.suggestions,
+                        partialWord: result.partialWord
                     )
                 }
             }
@@ -167,12 +194,18 @@ class KeyboardViewController: UIInputViewController {
         self.nextKeyboardButton.leftAnchor.constraint(equalTo: self.view.leftAnchor).isActive = true
         self.nextKeyboardButton.bottomAnchor.constraint(equalTo: self.view.bottomAnchor).isActive = true
         
+        // Cache supplementary lexicon for predictive text (contacts, shortcuts)
+        requestSupplementaryLexicon { [weak self] lexicon in
+            self?.predictiveTextTracker.lexicon = lexicon
+        }
+        
         // Host SwiftUI keyboard with QWERTY state and actions injected
         let contentView = UIHostingController(
             rootView: KeyboardViewExt(
                 qwertyState: qwertyState,
                 keyboardActions: keyboardActionsStruct,
-                slashCommandState: slashCommandState
+                slashCommandState: slashCommandState,
+                predictiveTextState: predictiveTextState
             )
         )
         

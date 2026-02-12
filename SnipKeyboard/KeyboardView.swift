@@ -598,6 +598,7 @@ struct KeyboardViewExt: View {
     var qwertyState: QWERTYKeyboardState
     var keyboardActions: KeyboardActions
     var slashCommandState: SlashCommandState
+    var predictiveTextState: PredictiveTextState
 
     var body: some View {
         Group {
@@ -614,6 +615,7 @@ struct KeyboardViewExt: View {
                 .environment(qwertyState)
                 .environment(\.keyboardActions, keyboardActions)
                 .environment(\.slashCommandState, slashCommandState)
+                .environment(\.predictiveTextState, predictiveTextState)
             } else {
                 ProgressView()
                     .onAppear {
@@ -641,7 +643,8 @@ struct KeyboardViewExt: View {
     return KeyboardViewExt(
         qwertyState: QWERTYKeyboardState(),
         keyboardActions: KeyboardActions.noop,
-        slashCommandState: SlashCommandState()
+        slashCommandState: SlashCommandState(),
+        predictiveTextState: PredictiveTextState()
     )
     .onAppear {
         settingsViewModel.modelContext = tempSettingsContainer.mainContext

@@ -384,6 +384,7 @@ struct KeyButtonView: View {
             state.inputTracking.recordAction(.character)
             state.handleShiftAfterCharacter()
             actions.evaluateSlashCommand()
+            actions.evaluatePredictiveText()
 
         case .shift:
             state.toggleShift()
@@ -392,6 +393,7 @@ struct KeyButtonView: View {
             actions.deleteBackward()
             state.inputTracking.recordAction(.other)
             actions.evaluateSlashCommand()
+            actions.evaluatePredictiveText()
 
         case .space:
             handleSpaceAction()
@@ -400,6 +402,7 @@ struct KeyButtonView: View {
             actions.insertText("\n")
             state.inputTracking.recordAction(.other)
             actions.evaluateSlashCommand()
+            actions.evaluatePredictiveText()
 
         case .modeChange(let page):
             state.currentPage = page
@@ -435,6 +438,7 @@ struct KeyButtonView: View {
         }
 
         actions.evaluateSlashCommand()
+        actions.evaluatePredictiveText()
     }
 
     // MARK: - Rapid Deletion
