@@ -47,6 +47,10 @@ final class QWERTYInputTracking {
     /// Timestamp of the last shift tap, for detecting double-tap (caps lock)
     var lastShiftTapTime: Date? = nil
 
+    /// Probabilistic touch context — updated per keystroke, read by touch layers.
+    /// Plain class (not @Observable) — mutations cause zero SwiftUI re-renders.
+    let touchContext = ProbabilisticTouchContext()
+
     /// Record a key action for auto-period detection
     func recordAction(_ action: KeyActionType) {
         secondLastAction = lastAction
