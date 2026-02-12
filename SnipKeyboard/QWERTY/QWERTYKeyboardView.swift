@@ -46,6 +46,7 @@ struct KeyboardToolbarView: View {
     let dimensions: KeyboardDimensions
     @Environment(\.keyboardActions) private var actions
     @Environment(\.slashCommandState) private var slashState
+    @Environment(\.predictiveTextState) private var predictiveState
     @Environment(\.modelContext) private var modelContext
 
     /// All snippets from SwiftData — used for slash command matching.
@@ -76,12 +77,21 @@ struct KeyboardToolbarView: View {
                     Spacer()
                 }
             } else {
-                // Slash trigger button (top-left) + spacer
+                // Slash trigger button (top-left) + predictive suggestions
                 SlashTriggerButton(isDarkMode: state.appearanceMode == .dark) {
                     actions.insertText("/")
                     actions.evaluateSlashCommand()
                 }
-                Spacer()
+                if predictiveState.isActive {
+                    PredictiveSuggestionsView(
+                        suggestions: predictiveState.suggestions,
+                        onSelect: { suggestion in
+                            handlePredictiveSelection(suggestion)
+                        }
+                    )
+                } else {
+                    Spacer()
+                }
             }
 
 //            // Settings button — opens main SnipKey app
@@ -145,6 +155,23 @@ struct KeyboardToolbarView: View {
         // 4. Dismiss slash command mode
         slashState.dismiss()
     }
+
+    // MARK: - Predictive Text Selection
+
+    private func handlePredictiveSelection(_ suggestion: String) {
+        // Delete the partial word characters
+        let charsToDelete = predictiveState.partialWord.count
+        for _ in 0..<charsToDelete {
+            actions.deleteBackward()
+        }
+
+        // Insert the full suggestion + trailing space
+        actions.insertText(suggestion + " ")
+
+        // Reset and re-evaluate
+        predictiveState.dismiss()
+        actions.evaluatePredictiveText()
+    }
 }
 
 // MARK: - Slash Suggestions View
@@ -176,6 +203,41 @@ struct SlashTriggerButton: View {
                 )
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Predictive Text Suggestions View
+
+/// Horizontally arranged row of up to 3 word completion/correction pills.
+/// Mimics the native iOS QuickType suggestion bar appearance.
+struct PredictiveSuggestionsView: View {
+    let suggestions: [String]
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
+                if index > 0 {
+                    // Thin vertical divider between pills (native iOS style)
+                    Rectangle()
+                        .fill(Color(.separator).opacity(0.4))
+                        .frame(width: 0.5)
+                        .padding(.vertical, 8)
+                }
+
+                Button {
+                    onSelect(suggestion)
+                } label: {
+                    Text(suggestion)
+                        .font(.custom("IBMPlexMono-Medium", size: 13))
+                        .foregroundStyle(Color(.label))
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }
 
