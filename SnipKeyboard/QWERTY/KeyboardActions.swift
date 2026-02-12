@@ -40,6 +40,10 @@ struct KeyboardActions {
     /// Called after character insertion, deletion, and other key events.
     let evaluateSlashCommand: () -> Void
 
+    /// Evaluate the current text context for predictive text suggestions.
+    /// Called after character insertion, deletion, and other key events.
+    let evaluatePredictiveText: () -> Void
+
     /// No-op instance for previews and default values
     static let noop = KeyboardActions(
         insertText: { _ in },
@@ -50,7 +54,8 @@ struct KeyboardActions {
         showPopup: { _, _, _ in },
         hidePopup: {},
         openApp: {},
-        evaluateSlashCommand: {}
+        evaluateSlashCommand: {},
+        evaluatePredictiveText: {}
     )
 }
 
