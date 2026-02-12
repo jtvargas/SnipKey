@@ -171,10 +171,14 @@ SnipKeyboard/                           # Keyboard Extension Target
     ├── KeyboardActions.swift           # textDocumentProxy closures via SwiftUI environment
     ├── QWERTYKeyboardLayout.swift      # Static key definitions for letters/numbers/symbols
     ├── KeyButtonView.swift             # Key rendering with UIKit KeyTouchArea (touch lifecycle)
-    ├── KeyRowView.swift                # HStack row with zero-dead-zone padding
+    ├── KeyRowView.swift                # HStack row with zero-dead-zone padding + probabilistic data
     ├── QWERTYKeyboardView.swift        # Main keyboard view + toolbar + slash suggestions
     ├── KeyPopupView.swift              # UIKit balloon popup for key press visual feedback
-    └── SlashCommandEngine.swift        # Slash command tracker + state + fuzzy matching engine
+    ├── SlashCommandEngine.swift        # Slash command tracker + state + fuzzy matching engine
+    ├── PredictiveTextEngine.swift      # Predictive text tracker + state + suggestion engine
+    ├── BigramEngine.swift              # Static English bigram frequency table (26x26)
+    ├── DynamicHitResolver.swift        # Probability-weighted key boundary resolver
+    └── ProbabilisticTouchContext.swift  # Per-keystroke context for probabilistic touch targeting
 ```
 
 ---
@@ -425,7 +429,7 @@ The keyboard extension (`SnipKeyboard` target) is a `UIInputViewController` that
 
 ### QWERTY Keyboard Design
 
-The QWERTY keyboard is built in `SnipKeyboard/QWERTY/` with 8 files. Key architecture decisions:
+The QWERTY keyboard is built in `SnipKeyboard/QWERTY/` with 13 files. Key architecture decisions:
 
 **State management:**
 - `QWERTYKeyboardState` (`@Observable`) holds only view-affecting properties: `currentPage`, `shiftState`, `returnKeyLabel`, `returnKeyIsProminent`, `appearanceMode`, `needsInputModeSwitchKey`, `showingSnippets`
@@ -436,7 +440,9 @@ The QWERTY keyboard is built in `SnipKeyboard/QWERTY/` with 8 files. Key archite
 **Touch handling:**
 - Character keys and the space bar use `KeyTouchArea` — a `UIViewRepresentable` wrapping `UIControl` with full touch lifecycle (`touchDown`/`touchUpInside`/`touchUpOutside`/`touchCancel`).
 - Character insertion fires on `.touchDown` (not `.touchUpInside`) for ~30-80ms lower latency.
+- `KeyTouchArea.onTouchDown` provides both the touch X position and the control's actual frame in keyboard coordinates (via `UIEvent` parameter + `convert(bounds, to: nil)`). Character keys use the touch X for probabilistic hit resolution; the actual frame is used for popup positioning.
 - `KeyTouchArea` also handles visual highlight via `UIControl.backgroundColor` changes — pure CALayer, no SwiftUI state.
+- On the letters page, character keys run `DynamicHitResolver` inline on each touch-down (~100ns) to check if the touch should redirect to an adjacent key based on bigram probabilities. See **Probabilistic Touch Targeting** section below.
 - Special keys (shift, backspace, snippet toggle) use SwiftUI `Button` for long-press gesture support.
 
 **Key press visual feedback (balloon popup):**
@@ -446,7 +452,7 @@ The QWERTY keyboard is built in `SnipKeyboard/QWERTY/` with 8 files. Key archite
 - Character/digit/symbol keys get balloon popup + background highlight on press.
 - Space bar gets background highlight only (no popup), and dismisses any active popup.
 - Special keys (shift, backspace, return, etc.) have no visual feedback currently.
-- Popup is positioned using `KeyboardDimensions.keyFrame()` — pure math from row/column index, no GeometryReader.
+- Popup is positioned using the `UIControl`'s actual frame from UIKit layout (via `convert(bounds, to: nil)`), not duplicated arithmetic. This eliminates drift between SwiftUI layout and popup positioning.
 
 ### Slash Command Architecture
 
@@ -472,6 +478,31 @@ The slash command system detects `/query` patterns during typing and shows match
 - `KeyboardViewController.swift` — creates tracker/state, wires evaluation closure
 - `QWERTYKeyboardView.swift` — `KeyboardToolbarView` with suggestions UI + `SlashTriggerButton`
 - `KeyButtonView.swift` — calls `evaluateSlashCommand()` after character/backspace/return/space
+
+### Probabilistic Touch Targeting
+
+After typing a character, the invisible touch boundaries between adjacent keys dynamically shift based on English bigram frequencies. For example, after typing "t", the hit area for "h" expands because "th" is extremely common. Visual keys don't change — only touch resolution logic changes. This is an inline per-key approach (no overlay or separate touch layer).
+
+**Architecture (inline per-key resolution):**
+- `KeyRowView` pre-computes `ProbabilisticRowData` once per layout pass for letters-page rows 0-2. This contains `keyRects` (centerX, width per character key in row coordinate space), `characters` (row's character strings), and `keyOffsets` (each key's tappable left edge X offset).
+- Each character `KeyButtonView` receives this data as optional properties (`rowKeyRects`, `rowCharacters`, `characterIndex`, `keyOffsetInRow`). On numbers/symbols pages these are nil (zero overhead).
+- On touch-down, `KeyTouchArea` passes both the touch X and the control's actual UIKit frame. The character key's closure calls `resolveCharacter()` which converts local touch X to row-space X (`localTouchX + keyOffsetInRow`), fetches bigram weights from `ProbabilisticTouchContext`, and runs `DynamicHitResolver.resolve()`.
+- If the resolved key differs from the tapped key, the neighbor's character is inserted instead. The popup always appears above the tapped key's actual position (better UX — matches where the finger is).
+
+**Key files:**
+- `BigramEngine.swift` — Static `enum` with pre-computed 26x26 English bigram conditional probability table. `weights(after:)` returns `[Character: Float]`. Also has `wordInitialFrequencies` for after space/punctuation. All `static let` data, zero allocations.
+- `DynamicHitResolver.swift` — Static `enum` with `resolve(touchX:keyRects:weights:keyGap:)`. Computes shifted boundaries between adjacent keys proportional to weight ratios. Clamps so no key shrinks below 60% of original width. Pure arithmetic, ~100ns.
+- `ProbabilisticTouchContext.swift` — Plain `final class` (NOT `@Observable` — zero SwiftUI re-renders). Tracks `lastCharacter` and pre-computes `currentWeights`. Updated per keystroke via `recordCharacter()` / `recordNonCharacter()`. Read by `KeyButtonView.resolveCharacter()`.
+- `KeyRowView.swift` — `probabilisticRowData()` method computes row geometry during SwiftUI layout.
+- `KeyButtonView.swift` — `resolveCharacter()`, `handleCharacterTap()` methods.
+- `QWERTYKeyboardState.swift` — `QWERTYInputTracking.touchContext` stores the `ProbabilisticTouchContext` instance.
+
+**Performance:**
+- ~100ns additional latency per keystroke (DynamicHitResolver arithmetic)
+- Zero additional SwiftUI re-renders
+- One small [Float] array allocation per keystroke (~40 bytes for 10 weights)
+- No additional UIView instances at runtime
+- Row geometry computed once per layout pass, not per keystroke
 
 ### NotificationCenter Channels (Legacy — Snippet View)
 
@@ -588,7 +619,8 @@ The project has a multi-phase roadmap to evolve SnipKey from a snippet-only keyb
 
 1. ~~**Full QWERTY Keyboard**~~ **(COMPLETE)** — full QWERTY keyboard with letters/numbers/symbols pages, auto-capitalization, auto-period, caps lock, snippet toggle (tap) / globe (long-press), and key press visual feedback (balloon popup + highlight). Performance-optimized with UIKit touch handling, `@Observable` equality guards, and CALayer-based visual feedback.
 2. ~~**Slash Commands**~~ **(COMPLETE)** — type `/snippetName` to trigger inline autocomplete in the toolbar. Two-phase evaluation (plain tracker + @Observable state) for zero per-keystroke re-renders. Fuzzy matching (prefix/word-prefix/substring/ordered chars). Biometric support for secure snippets. Usage tracking on selection. Slash trigger button in toolbar for quick activation.
-3. **Emoji Shortcodes** — type `:emojiName` to autocomplete and inject emojis (Slack/Discord/GitHub-style shortcodes)
+3. ~~**Probabilistic Touch Targeting**~~ **(COMPLETE)** — bigram-frequency-based dynamic hit boundaries for character keys. After typing a character, adjacent keys' invisible touch targets shift based on English bigram probabilities. Inline per-key resolution (~100ns per keystroke), zero SwiftUI re-renders, no additional UIView instances. Popup positioning uses actual UIKit frame via `convert(bounds, to: nil)`.
+4. **Emoji Shortcodes** — type `:emojiName` to autocomplete and inject emojis (Slack/Discord/GitHub-style shortcodes)
 
 See the [Roadmap & Vision](README.md#roadmap--vision) section in `README.md` for full details, examples, and contribution guidance.
 

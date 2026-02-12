@@ -51,14 +51,17 @@ enum KeyboardHaptics {
 /// Also applies a subtle background highlight while the finger is down,
 /// entirely via CALayer — zero SwiftUI state changes.
 struct KeyTouchArea: UIViewRepresentable {
-    let onTouchDown: () -> Void
+    /// Called on touch down with:
+    /// - touchX: X position relative to this control's bounds (for probabilistic resolution)
+    /// - keyFrame: the control's actual frame in keyboard root coordinates (for popup positioning)
+    let onTouchDown: (_ touchX: CGFloat, _ keyFrame: CGRect) -> Void
     let onTouchUp: () -> Void
     let cornerRadius: CGFloat
     let highlightColor: UIColor
 
     func makeUIView(context: Context) -> UIControl {
         let control = UIControl()
-        control.addTarget(context.coordinator, action: #selector(Coordinator.touchDown(_:)), for: .touchDown)
+        control.addTarget(context.coordinator, action: #selector(Coordinator.touchDown(_:event:)), for: .touchDown)
         control.addTarget(context.coordinator, action: #selector(Coordinator.touchUp(_:)), for: .touchUpInside)
         control.addTarget(context.coordinator, action: #selector(Coordinator.touchUp(_:)), for: .touchUpOutside)
         control.addTarget(context.coordinator, action: #selector(Coordinator.touchUp(_:)), for: .touchCancel)
@@ -75,19 +78,24 @@ struct KeyTouchArea: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject {
-        let onTouchDown: () -> Void
+        let onTouchDown: (_ touchX: CGFloat, _ keyFrame: CGRect) -> Void
         let onTouchUp: () -> Void
         let highlightColor: UIColor
 
-        init(onTouchDown: @escaping () -> Void, onTouchUp: @escaping () -> Void, highlightColor: UIColor) {
+        init(onTouchDown: @escaping (_ touchX: CGFloat, _ keyFrame: CGRect) -> Void, onTouchUp: @escaping () -> Void, highlightColor: UIColor) {
             self.onTouchDown = onTouchDown
             self.onTouchUp = onTouchUp
             self.highlightColor = highlightColor
         }
 
-        @objc func touchDown(_ sender: UIControl) {
+        @objc func touchDown(_ sender: UIControl, event: UIEvent) {
             sender.backgroundColor = highlightColor
-            onTouchDown()
+            let touchX = event.allTouches?.first?.location(in: sender).x ?? sender.bounds.midX
+            // Actual frame in keyboard root coordinates — single affine transform, ~0ns.
+            // In keyboard extensions, convert(to: nil) yields window coords which match
+            // the KeyboardViewController.view coordinate space (popup's superview).
+            let keyFrame = sender.convert(sender.bounds, to: nil)
+            onTouchDown(touchX, keyFrame)
         }
 
         @objc func touchUp(_ sender: UIControl) {
@@ -137,6 +145,22 @@ struct KeyButtonView: View {
     let columnIndex: Int
     let rowActions: [KeyAction]
 
+    // MARK: - Probabilistic Touch Data (letters page character keys only)
+    // These are nil on numbers/symbols pages. Precomputed by KeyRowView once per layout,
+    // NOT per keystroke. Zero-cost when nil (fast path).
+
+    /// (centerX, width) rects for each character key in this row, in row coordinate space.
+    var rowKeyRects: [(centerX: CGFloat, width: CGFloat)]?
+
+    /// Character strings in row order (e.g., ["Q","W","E",...]).
+    var rowCharacters: [String]?
+
+    /// This key's index within the character keys (not the full row actions).
+    var characterIndex: Int?
+
+    /// X offset of this key's tappable left edge in the row's coordinate space.
+    var keyOffsetInRow: CGFloat = 0
+
     @Environment(\.keyboardActions) private var actions
     @Environment(QWERTYKeyboardState.self) private var state
 
@@ -165,23 +189,29 @@ struct KeyButtonView: View {
         Group {
             switch action {
             case .character(let char):
-                // Fast path: UIKit touch handler with popup + highlight for character keys
+                // UIKit touch handler with probabilistic resolution + popup + highlight.
+                // On touch-down, localTouchX is used to resolve which character key was
+                // actually intended (may redirect to a neighbor based on bigram probabilities).
+                // When rowKeyRects is nil (numbers/symbols pages), falls through to own char.
                 keyVisual
                     .frame(width: totalWidth, height: dimensions.keyHeight)
                     .contentShape(Rectangle())
                     .overlay(
                         KeyTouchArea(
-                            onTouchDown: {
-                                handleTap()
-                                // Show popup with the displayed character
-                                let displayChar = state.shiftState == .disabled ? char.lowercased() : char.uppercased()
-                                let frame = dimensions.keyFrame(
-                                    rowIndex: rowIndex,
-                                    columnIndex: columnIndex,
-                                    keyWidth: keyWidth,
-                                    rowActions: rowActions
+                            onTouchDown: { localTouchX, keyFrame in
+                                let resolved = resolveCharacter(localTouchX: localTouchX, ownChar: char)
+                                // Capture display char BEFORE handleCharacterTap changes shift state
+                                let displayChar = state.shiftState == .disabled ? resolved.lowercased() : resolved.uppercased()
+                                handleCharacterTap(resolved)
+                                // Popup at actual UIKit-computed position (not duplicated arithmetic).
+                                // keyFrame is the full tappable area; visual key is inset by leadingPad.
+                                let visualKeyFrame = CGRect(
+                                    x: keyFrame.minX + leadingPad,
+                                    y: keyFrame.minY,
+                                    width: keyWidth,
+                                    height: dimensions.keyHeight
                                 )
-                                actions.showPopup(displayChar, frame, state.appearanceMode == .dark)
+                                actions.showPopup(displayChar, visualKeyFrame, state.appearanceMode == .dark)
                             },
                             onTouchUp: {
                                 actions.hidePopup()
@@ -234,7 +264,7 @@ struct KeyButtonView: View {
                         .contentShape(Rectangle())
                         .overlay(
                             KeyTouchArea(
-                                onTouchDown: {
+                                onTouchDown: { _, _ in
                                     handleTap()
                                     actions.hidePopup() // Dismiss any active popup from previous key
                                 },
@@ -374,17 +404,64 @@ struct KeyButtonView: View {
         return 18
     }
 
+    // MARK: - Probabilistic Touch Resolution
+
+    /// Resolve which character the user intended, given the touch X position
+    /// within this key's tappable area. On the letters page, uses bigram-weighted
+    /// dynamic boundaries to potentially redirect to an adjacent key.
+    /// On numbers/symbols pages (rowKeyRects == nil), returns ownChar immediately (~0ns).
+    ///
+    /// Performance: ~100ns when active (dictionary lookup + arithmetic). Zero allocations
+    /// beyond a small [Float] weights array (10 elements, 40 bytes).
+    private func resolveCharacter(localTouchX: CGFloat, ownChar: String) -> String {
+        // Fast path: no probabilistic data → return own character
+        guard let rects = rowKeyRects,
+              let chars = rowCharacters,
+              let _ = characterIndex else {
+            return ownChar
+        }
+
+        // Convert local touch X (within this key's tappable area) to row-space X
+        let rowX = localTouchX + keyOffsetInRow
+
+        // Get weights from touch context (pre-computed when last character changed)
+        let weights = state.inputTracking.touchContext.weightsForRow(chars)
+
+        // Resolve using DynamicHitResolver — pure arithmetic, ~100ns
+        let resolvedIndex = DynamicHitResolver.resolve(
+            touchX: rowX,
+            keyRects: rects,
+            weights: weights,
+            keyGap: dimensions.keyGap
+        )
+
+        guard resolvedIndex >= 0 && resolvedIndex < chars.count else { return ownChar }
+        return chars[resolvedIndex]
+    }
+
+    /// Handle a character key tap with the resolved character (may differ from the
+    /// visually tapped key due to probabilistic resolution).
+    /// Inserts text, records context, updates shift, and triggers slash/predictive evaluation.
+    private func handleCharacterTap(_ char: String) {
+        let textToInsert = state.shiftState == .disabled ? char.lowercased() : char.uppercased()
+        actions.insertText(textToInsert)
+        state.inputTracking.recordAction(.character)
+        state.inputTracking.touchContext.recordCharacter(Character(char))
+        state.handleShiftAfterCharacter()
+        actions.evaluateSlashCommand()
+        actions.evaluatePredictiveText()
+    }
+
     // MARK: - Tap Handling
 
     private func handleTap() {
         switch action {
         case .character(let char):
-            let textToInsert = state.shiftState == .disabled ? char.lowercased() : char.uppercased()
-            actions.insertText(textToInsert)
-            state.inputTracking.recordAction(.character)
-            state.handleShiftAfterCharacter()
-            actions.evaluateSlashCommand()
-            actions.evaluatePredictiveText()
+            // Character keys are handled by handleCharacterTap() via the
+            // KeyTouchArea onTouchDown closure (with probabilistic resolution).
+            // This path is only reached if a character key uses a SwiftUI Button
+            // instead of KeyTouchArea (currently none do).
+            handleCharacterTap(char)
 
         case .shift:
             state.toggleShift()
@@ -392,6 +469,7 @@ struct KeyButtonView: View {
         case .backspace:
             actions.deleteBackward()
             state.inputTracking.recordAction(.other)
+            state.inputTracking.touchContext.recordNonCharacter()
             actions.evaluateSlashCommand()
             actions.evaluatePredictiveText()
 
@@ -401,6 +479,7 @@ struct KeyButtonView: View {
         case .returnKey:
             actions.insertText("\n")
             state.inputTracking.recordAction(.other)
+            state.inputTracking.touchContext.recordNonCharacter()
             actions.evaluateSlashCommand()
             actions.evaluatePredictiveText()
 
@@ -431,6 +510,9 @@ struct KeyButtonView: View {
             actions.insertText(" ")
             state.inputTracking.recordAction(.space)
         }
+
+        // Update probabilistic touch context — space starts a new word
+        state.inputTracking.touchContext.recordNonCharacter()
 
         // Auto-return to letters after space following a character in numbers/symbols
         if shouldAutoReturn {
