@@ -143,6 +143,29 @@ struct SettingsView: View {
                         .font(.custom("IBMPlexMono-Regular", size: 12))
                 }
                 
+                // MARK: - Experimental Section
+                Section {
+                    Toggle(isOn: $currentSettings.isQWERTYKeyboardEnabled) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "keyboard.fill")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.orange)
+                                .cornerRadius(6)
+                            
+                            Text("QWERTY Keyboard")
+                                .font(.custom("IBMPlexMono-Medium", size: 15))
+                        }
+                    }
+                    .tint(.orange)
+                } header: {
+                    Text("Experimental")
+                } footer: {
+                    Text("Experimental features may contain bugs and are not fully stable. Enable at your own discretion and consider sharing feedback.")
+                        .font(.custom("IBMPlexMono-Regular", size: 12))
+                }
+                
                 // MARK: - Help & Support Section
                 Section {
                     Button {
@@ -308,6 +331,7 @@ struct SettingsView: View {
     
     private func resetKeyboardSettings() {
         currentSettings.afterPasteAction = .space
+        currentSettings.isQWERTYKeyboardEnabled = false
     }
 }
 

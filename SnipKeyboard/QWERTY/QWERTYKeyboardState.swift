@@ -77,8 +77,10 @@ final class QWERTYInputTracking {
 @Observable
 class QWERTYKeyboardState {
     // MARK: Mode Toggle
-    /// When true, shows the snippet grid instead of the QWERTY keyboard
-    var showingSnippets: Bool = false
+    /// When true, shows the snippet grid instead of the QWERTY keyboard.
+    /// Defaults to true (snippet list) — overridden by KeyboardViewExt when
+    /// the experimental QWERTY keyboard setting is enabled.
+    var showingSnippets: Bool = true
 
     // MARK: QWERTY State
     /// Current keyboard page (letters, numbers, symbols)

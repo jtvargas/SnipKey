@@ -59,43 +59,43 @@ struct SnippetListItemMinimal: View {
     let item: SnippetItem
 
     var body: some View {
-        HStack(spacing: 10) {
-            // Type icon — simple circle background, single compositing layer
+        HStack(spacing: 12) {
+            // Type icon — circle background with improved size for readability
             Image(systemName: item.type?.snipTypeImage ?? "doc.text")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color(.secondaryLabel))
-                .frame(width: 28, height: 28)
+                .frame(width: 32, height: 32)
                 .background(
                     Circle()
                         .fill(Color(.tertiarySystemBackground))
                 )
 
-            // Content — title + metadata
-            VStack(alignment: .leading, spacing: 2) {
+            // Content — title + metadata with improved legibility
+            VStack(alignment: .leading, spacing: 3) {
                 Text(item.title ?? "")
-                    .font(.custom("IBMPlexMono-Medium", size: 13))
+                    .font(.custom("IBMPlexMono-Medium", size: 14))
                     .foregroundStyle(Color(.label))
                     .lineLimit(1)
 
                 HStack(spacing: 4) {
                     if let tagName = item.customTag?.name {
                         Text("#\(tagName)")
-                            .font(.system(size: 10, weight: .regular))
-                            .foregroundStyle(Color(.tertiaryLabel))
-                        TagColorIndicator(colorHex: item.customTag?.colorHex, size: 5)
+                            .font(.custom("IBMPlexMono-Regular", size: 11))
+                            .foregroundStyle(Color(.secondaryLabel))
+                        TagColorIndicator(colorHex: item.customTag?.colorHex, size: 6)
                     }
                     if item.isSecure {
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 8))
-                            .foregroundStyle(Color(.tertiaryLabel))
+                            .font(.system(size: 9))
+                            .foregroundStyle(Color(.secondaryLabel))
                     }
                 }
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color(.secondarySystemBackground))

@@ -61,9 +61,13 @@ final class SettingsModel {
     
     var afterPasteAction: KeyboardAfterPasteAction = KeyboardAfterPasteAction.space
     
+    /// When true, the keyboard extension opens to the QWERTY keyboard instead of the snippet list.
+    /// This is an experimental feature — disabled by default.
+    var isQWERTYKeyboardEnabled: Bool = false
     
-    init(afterPasteAction: KeyboardAfterPasteAction = .space) {
+    init(afterPasteAction: KeyboardAfterPasteAction = .space, isQWERTYKeyboardEnabled: Bool = false) {
         self.settingsId = "SnipKey-Settings"
         self.afterPasteAction = afterPasteAction
+        self.isQWERTYKeyboardEnabled = isQWERTYKeyboardEnabled
     }
 }
