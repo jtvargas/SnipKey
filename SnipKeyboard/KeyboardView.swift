@@ -29,6 +29,7 @@ enum SortOption: String, CaseIterable {
 
 struct KeyboardView: View {
     @Environment(\.modelContext) var modelContext
+    @Environment(\.keyboardActions) private var keyboardActions
     @Environment(SettingsViewModel.self) private var settingsViewModel
     @Environment(QWERTYKeyboardState.self) private var qwertyStateFromEnvironment: QWERTYKeyboardState?
 
@@ -286,7 +287,11 @@ struct KeyboardView: View {
             // Back to keyboard
             if let qState = qwertyStateFromEnvironment {
                 Button {
-                    qState.showingSnippets = false
+                    if currentKeyboardSettings.isQWERTYKeyboardEnabled {
+                        qState.showingSnippets = false
+                    } else {
+                        keyboardActions.advanceToNextInputMode()
+                    }
                 } label: {
                     HStack() {
                         Image(systemName: "keyboard")
@@ -630,7 +635,28 @@ struct KeyboardViewExt: View {
     private func loadSettingsViewModel() async {
         let modelContext = await container.mainContext
         let viewModel = SettingsViewModel(modelContext: modelContext)
+        
+        // Read the experimental QWERTY keyboard setting to determine initial view.
+        // If QWERTY is enabled, show the QWERTY keyboard first (showingSnippets = false).
+        // If QWERTY is disabled (default), show the snippet list first (showingSnippets = true).
+        let isQWERTYEnabled = await fetchQWERTYKeyboardSetting(from: modelContext)
+        if isQWERTYEnabled {
+            qwertyState.showingSnippets = false
+        } else {
+            qwertyState.showingSnippets = true
+        }
+        
         settingsViewModel = viewModel
+    }
+    
+    private func fetchQWERTYKeyboardSetting(from context: ModelContext) async -> Bool {
+        let descriptor = FetchDescriptor<SettingsModel>()
+        do {
+            let settings = try context.fetch(descriptor)
+            return settings.first?.isQWERTYKeyboardEnabled ?? false
+        } catch {
+            return false
+        }
     }
 }
 

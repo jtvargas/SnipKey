@@ -60,16 +60,6 @@
 		06AA10062F30A00100B1C006 /* KeyRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100D2F30A00100B1C006 /* KeyRowView.swift */; };
 		06AA10072F30A00100B1C007 /* QWERTYKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */; };
 		06AA10082F30A00100B1C008 /* KeyPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10182F30A00300B1C008 /* KeyPopupView.swift */; };
-		4314634F36B04D70854CC02D /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
-		3A8B76B2949D48589DC82983 /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
-		4314634F36B04D70854CC03E /* PredictiveTextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */; };
-		3A8B76B2949D48589DC82A94 /* PredictiveTextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */; };
-		B1C2D3E4F5A6B7C8D9E0F1B1 /* BigramEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */; };
-		B1C2D3E4F5A6B7C8D9E0F1B2 /* DynamicHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */; };
-		B1C2D3E4F5A6B7C8D9E0F1B3 /* ProbabilisticTouchContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */; };
-		C2D3E4F5A6B7C8D9E0F1A1B1 /* BigramEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */; };
-		C2D3E4F5A6B7C8D9E0F1A1B2 /* DynamicHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */; };
-		C2D3E4F5A6B7C8D9E0F1A1B3 /* ProbabilisticTouchContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */; };
 		06AA10112F30A00200B1C001 /* KeyboardDimensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10082F30A00100B1C001 /* KeyboardDimensions.swift */; };
 		06AA10122F30A00200B1C002 /* QWERTYKeyboardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10092F30A00100B1C002 /* QWERTYKeyboardState.swift */; };
 		06AA10132F30A00200B1C003 /* KeyboardActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100A2F30A00100B1C003 /* KeyboardActions.swift */; };
@@ -118,6 +108,16 @@
 		06F4F3232BB7247900399C78 /* BoardingCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3222BB7247900399C78 /* BoardingCardView.swift */; };
 		06F4F3252BB7484000399C78 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F3242BB7484000399C78 /* Views.swift */; };
 		06FC79732BC489D900382400 /* OnBoardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FC79722BC489D900382400 /* OnBoardingView.swift */; };
+		3A8B76B2949D48589DC82983 /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
+		3A8B76B2949D48589DC82A94 /* PredictiveTextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */; };
+		4314634F36B04D70854CC02D /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
+		4314634F36B04D70854CC03E /* PredictiveTextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */; };
+		B1C2D3E4F5A6B7C8D9E0F1B1 /* BigramEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */; };
+		B1C2D3E4F5A6B7C8D9E0F1B2 /* DynamicHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */; };
+		B1C2D3E4F5A6B7C8D9E0F1B3 /* ProbabilisticTouchContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */; };
+		C2D3E4F5A6B7C8D9E0F1A1B1 /* BigramEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */; };
+		C2D3E4F5A6B7C8D9E0F1A1B2 /* DynamicHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */; };
+		C2D3E4F5A6B7C8D9E0F1A1B3 /* ProbabilisticTouchContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -182,11 +182,6 @@
 		06AA100D2F30A00100B1C006 /* KeyRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyRowView.swift; sourceTree = "<group>"; };
 		06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QWERTYKeyboardView.swift; sourceTree = "<group>"; };
 		06AA10182F30A00300B1C008 /* KeyPopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPopupView.swift; sourceTree = "<group>"; };
-		ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandEngine.swift; sourceTree = "<group>"; };
-		ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictiveTextEngine.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigramEngine.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicHitResolver.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbabilisticTouchContext.swift; sourceTree = "<group>"; };
 		06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		06AE13112BBB0D16008EAE98 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -220,6 +215,11 @@
 		06F4F3222BB7247900399C78 /* BoardingCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardingCardView.swift; sourceTree = "<group>"; };
 		06F4F3242BB7484000399C78 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
 		06FC79722BC489D900382400 /* OnBoardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnBoardingView.swift; sourceTree = "<group>"; };
+		ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandEngine.swift; sourceTree = "<group>"; };
+		ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictiveTextEngine.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigramEngine.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicHitResolver.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbabilisticTouchContext.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -965,7 +965,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 6.0;
+				MARKETING_VERSION = 6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1007,7 +1007,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 6.0;
+				MARKETING_VERSION = 6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
