@@ -147,10 +147,16 @@ struct NativeKeyboardV2KeysRepresentable: UIViewRepresentable {
     }
 }
 
-/// Full V2 keyboard (toolbar + keys area) for embedding in `KeyboardViewExt`.
+/// V2 keyboard TOOLBAR for embedding in `KeyboardViewExt`. The keys area is NOT rendered
+/// here — it's a pure-UIKit `NativeKeyboardV2View` mounted directly on the input-view root
+/// by `KeyboardViewController` (so keys-area touches bypass SwiftUI hit-testing, eliminating
+/// dead zones between keys). This view only paints the toolbar at the top and leaves the keys
+/// region clear, where the UIKit keys view sits on top in z-order.
 struct NativeKeyboardV2View_SwiftUI: View {
     @Environment(QWERTYKeyboardState.self) private var state
     @Environment(\.keyboardActions) private var actions
+    /// Unused now that the keys live in the directly-mounted UIKit view (which receives its
+    /// caret-adjust closure straight from the controller). Kept for call-site compatibility.
     let adjustCaret: (Int) -> Void
 
     /// Derived once from `actions.screenWidth` — the controller already owns the canonical
@@ -164,7 +170,8 @@ struct NativeKeyboardV2View_SwiftUI: View {
         VStack(spacing: 0) {
             KeyboardToolbarView(dimensions: dims)
                 .frame(height: dims.toolbarHeight)
-            NativeKeyboardV2KeysRepresentable(state: state, actions: actions, adjustCaret: adjustCaret)
+            // Keys area is owned by the UIKit `NativeKeyboardV2View` mounted on the root.
+            Spacer(minLength: 0)
         }
         .frame(height: dims.totalHeight)
     }

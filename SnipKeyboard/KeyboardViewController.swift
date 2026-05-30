@@ -45,6 +45,12 @@ class KeyboardViewController: UIInputViewController {
     /// draw above the top row of keys (which the V1 path achieves with `popupView`).
     /// Created always; only added to the view hierarchy when V2 is enabled.
     private let v2CalloutView = KeyboardCalloutView()
+
+    /// V2 keys area, mounted as a DIRECT UIKit child of the input view (not inside the
+    /// SwiftUI host). Keeping the keys in pure UIKit — like the native/Grammarly keyboard —
+    /// means keys-area touches bypass SwiftUI's event-aware hit-testing entirely, so there
+    /// are no dead zones between keys. Only created when V2 is enabled.
+    private var nativeV2KeysView: NativeKeyboardV2View?
     
     // MARK: - Slash Command
     
@@ -255,9 +261,33 @@ class KeyboardViewController: UIInputViewController {
         )
         
         contentView.view.backgroundColor = .clear
-        
+
         view.addKeyboardSubview(contentView.view)
-        
+
+        // V2 keys area as a direct UIKit child of the input view, ABOVE the SwiftUI host but
+        // BELOW the popup/callout overlays. The SwiftUI side (`NativeKeyboardV2View_SwiftUI`)
+        // now renders only the toolbar; this view draws and handles touches for all the keys.
+        // This removes SwiftUI's hit-testing from the keys touch path — the native model —
+        // so taps in the gaps between keys always reach the gesture coordinator.
+        if AppGroupSettings.bool(forKey: AppGroupSettings.Key.useNativeKeyboardV2, default: true) {
+            let keysView = NativeKeyboardV2View(state: qwertyState, actions: keyboardActionsStruct)
+            keysView.setCaretAdjustment(keyboardActionsStruct.adjustCaret)
+            keysView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(keysView)
+            let toolbarH = KeyboardDimensions(screenWidth: keyboardScreenWidth()).toolbarHeight
+            NSLayoutConstraint.activate([
+                keysView.topAnchor.constraint(equalTo: view.topAnchor, constant: toolbarH),
+                keysView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                keysView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                keysView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            ])
+            self.nativeV2KeysView = keysView
+            // Hidden while the snippet grid is showing (SwiftUI renders the grid full-screen);
+            // visible when the keyboard is showing. Kept in sync via observation.
+            keysView.isHidden = qwertyState.showingSnippets
+            observeSnippetsForKeysVisibility()
+        }
+
         // Add popup view on top of the SwiftUI content (renders above all keys)
         popupView.translatesAutoresizingMaskIntoConstraints = true
         view.addSubview(popupView)
@@ -529,6 +559,24 @@ class KeyboardViewController: UIInputViewController {
     /// English-ness check matches the language the suggestions were generated in.
     static var isEnglishInputContext: Bool {
         (Locale.preferredLanguages.first ?? "en").lowercased().hasPrefix("en")
+    }
+
+    // MARK: - V2 Keys Visibility
+
+    /// Keep the directly-mounted V2 keys view in sync with `showingSnippets`: hide it while
+    /// the snippet grid is showing (the SwiftUI host draws the grid full-screen), show it when
+    /// the keyboard is up. `withObservationTracking` fires once per registration, so we
+    /// re-register inside the callback to keep listening — same pattern as `NativeKeyboardV2View`.
+    private func observeSnippetsForKeysVisibility() {
+        withObservationTracking {
+            _ = qwertyState.showingSnippets
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.nativeV2KeysView?.isHidden = self.qwertyState.showingSnippets
+                self.observeSnippetsForKeysVisibility()
+            }
+        }
     }
 
     // MARK: - QWERTY State Updates
