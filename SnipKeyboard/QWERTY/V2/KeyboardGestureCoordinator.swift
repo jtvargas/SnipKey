@@ -37,6 +37,9 @@ final class KeyboardGestureCoordinator: UIView {
 
     private var dims: KeyboardDimensions = KeyboardDimensions(screenWidth: 393)
     private var resolvedFrames: [KeyFrame] = []
+    /// Precomputed grid-Voronoi partition of `resolvedFrames` for O(log n) hit resolution.
+    /// Rebuilt alongside `resolvedFrames` in `rebuildLayout`; consumed by `findKey`.
+    private var hitGrid: HitGrid?
     private var currentPage: KeyboardPage = .letters
 
     /// Signature of the inputs that drove the last full `rebuildLayout()`. If the next
@@ -176,6 +179,10 @@ final class KeyboardGestureCoordinator: UIView {
             dims: dims,
             keysAreaSize: bounds.size
         )
+        // Rebuild the hit grid in lockstep with the frames so the two never diverge.
+        // `resolvedFrames` is recomputed on every rebuildLayout (before the render
+        // short-circuit), so the grid must be too.
+        hitGrid = Self.buildHitGrid(from: resolvedFrames, rowCount: layout.rows.count)
 
         let isDark = state?.appearanceMode == .dark
         let shiftState = state?.shiftState ?? .disabled
@@ -565,29 +572,72 @@ final class KeyboardGestureCoordinator: UIView {
     }
 
     private func findKey(at point: CGPoint) -> KeyFrame? {
-        // Hit-rect lookup — `hitRect` extends each key to claim adjacent half-gaps and,
-        // for row-edge keys, all the way to the keyboard edge. This makes "a" and "l"
-        // (and other row-edge letters) tappable from the keyboard's outer padding —
-        // matching native iOS's edge-slop behavior.
-        for frame in resolvedFrames where frame.hitRect.contains(point) {
-            return frame
+        guard let grid = hitGrid, !resolvedFrames.isEmpty else { return nil }
+        // Resolve any tap inside the keys area (plus a small outward margin) to its owning
+        // Voronoi cell — "closest letter wins", so there are no dead dividers between keys.
+        // Only taps clearly outside the keyboard return nil; off-keyboard drag is already
+        // handled earlier in handleMovedPress (point.y > bounds.maxY + 8).
+        let margin = max(dims.keyGap * 2, 12)
+        guard bounds.insetBy(dx: -margin, dy: -margin).contains(point) else { return nil }
+        let idx = grid.frameIndex(for: point)
+        guard idx >= 0 && idx < resolvedFrames.count else { return nil }
+        return resolvedFrames[idx]
+    }
+
+    /// Build the grid-Voronoi partition from row-major `frames`. Keys form clean rows with
+    /// monotonic-x centers, so the Voronoi diagram of the key centers is a rectangular grid:
+    /// row bands at the midpoints between row centers, and per-row column boundaries at the
+    /// midpoints between adjacent key centers. O(n), off the touch path (layout changes only).
+    private static func buildHitGrid(from frames: [KeyFrame], rowCount: Int) -> HitGrid {
+        guard rowCount > 0, !frames.isEmpty else {
+            return HitGrid(rowYBoundaries: [], rowFrameIndices: [[]], rowXBoundaries: [[]])
         }
-        // Fallback: nearest key by L1 distance, within a tight radius. With hitRects
-        // covering most of the keys area, this rarely triggers — but kept as a defensive
-        // net for touches in unusual gap geometries.
-        let fallbackRadius = max(dims.keyGap * 2, 12)
-        var bestDist: CGFloat = .greatestFiniteMagnitude
-        var bestFrame: KeyFrame?
-        for frame in resolvedFrames {
-            let cx = frame.rect.midX
-            let cy = frame.rect.midY
-            let d = abs(point.x - cx) + abs(point.y - cy)
-            if d < bestDist {
-                bestDist = d
-                bestFrame = frame
+        var rowFrameIndices = Array(repeating: [Int](), count: rowCount)
+        for (i, f) in frames.enumerated() where f.rowIndex >= 0 && f.rowIndex < rowCount {
+            rowFrameIndices[f.rowIndex].append(i)   // frames are row-major → already L→R
+        }
+        // Row centers (any key's rect.midY per row) → interior row boundaries at midpoints.
+        let rowCenters: [CGFloat] = (0..<rowCount).map { r in
+            rowFrameIndices[r].first.map { frames[$0].rect.midY } ?? 0
+        }
+        let rowYBoundaries = rowCount > 1
+            ? (1..<rowCount).map { (rowCenters[$0 - 1] + rowCenters[$0]) / 2 }
+            : []
+        // Per-row column boundaries at midpoints between adjacent key centers.
+        let rowXBoundaries: [[CGFloat]] = (0..<rowCount).map { r in
+            let idxs = rowFrameIndices[r]
+            guard idxs.count > 1 else { return [] }
+            return (1..<idxs.count).map { (frames[idxs[$0 - 1]].rect.midX + frames[idxs[$0]].rect.midX) / 2 }
+        }
+        return HitGrid(rowYBoundaries: rowYBoundaries, rowFrameIndices: rowFrameIndices, rowXBoundaries: rowXBoundaries)
+    }
+
+    /// Precomputed grid-Voronoi partition of the keys area for O(log n) hit resolution.
+    /// Tiles the whole plane → every tap resolves to a key (no dead dividers); edge cells
+    /// extend outward so edge keys claim the margins. Never mutated on the touch path.
+    private struct HitGrid {
+        let rowYBoundaries: [CGFloat]     // ascending; count = rowCount - 1
+        let rowFrameIndices: [[Int]]      // per row, indices into resolvedFrames, left→right
+        let rowXBoundaries: [[CGFloat]]   // per row, ascending; count = keysInRow - 1
+
+        /// `resolvedFrames` index owning `point`. Never out of range — clamps at the extremes.
+        func frameIndex(for point: CGPoint) -> Int {
+            let row = min(Self.bucket(point.y, rowYBoundaries), rowFrameIndices.count - 1)
+            let cols = rowFrameIndices[row]
+            guard !cols.isEmpty else { return 0 }
+            let col = min(Self.bucket(point.x, rowXBoundaries[row]), cols.count - 1)
+            return cols[col]
+        }
+
+        /// Band index for `v` given ascending interior boundaries (binary search, clamped).
+        static func bucket(_ v: CGFloat, _ boundaries: [CGFloat]) -> Int {
+            var lo = 0, hi = boundaries.count
+            while lo < hi {
+                let mid = (lo + hi) / 2
+                if v < boundaries[mid] { hi = mid } else { lo = mid + 1 }
             }
+            return lo
         }
-        return bestDist < fallbackRadius ? bestFrame : nil
     }
 
     // MARK: - Long-Press (per-touch)
