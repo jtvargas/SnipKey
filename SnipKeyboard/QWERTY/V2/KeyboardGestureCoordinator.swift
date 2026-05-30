@@ -595,10 +595,16 @@ final class KeyboardGestureCoordinator: UIView {
     /// Create a task that opens the accent menu after 400ms iff the press is still on `key`.
     /// Returns the task so it can be stored on the `ActivePress` and cancelled if needed.
     private func scheduleLongPress(touchID id: ObjectIdentifier, key: KeyFrame) -> Task<Void, Never>? {
-        guard case .character(let c) = key.action,
-              let menu = AccentMap.menu(for: c, uppercased: (state?.shiftState ?? .disabled) != .disabled) else {
-            return nil
+        guard case .character(let c) = key.action else { return nil }
+        // In URL / email fields, long-pressing "." offers domain TLDs (.com, .net, …),
+        // matching native iOS. Everywhere else, "." shows its normal accent menu (ellipsis).
+        let menu: [String]?
+        if c == ".", let kt = actions?.inputTraits().keyboardType, kt == .URL || kt == .emailAddress {
+            menu = AccentMap.domainMenu()
+        } else {
+            menu = AccentMap.menu(for: c, uppercased: (state?.shiftState ?? .disabled) != .disabled)
         }
+        guard let menu else { return nil }
         return Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled, let self else { return }

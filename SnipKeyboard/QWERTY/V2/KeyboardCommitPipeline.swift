@@ -27,6 +27,17 @@ enum KeyboardCommitPipeline {
         case .disabled: textToInsert = char.lowercased()
         case .enabled, .locked: textToInsert = char.uppercased()
         }
+
+        // Smart space: if a predictive suggestion just inserted a trailing "smart space" and
+        // the next character is punctuation, eat that space so the punctuation attaches to
+        // the word ("word ." → "word."). Matches native iOS; only ever eats a space WE
+        // inserted (flag-gated). Done before insert so smart-quotes see the right context.
+        if state.inputTracking.pendingSmartSpace {
+            state.inputTracking.pendingSmartSpace = false
+            let eatSet: Set<String> = [".", ",", "!", "?", ";", ":", "'", ")", "]", "}", "\""]
+            if eatSet.contains(textToInsert) { actions.deleteBackward() }
+        }
+
         // `insertCharacter` marks the host's synchronous textDidChange re-entrancy as
         // our own insert, so the controller skips the redundant auto-cap context read.
         actions.insertCharacter(textToInsert)
@@ -53,6 +64,7 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        state.inputTracking.pendingSmartSpace = false
         if state.inputTracking.shouldInsertAutoPeriod() {
             // Replace the trailing space with ". " — the previous space already inserted,
             // so we delete it and insert ". ".
@@ -90,6 +102,7 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        state.inputTracking.pendingSmartSpace = false
         actions.deleteBackward()
         state.inputTracking.recordAction(.other)
         state.inputTracking.touchContext.recordNonCharacter()
@@ -101,6 +114,7 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        state.inputTracking.pendingSmartSpace = false
         actions.insertText("\n")
         state.inputTracking.recordAction(.other)
         state.inputTracking.touchContext.recordNonCharacter()
@@ -118,6 +132,7 @@ enum KeyboardCommitPipeline {
         to page: KeyboardPage,
         state: QWERTYKeyboardState
     ) {
+        state.inputTracking.pendingSmartSpace = false
         if state.currentPage != page {
             state.currentPage = page
         }

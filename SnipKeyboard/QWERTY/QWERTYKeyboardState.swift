@@ -44,6 +44,13 @@ final class QWERTYInputTracking {
     var lastAction: KeyActionType = .other
     var secondLastAction: KeyActionType = .other
 
+    /// True when the last insertion was a predictive-suggestion completion, which added a
+    /// trailing "smart space". If the next character is punctuation, that space is consumed
+    /// so the punctuation attaches to the word ("word ." → "word."). Matches native iOS,
+    /// which only eats a space IT inserted — never an arbitrary user-typed space. Cleared
+    /// aggressively on any other commit, caret move, or snippet insertion.
+    var pendingSmartSpace: Bool = false
+
     /// Timestamp of the last shift tap, for detecting double-tap (caps lock)
     var lastShiftTapTime: Date? = nil
 

@@ -157,6 +157,8 @@ struct KeyboardToolbarView: View {
 
         // 4. Dismiss slash command mode
         slashState.dismiss()
+        // Snippet content is multi-word/arbitrary — never carries a smart space.
+        state.inputTracking.pendingSmartSpace = false
     }
 
     // MARK: - Predictive Text Selection
@@ -170,6 +172,9 @@ struct KeyboardToolbarView: View {
 
         // Insert the full suggestion + trailing space
         actions.insertText(suggestion + " ")
+        // Mark the trailing space as a "smart space" so the next punctuation attaches to
+        // the word (native iOS behavior). Consumed/cleared in the commit pipeline.
+        state.inputTracking.pendingSmartSpace = true
 
         // Reset and re-evaluate
         predictiveState.dismiss()

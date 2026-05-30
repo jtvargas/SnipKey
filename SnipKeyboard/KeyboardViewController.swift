@@ -128,6 +128,9 @@ class KeyboardViewController: UIInputViewController {
             },
             adjustCaret: { [weak self] delta in
                 guard let self = self, delta != 0 else { return }
+                // A caret move invalidates the pending smart space — the cursor is no longer
+                // right after a suggestion's trailing space, so don't eat an arbitrary space.
+                self.qwertyState.inputTracking.pendingSmartSpace = false
                 self.textDocumentProxy.adjustTextPosition(byCharacterOffset: delta)
             },
             inputTraits: { [weak self] in

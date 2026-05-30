@@ -34,6 +34,13 @@ enum AccentMap {
         "/": ["\\"],
     ]
 
+    /// Domain alternates for a long-press on the "." key in URL / email fields (native iOS).
+    /// `.com` is first so it's the default selection. Multi-character entries trigger the
+    /// wider action slots in `KeyboardCalloutView.configureActionsMode`.
+    static func domainMenu() -> [String] {
+        [".com", ".net", ".org", ".edu", ".io"]
+    }
+
     /// Returns the menu entries for a long-press, with the base character first.
     /// Casing is preserved using the same shift state as the base character.
     static func menu(for base: String, uppercased: Bool) -> [String]? {

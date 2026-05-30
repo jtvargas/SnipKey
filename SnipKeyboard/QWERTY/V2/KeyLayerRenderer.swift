@@ -117,6 +117,10 @@ final class KeyLayerRenderer {
         highlight.fillColor = isDark
             ? UIColor(white: 0.55, alpha: 0.55).cgColor
             : UIColor(white: 0.85, alpha: 0.9).cgColor
+        // Visibility is driven by opacity (so the highlight can fade out on release).
+        // The layer is recreated each full render, so re-establish the hidden-via-opacity state.
+        highlight.isHidden = false
+        highlight.opacity = 0
         hostLayer.addSublayer(highlight)
     }
 
@@ -157,18 +161,35 @@ final class KeyLayerRenderer {
     }
 
     /// Highlight a specific key (used by the gesture coordinator on touch-down / finger-slide).
+    /// Appearance is INSTANT on press (native); on clear (frame == nil) the highlight fades
+    /// its opacity out over ~120ms. A new press cancels any in-flight fade and snaps to full
+    /// opacity — so promotion to another finger / a fast new press never flickers.
     func setHighlightedKey(_ frame: KeyFrame?) {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        defer { CATransaction.commit() }
-
         guard let frame else {
-            highlight.isHidden = true
+            // Fade out on release. Needs implicit/explicit animation, so DON'T disable actions.
+            CATransaction.begin()
+            CATransaction.setDisableActions(false)
+            let anim = CABasicAnimation(keyPath: "opacity")
+            anim.fromValue = highlight.presentation()?.opacity ?? highlight.opacity
+            anim.toValue = 0
+            anim.duration = 0.12
+            anim.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            anim.fillMode = .forwards
+            anim.isRemovedOnCompletion = false
+            highlight.add(anim, forKey: "highlightFade")
+            highlight.opacity = 0
+            CATransaction.commit()
             return
         }
+        // Instant show — move to the key and snap to full opacity, cancelling any fade.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        highlight.removeAnimation(forKey: "highlightFade")
         highlight.frame = frame.rect
         highlight.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: frame.rect.size), cornerRadius: currentCornerRadius).cgPath
         highlight.isHidden = false
+        highlight.opacity = 1
+        CATransaction.commit()
     }
 
     /// Update an individual key's text/style (used for return-key label changes).

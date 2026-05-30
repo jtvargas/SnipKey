@@ -79,6 +79,11 @@ final class KeyboardCalloutView: UIView {
 
     private var currentMode: CalloutMode?
 
+    /// Slot width used for the current action menu. Wider for multi-character entries
+    /// (e.g. ".com" domain menu) so they don't clip. Read by `actionIndex(at:)` so drag
+    /// hit-testing matches the rendered slots.
+    private var currentActionSlotWidth: CGFloat = KeyboardCalloutView.actionSlotWidth
+
     /// Last appearance mode we were configured with. Read by `updateSelectedActionIndex`
     /// so re-rendering during a long-press drag keeps the correct dark/light styling.
     private var currentIsDark: Bool = false
@@ -93,7 +98,11 @@ final class KeyboardCalloutView: UIView {
     init() {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
-        isHidden = true
+        // Visibility is driven by layer.opacity (so hide() can fade), not isHidden.
+        // Mounted once, kept un-hidden; opacity 0 = invisible (and isUserInteractionEnabled
+        // is false, so a 0-opacity callout never intercepts touches).
+        isHidden = false
+        layer.opacity = 0
         translatesAutoresizingMaskIntoConstraints = true
 
         layer.addSublayer(bodyShape)
@@ -129,10 +138,12 @@ final class KeyboardCalloutView: UIView {
             configureActionsMode(chars: chars, keyFrame: keyFrame, selectedIndex: selectedIndex, isDark: isDark, parentWidth: parentWidth)
         }
 
-        let wasHidden = isHidden
-        if wasHidden {
-            isHidden = false
-        }
+        // A mid-fade callout (opacity dropping toward 0) counts as hidden for the spring
+        // decision. Cancel any in-flight fade-out and snap to full opacity instantly so a
+        // new key never reuses a half-faded bubble.
+        let wasHidden = (layer.presentation()?.opacity ?? layer.opacity) < 0.01
+        layer.removeAnimation(forKey: "calloutFade")
+        layer.opacity = 1
         currentMode = mode
 
         guard wasHidden else { return }
@@ -142,13 +153,13 @@ final class KeyboardCalloutView: UIView {
         // render-server churn, so the controller passes `animated: false` within a burst for
         // an instant pop that matches native iOS.
         if animated {
-            layer.transform = CATransform3DMakeScale(0.85, 0.85, 1.0)
+            layer.transform = CATransform3DMakeScale(0.80, 0.80, 1.0)
             let spring = CASpringAnimation(keyPath: "transform.scale")
-            spring.fromValue = 0.85
+            spring.fromValue = 0.80
             spring.toValue = 1.0
-            spring.mass = 0.8
-            spring.stiffness = 320
-            spring.damping = 17
+            spring.mass = 1.0
+            spring.stiffness = 220
+            spring.damping = 20
             spring.duration = spring.settlingDuration
             spring.isRemovedOnCompletion = true
             spring.fillMode = .forwards
@@ -160,16 +171,34 @@ final class KeyboardCalloutView: UIView {
         }
     }
 
-    /// Hide instantly. No fade — matches native iOS behavior when the finger lifts.
-    func hide() {
-        guard !isHidden else { return }
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layer.removeAnimation(forKey: "calloutScale")
-        layer.transform = CATransform3DIdentity
-        isHidden = true
+    /// Hide the callout. Fades opacity out over ~110ms for a deliberate single press
+    /// (native feel); snaps instantly during a fast-typing burst (`fade: false`), since a
+    /// fade on the single shared layer would read as the next character dimming.
+    func hide(fade: Bool = true) {
         currentMode = nil
-        CATransaction.commit()
+        layer.removeAnimation(forKey: "calloutScale")
+
+        if fade {
+            CATransaction.begin()
+            CATransaction.setDisableActions(false)
+            let anim = CABasicAnimation(keyPath: "opacity")
+            anim.fromValue = layer.presentation()?.opacity ?? layer.opacity
+            anim.toValue = 0
+            anim.duration = 0.11
+            anim.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            anim.fillMode = .forwards
+            anim.isRemovedOnCompletion = false
+            layer.add(anim, forKey: "calloutFade")
+            layer.opacity = 0
+            CATransaction.commit()
+        } else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.removeAnimation(forKey: "calloutFade")
+            layer.transform = CATransform3DIdentity
+            layer.opacity = 0
+            CATransaction.commit()
+        }
     }
 
     /// Update the highlighted action slot without rebuilding (long-press drag).
@@ -304,7 +333,13 @@ final class KeyboardCalloutView: UIView {
 
     private func configureActionsMode(chars: [String], keyFrame: CGRect, selectedIndex: Int, isDark: Bool, parentWidth: CGFloat) {
         let slotCount = max(chars.count, 1)
-        let bubbleWidth = CGFloat(slotCount) * Self.actionSlotWidth
+        // Widen slots (and shrink the font) for multi-character entries like ".com" so they
+        // don't clip in the default 44pt accent slot.
+        let isMultiChar = chars.contains { $0.count > 1 }
+        let slotW: CGFloat = isMultiChar ? 58 : Self.actionSlotWidth
+        let fontSz: CGFloat = isMultiChar ? 17 : Self.actionFontSize
+        currentActionSlotWidth = slotW
+        let bubbleWidth = CGFloat(slotCount) * slotW
         let bubbleHeight = Self.actionBubbleHeight
 
         // Position above the key with a small gap (native iOS doesn't connect via a tail —
@@ -327,9 +362,9 @@ final class KeyboardCalloutView: UIView {
         let safeIndex = max(0, min(selectedIndex, slotCount - 1))
         let slotInset: CGFloat = 4
         let highlightRect = CGRect(
-            x: CGFloat(safeIndex) * Self.actionSlotWidth + slotInset,
+            x: CGFloat(safeIndex) * slotW + slotInset,
             y: slotInset,
-            width: Self.actionSlotWidth - slotInset * 2,
+            width: slotW - slotInset * 2,
             height: bubbleHeight - slotInset * 2
         )
         highlightShape.path = UIBezierPath(roundedRect: highlightRect, cornerRadius: Self.actionSlotCornerRadius).cgPath
@@ -351,7 +386,8 @@ final class KeyboardCalloutView: UIView {
         for (i, label) in actionLabels.enumerated() {
             label.isHidden = false
             label.text = chars[i]
-            label.frame = CGRect(x: CGFloat(i) * Self.actionSlotWidth, y: 0, width: Self.actionSlotWidth, height: bubbleHeight)
+            label.font = UIFont.systemFont(ofSize: fontSz, weight: .regular)
+            label.frame = CGRect(x: CGFloat(i) * slotW, y: 0, width: slotW, height: bubbleHeight)
             label.textColor = (i == safeIndex) ? .white : (isDark ? .white : .black)
         }
     }
@@ -375,9 +411,9 @@ final class KeyboardCalloutView: UIView {
         guard case .actions(let chars, _, _) = currentMode else { return nil }
         let localX = fingerPoint.x - frame.minX
         let slotCount = chars.count
-        let bubbleWidth = CGFloat(slotCount) * Self.actionSlotWidth
+        let bubbleWidth = CGFloat(slotCount) * currentActionSlotWidth
         guard localX >= 0, localX <= bubbleWidth else { return nil }
-        let idx = Int(localX / Self.actionSlotWidth)
+        let idx = Int(localX / currentActionSlotWidth)
         return max(0, min(idx, slotCount - 1))
     }
 }
