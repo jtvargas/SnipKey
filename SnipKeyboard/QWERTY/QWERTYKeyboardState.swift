@@ -74,6 +74,7 @@ final class QWERTYInputTracking {
 /// Only contains properties that SwiftUI views actually read.
 /// Mutations here DO trigger view invalidation, but only when something
 /// the user can see actually changes (shift icon, page layout, etc.).
+@MainActor
 @Observable
 class QWERTYKeyboardState {
     // MARK: Mode Toggle

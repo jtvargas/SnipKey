@@ -8,6 +8,7 @@
 import SwiftData
 import SwiftUI
 
+@MainActor
 @Observable
 class SettingsViewModel {
   var modelContext: ModelContext? = nil

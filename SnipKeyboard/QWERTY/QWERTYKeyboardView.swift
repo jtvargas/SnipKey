@@ -87,6 +87,9 @@ struct KeyboardToolbarView: View {
                         suggestions: predictiveState.suggestions,
                         onSelect: { suggestion in
                             handlePredictiveSelection(suggestion)
+                        },
+                        onDismissForSession: {
+                            predictiveState.dismissForSession()
                         }
                     )
                 } else {
@@ -213,6 +216,9 @@ struct SlashTriggerButton: View {
 struct PredictiveSuggestionsView: View {
     let suggestions: [String]
     let onSelect: (String) -> Void
+    /// Called when the user long-presses the middle pill — matches native iOS, which
+    /// long-presses the user's literal typed word to dismiss predictions for the session.
+    var onDismissForSession: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 0) {
@@ -225,6 +231,7 @@ struct PredictiveSuggestionsView: View {
                         .padding(.vertical, 8)
                 }
 
+                let isMiddle = (suggestions.count >= 2 && index == suggestions.count / 2)
                 Button {
                     onSelect(suggestion)
                 } label: {
@@ -236,6 +243,12 @@ struct PredictiveSuggestionsView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .simultaneousGesture(
+                    isMiddle
+                        ? LongPressGesture(minimumDuration: 0.4)
+                            .onEnded { _ in onDismissForSession?() }
+                        : nil
+                )
             }
         }
     }

@@ -37,9 +37,14 @@ class KeyboardViewController: UIInputViewController {
     /// Track last known screen width to avoid redundant updateQWERTYState() calls from viewWillLayoutSubviews
     private var lastKnownWidth: CGFloat = 0
     
-    /// Character pop-up balloon — single reusable UIKit view, positioned above pressed keys.
+    /// Character pop-up balloon — V1 single reusable UIKit view, positioned above pressed keys.
     /// Pure CALayer operations, zero SwiftUI state changes.
     private let popupView = KeyPopupView()
+
+    /// V2 callout overlay — mounted on the root view so it can overlap the toolbar and
+    /// draw above the top row of keys (which the V1 path achieves with `popupView`).
+    /// Created always; only added to the view hierarchy when V2 is enabled.
+    private let v2CalloutView = KeyboardCalloutView()
     
     // MARK: - Slash Command
     
@@ -51,19 +56,41 @@ class KeyboardViewController: UIInputViewController {
     let slashCommandState = SlashCommandState()
     
     // MARK: - Predictive Text
-    
-    /// Predictive text detection — plain class, zero SwiftUI re-renders per keystroke.
-    /// Only promotes to @Observable state when suggestions actually change.
-    private let predictiveTextTracker = PredictiveTextTracker()
-    
+
+    /// Async predictive text engine — `UITextChecker` work runs on a serial background
+    /// queue, debounced 40ms and coalesced. The press→insert path never blocks on it.
+    private let predictiveEngineAsync = PredictiveTextEngineAsync()
+
     /// Observable predictive text state — shared with SwiftUI toolbar for suggestions display.
     let predictiveTextState = PredictiveTextState()
+
+    // MARK: - Hot-path coalescing (V2)
+
+    /// True only during the host's synchronous `textDidChange` re-entrancy triggered by our
+    /// own committed-character insert. Lets `updateQWERTYState` skip the redundant
+    /// auto-capitalization context read (a just-typed character can't start a sentence/word,
+    /// so `.words`/`.sentences` would compute false anyway). `.allCharacters` is still honored.
+    private var ownCharacterInsertInFlight = false
+
+    /// Coalescer guard: ensures at most one deferred side-effect flush is queued per runloop.
+    /// V2 commits schedule slash + predictive evaluation here instead of running them
+    /// synchronously inside `touchesBegan`, so a fast burst collapses to one context read
+    /// (and one slash/predictive pass) per frame.
+    private var sideEffectFlushScheduled = false
     
     /// Wraps textDocumentProxy operations as closures for the SwiftUI QWERTY keyboard
     private lazy var keyboardActionsStruct: KeyboardActions = {
         KeyboardActions(
             insertText: { [weak self] text in
                 self?.textDocumentProxy.insertText(text)
+            },
+            insertCharacter: { [weak self] text in
+                guard let self = self else { return }
+                // Mark the host's synchronous textDidChange re-entrancy as our own insert
+                // so updateQWERTYState can skip the redundant auto-cap context read.
+                self.ownCharacterInsertInFlight = true
+                self.textDocumentProxy.insertText(text)
+                self.ownCharacterInsertInFlight = false
             },
             deleteBackward: { [weak self] in
                 self?.textDocumentProxy.deleteBackward()
@@ -74,7 +101,7 @@ class KeyboardViewController: UIInputViewController {
             documentContextBeforeInput: { [weak self] in
                 self?.textDocumentProxy.documentContextBeforeInput
             },
-            screenWidth: UIScreen.main.bounds.width,
+            screenWidth: keyboardScreenWidth(),
             showPopup: { [weak self] character, keyFrame, isDark in
                 self?.popupView.show(character: character, keyFrame: keyFrame, isDark: isDark)
             },
@@ -87,36 +114,45 @@ class KeyboardViewController: UIInputViewController {
                 }
             },
             evaluateSlashCommand: { [weak self] in
+                // V1 path: read context and evaluate synchronously.
                 guard let self = self else { return }
-                // Skip evaluation when showing snippet grid (not in QWERTY mode)
-                guard !self.qwertyState.showingSnippets else { return }
-                let context = self.textDocumentProxy.documentContextBeforeInput
-                let result = self.slashCommandTracker.evaluate(context: context)
-                if result.changed {
-                    self.slashCommandState.updateActivation(
-                        isActive: result.isActive,
-                        query: result.query
-                    )
-                }
+                self.runSlashEvaluation(context: self.textDocumentProxy.documentContextBeforeInput)
             },
             evaluatePredictiveText: { [weak self] in
+                // V1 path: read context and schedule synchronously.
                 guard let self = self else { return }
-                // Skip when showing snippet grid or when slash command is active
-                guard !self.qwertyState.showingSnippets else { return }
-                guard !self.slashCommandState.isActive else {
-                    // Clear suggestions when slash is active
-                    self.predictiveTextState.dismiss()
-                    return
+                self.runPredictiveEvaluation(context: self.textDocumentProxy.documentContextBeforeInput)
+            },
+            scheduleSideEffects: { [weak self] in
+                self?.scheduleSideEffectFlush()
+            },
+            adjustCaret: { [weak self] delta in
+                guard let self = self, delta != 0 else { return }
+                self.textDocumentProxy.adjustTextPosition(byCharacterOffset: delta)
+            },
+            inputTraits: { [weak self] in
+                guard let proxy = self?.textDocumentProxy else { return .defaults }
+                return HostInputTraits(
+                    keyboardType: proxy.keyboardType ?? .default,
+                    autocapitalizationType: proxy.autocapitalizationType ?? .sentences,
+                    smartQuotesEnabled: (proxy.smartQuotesType ?? .default) != .no,
+                    smartDashesEnabled: (proxy.smartDashesType ?? .default) != .no
+                )
+            },
+            activeInputLocaleCodes: { [weak self] in
+                guard let self else { return [] }
+                // Show locale codes when the user has multiple keyboards enabled (matches
+                // Apple's "EN ES" subtitle on the space bar in multilingual setups).
+                guard self.needsInputModeSwitchKey else { return [] }
+                let modes = UITextInputMode.activeInputModes
+                guard modes.count > 1 else { return [] }
+                return modes.compactMap { mode in
+                    guard let language = mode.primaryLanguage else { return nil }
+                    // Convert "en-US" → "EN", "es-MX" → "ES", etc.
+                    return String(language.prefix(while: { $0 != "-" })).uppercased()
                 }
-                let context = self.textDocumentProxy.documentContextBeforeInput
-                let result = self.predictiveTextTracker.evaluate(context: context)
-                if result.changed {
-                    self.predictiveTextState.updateSuggestions(
-                        suggestions: result.suggestions,
-                        partialWord: result.partialWord
-                    )
-                }
-            }
+            },
+            v2CalloutView: v2CalloutView
         )
     }()
     
@@ -179,7 +215,13 @@ class KeyboardViewController: UIInputViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
+        // Kick off SwiftData container construction immediately on a background task,
+        // so it's typically ready by the time SwiftUI mounts and `.task` awaits it.
+        // Without this warmup, first-keyboard-open paid ~50–200ms of synchronous
+        // SQLite + CloudKit setup on the main thread.
+        Task { await ModelContainerProvider.shared.warmup() }
+
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
         
@@ -196,7 +238,7 @@ class KeyboardViewController: UIInputViewController {
         
         // Cache supplementary lexicon for predictive text (contacts, shortcuts)
         requestSupplementaryLexicon { [weak self] lexicon in
-            self?.predictiveTextTracker.lexicon = lexicon
+            self?.predictiveEngineAsync.lexicon = lexicon
         }
         
         // Host SwiftUI keyboard with QWERTY state and actions injected
@@ -216,10 +258,17 @@ class KeyboardViewController: UIInputViewController {
         // Add popup view on top of the SwiftUI content (renders above all keys)
         popupView.translatesAutoresizingMaskIntoConstraints = true
         view.addSubview(popupView)
+
+        // V2 callout overlay — mounted on the root view so it can overlap the toolbar
+        // and draw above the top row of keys. The V2 gesture coordinator references this
+        // view through `KeyboardActions.v2CalloutView` and converts hit-test rects from
+        // its own coordinate space into root-view coords before calling `show(...)`.
+        v2CalloutView.translatesAutoresizingMaskIntoConstraints = true
+        view.addSubview(v2CalloutView)
         
         // Set explicit height constraint so the system knows how tall the keyboard should be.
         // Without this, GeometryReader (now removed) would fail to communicate height upward.
-        let desiredHeight = KeyboardDimensions.totalHeight(forScreenWidth: UIScreen.main.bounds.width)
+        let desiredHeight = KeyboardDimensions.totalHeight(forScreenWidth: keyboardScreenWidth())
         let constraint = NSLayoutConstraint(
             item: self.view!,
             attribute: .height,
@@ -234,8 +283,9 @@ class KeyboardViewController: UIInputViewController {
         self.heightConstraint = constraint
         
         // insert text to textInput
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ notification in
-            
+        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ [weak self] notification in
+            guard let self = self else { return }
+
             if let snippet = notification.object as? SnippetItem {
                 switch snippet.type {
                 case .image:
@@ -245,18 +295,18 @@ class KeyboardViewController: UIInputViewController {
                 default:
                     self.textDocumentProxy.insertText(snippet.content!)
                 }
-                
+
             }
-            
+
             if let text = notification.object as? String {
                 self.textDocumentProxy.insertText(text)
             }
         }
-        
+
         // Listen to swicthKeyboard
-        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "switchKey"), object: nil, queue: nil){ _ in
+        NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "switchKey"), object: nil, queue: nil){ [weak self] _ in
             //            Switch Keyboard
-            self.advanceToNextInputMode()
+            self?.advanceToNextInputMode()
         }
         
         
@@ -279,8 +329,8 @@ class KeyboardViewController: UIInputViewController {
             forName: NSNotification.Name(rawValue: "spaceKey"),
             object: nil,
             queue: nil
-        ) { _ in
-            self.textDocumentProxy.insertText(" ")
+        ) { [weak self] _ in
+            self?.textDocumentProxy.insertText(" ")
         }
     }
     
@@ -307,10 +357,31 @@ class KeyboardViewController: UIInputViewController {
         }
     }
     
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        // System dark-mode toggle (or any other trait change) while the keyboard is
+        // visible should re-run our appearance-mode resolution so V2's CALayer
+        // renderer repaints with the new palette.
+        if previousTraitCollection?.userInterfaceStyle != self.traitCollection.userInterfaceStyle {
+            updateQWERTYState()
+        }
+    }
+
+    /// Resolve the keyboard's screen width without the deprecated `UIScreen.main`.
+    /// Prefers the view's window-scene screen (correct under Stage Manager / external
+    /// displays); falls back to the laid-out view width, then a sensible bootstrap before
+    /// the window is attached (viewDidLoad). The dims are re-derived from `bounds` in the
+    /// coordinator's `layoutSubviews`, so this value only needs to be a reasonable bootstrap.
+    private func keyboardScreenWidth() -> CGFloat {
+        if let w = view.window?.windowScene?.screen.bounds.width, w > 0 { return w }
+        if view.bounds.width > 0 { return view.bounds.width }
+        return 393  // iPhone bootstrap before the window/scene exists.
+    }
+
     override func viewWillLayoutSubviews() {
         self.nextKeyboardButton.isHidden = !self.needsInputModeSwitchKey
         // Update height constraint on layout changes (rotation, different device)
-        let newWidth = UIScreen.main.bounds.width
+        let newWidth = keyboardScreenWidth()
         heightConstraint?.constant = KeyboardDimensions.totalHeight(forScreenWidth: newWidth)
         // Only update QWERTY state when screen width actually changed (rotation)
         // This avoids doubling observable mutations since textDidChange also calls updateQWERTYState
@@ -328,8 +399,8 @@ class KeyboardViewController: UIInputViewController {
     
     override func textDidChange(_ textInput: UITextInput?) {
         // The app has just changed the document's contents, the document context has been updated.
-        
-        var textColor: UIColor
+
+        let textColor: UIColor
         let proxy = self.textDocumentProxy
         if proxy.keyboardAppearance == UIKeyboardAppearance.dark {
             textColor = UIColor.white
@@ -359,15 +430,75 @@ class KeyboardViewController: UIInputViewController {
         }
     }
     
+    // MARK: - Coalesced Side-Effects (V2)
+
+    /// Queue a single deferred slash + predictive evaluation. Called from the V2 commit
+    /// pipeline instead of running those evaluations synchronously inside `touchesBegan`.
+    /// Coalesces: many key-downs in one runloop turn produce exactly one flush.
+    private func scheduleSideEffectFlush() {
+        guard !sideEffectFlushScheduled else { return }
+        sideEffectFlushScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            self?.flushSideEffects()
+        }
+    }
+
+    /// Run the deferred side-effects: read `documentContextBeforeInput` ONCE (always fresh,
+    /// post-mutation) and feed it to both slash detection and predictive scheduling.
+    private func flushSideEffects() {
+        sideEffectFlushScheduled = false
+        let context = textDocumentProxy.documentContextBeforeInput
+        runSlashEvaluation(context: context)
+        runPredictiveEvaluation(context: context)
+    }
+
+    /// Slash-command evaluation from an already-read context snapshot. Shared by the
+    /// coalesced V2 flush and the synchronous V1 closure.
+    private func runSlashEvaluation(context: String?) {
+        // Skip evaluation when showing snippet grid (not in QWERTY mode).
+        guard !qwertyState.showingSnippets else { return }
+        let result = slashCommandTracker.evaluate(context: context)
+        if result.changed {
+            slashCommandState.updateActivation(isActive: result.isActive, query: result.query)
+        }
+    }
+
+    /// Predictive-text evaluation from an already-read context snapshot. Shared by the
+    /// coalesced V2 flush and the synchronous V1 closure. The heavy UITextChecker work
+    /// is dispatched off-main by `predictiveEngineAsync`.
+    private func runPredictiveEvaluation(context: String?) {
+        // Skip when showing snippet grid or when slash command is active.
+        guard !qwertyState.showingSnippets else { return }
+        guard !slashCommandState.isActive else {
+            // Clear suggestions when slash is active.
+            predictiveTextState.dismiss()
+            return
+        }
+        predictiveEngineAsync.schedule(context: context) { [weak self] suggestions, partialWord in
+            self?.predictiveTextState.updateSuggestions(suggestions: suggestions, partialWord: partialWord)
+        }
+    }
+
     // MARK: - QWERTY State Updates
-    
+
     /// Push text input context from textDocumentProxy into the QWERTY keyboard state.
     /// Called on textDidChange and viewWillLayoutSubviews.
     private func updateQWERTYState() {
         let proxy = self.textDocumentProxy
-        
-        // Keyboard appearance (light/dark) — only mutate if changed
-        let newMode: KeyboardAppearanceMode = proxy.keyboardAppearance == .dark ? .dark : .light
+
+        // Keyboard appearance — respect the text field's explicit preference when set,
+        // otherwise fall back to the system trait (so dark-mode users get dark V2 keys
+        // even when the field is `.default`). Previously V2 always picked `.light`
+        // whenever the proxy wasn't explicitly `.dark`.
+        let newMode: KeyboardAppearanceMode
+        switch proxy.keyboardAppearance {
+        case .dark:
+            newMode = .dark
+        case .light:
+            newMode = .light
+        default:
+            newMode = self.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+        }
         if qwertyState.appearanceMode != newMode {
             qwertyState.appearanceMode = newMode
         }
@@ -380,10 +511,27 @@ class KeyboardViewController: UIInputViewController {
         
         // Return key label — only mutate if changed
         updateReturnKeyLabel()
-        
+
         // Auto-capitalization
-        let shouldCap = computeAutoCapitalization()
-        qwertyState.applyAutoCapitalization(shouldCapitalize: shouldCap)
+        if ownCharacterInsertInFlight {
+            // This is the host's synchronous textDidChange re-entrancy from our own
+            // committed character. A just-typed character can never make the context end
+            // in a sentence/word boundary, so `.words`/`.sentences` would compute `false`
+            // anyway — skip them (and their cross-process context read) entirely, leaving
+            // shift exactly as the commit pipeline set it. Only `.allCharacters` (which
+            // reads no context) still needs re-asserting so all-caps fields stay capitalized.
+            let autocapType = textDocumentProxy.autocapitalizationType ?? .none
+            let autoCapEnabled = AppGroupSettings.bool(
+                forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true
+            )
+            if autoCapEnabled && autocapType == .allCharacters {
+                qwertyState.applyAutoCapitalization(shouldCapitalize: true)
+            }
+        } else {
+            // Host-initiated change (or space/return/backspace commit) — full recompute.
+            let shouldCap = computeAutoCapitalization()
+            qwertyState.applyAutoCapitalization(shouldCapitalize: shouldCap)
+        }
     }
     
     /// Open a URL from the keyboard extension by walking the responder chain.
@@ -443,9 +591,15 @@ class KeyboardViewController: UIInputViewController {
     }
     
     private func computeAutoCapitalization() -> Bool {
+        // User-level kill switch (SnipKey Settings → Experimental → Auto-Capitalization).
+        // When off, the keyboard never auto-caps regardless of what the text field requests.
+        guard AppGroupSettings.bool(forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true) else {
+            return false
+        }
+
         let proxy = textDocumentProxy
         let autocapType = proxy.autocapitalizationType ?? .none
-        
+
         switch autocapType {
         case .none:
             return false

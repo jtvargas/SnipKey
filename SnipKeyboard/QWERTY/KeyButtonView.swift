@@ -136,6 +136,13 @@ struct CharacterKeyLabel: View {
 /// - Character keys use a UIKit `UIControl` for direct touch handling (no SwiftUI delay).
 /// - Special keys (shift, backspace, etc.) use SwiftUI Button since they need gesture support.
 struct KeyButtonView: View {
+
+    /// Cached read of the experimental "Smart Touch Targeting" toggle. Resolved once
+    /// at first access in this process and reused for the keyboard's lifetime — avoids
+    /// reading App Group UserDefaults on every keystroke.
+    fileprivate static let probabilisticTouchEnabled: Bool =
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
+
     let action: KeyAction
     let dimensions: KeyboardDimensions
     let keyWidth: CGFloat
@@ -414,6 +421,14 @@ struct KeyButtonView: View {
     /// Performance: ~100ns when active (dictionary lookup + arithmetic). Zero allocations
     /// beyond a small [Float] weights array (10 elements, 40 bytes).
     private func resolveCharacter(localTouchX: CGFloat, ownChar: String) -> String {
+        // Gated behind the "Smart Touch Targeting" experimental Setting. Default OFF
+        // so the keyboard feels purely native — what you tap is what you get.
+        // Cached at keyboard-open time; toggling in Settings while the keyboard is
+        // alive won't take effect until the keyboard is dismissed and reopened.
+        guard Self.probabilisticTouchEnabled else {
+            return ownChar
+        }
+
         // Fast path: no probabilistic data → return own character
         guard let rects = rowKeyRects,
               let chars = rowCharacters,

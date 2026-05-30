@@ -45,12 +45,12 @@ struct KeyboardDimensions: Equatable {
         return screenWidth < 400 ? 3 : 4
     }
 
-    /// Corner radius of individual keys
+    /// Corner radius of individual keys. Matches native iOS 26 measurements:
+    /// ~6pt on small phones, ~7pt on standard iPhones (393pt wide), ~8pt on Plus/Pro Max (430pt+).
     var cornerRadius: CGFloat {
-        // iOS 26: more rounded, pill-shaped keys
-        if screenWidth < 350 { return 7 }
-        if screenWidth < 400 { return 8 }
-        return 9
+        if screenWidth < 350 { return 6 }
+        if screenWidth < 400 { return 7 }
+        return 8
     }
 
     // MARK: - Key Widths (visual width of the key background, not including gap padding)

@@ -6,6 +6,37 @@
 //
 
 import SwiftUI
+import UIKit
+
+/// Host text-field traits the keyboard reads to drive smart-punctuation, auto-cap, etc.
+/// Snapshotted on demand from `textDocumentProxy` — these can change as the user moves
+/// between text fields, so we read fresh each time.
+struct HostInputTraits {
+    let keyboardType: UIKeyboardType
+    let autocapitalizationType: UITextAutocapitalizationType
+    let smartQuotesEnabled: Bool
+    let smartDashesEnabled: Bool
+
+    /// Sensible defaults used by the `.noop` actions (previews / V1 fallback).
+    static let defaults = HostInputTraits(
+        keyboardType: .default,
+        autocapitalizationType: .sentences,
+        smartQuotesEnabled: true,
+        smartDashesEnabled: true
+    )
+
+    /// True if smart-punctuation and auto-cap-I transforms should run for this field.
+    /// URL and email fields opt out (lowercase "i" is common in usernames; curly quotes
+    /// break literal URLs).
+    var allowsSmartTransforms: Bool {
+        switch keyboardType {
+        case .URL, .emailAddress, .numberPad, .phonePad, .decimalPad, .asciiCapableNumberPad:
+            return false
+        default:
+            return true
+        }
+    }
+}
 
 /// Wraps textDocumentProxy operations as closures, passed from
 /// KeyboardViewController (UIKit) into the SwiftUI environment.
@@ -13,6 +44,12 @@ import SwiftUI
 struct KeyboardActions {
     /// Insert text into the active text field
     let insertText: (String) -> Void
+
+    /// Insert a single committed character into the active text field.
+    /// Identical to `insertText` but marks the host's synchronous `textDidChange`
+    /// re-entrancy as "our own character insert" so the controller can skip the
+    /// redundant auto-capitalization context read on the hot path (V2 only).
+    let insertCharacter: (String) -> Void
 
     /// Delete one character backward
     let deleteBackward: () -> Void
@@ -44,9 +81,38 @@ struct KeyboardActions {
     /// Called after character insertion, deletion, and other key events.
     let evaluatePredictiveText: () -> Void
 
+    /// Coalesced post-commit side-effects for the V2 path. Instead of synchronously
+    /// reading `documentContextBeforeInput` and running slash + predictive evaluation
+    /// inside `touchesBegan` (which delays the next keypress on the serial main thread),
+    /// this schedules a single once-per-runloop flush that reads the context ONCE and
+    /// runs both. During a fast burst, many key-downs collapse into one context read
+    /// per frame. The flush always reads fresh context, so it is never stale.
+    let scheduleSideEffects: () -> Void
+
+    /// Move the text caret by a signed character offset (positive = right).
+    /// Used by V2's space-bar cursor drag.
+    let adjustCaret: (Int) -> Void
+
+    /// Snapshot of the host text field's input traits — keyboard type, autocap, smart
+    /// quotes/dashes. Used by the commit pipeline to gate smart-punctuation and auto-cap
+    /// transforms (URL/email fields skip them).
+    let inputTraits: () -> HostInputTraits
+
+    /// Localized language codes for the user's active input modes (e.g. ["EN", "ES"]).
+    /// Rendered as a subtitle on the space bar when more than one mode is enabled.
+    let activeInputLocaleCodes: () -> [String]
+
+    /// Shared V2 callout view, pre-mounted on `KeyboardViewController.view`.
+    /// Nil in the V1 path (V1 uses `KeyPopupView` instead) and in previews.
+    /// The V2 gesture coordinator presents/dismisses it directly; rect conversion
+    /// from coordinator coords to root-view coords happens via the coordinator
+    /// converting through window coords (`convert(_:to:nil)` + `convert(_:from:nil)`).
+    weak var v2CalloutView: KeyboardCalloutView?
+
     /// No-op instance for previews and default values
     static let noop = KeyboardActions(
         insertText: { _ in },
+        insertCharacter: { _ in },
         deleteBackward: {},
         advanceToNextInputMode: {},
         documentContextBeforeInput: { nil },
@@ -55,19 +121,17 @@ struct KeyboardActions {
         hidePopup: {},
         openApp: {},
         evaluateSlashCommand: {},
-        evaluatePredictiveText: {}
+        evaluatePredictiveText: {},
+        scheduleSideEffects: {},
+        adjustCaret: { _ in },
+        inputTraits: { .defaults },
+        activeInputLocaleCodes: { [] },
+        v2CalloutView: nil
     )
 }
 
 // MARK: - SwiftUI Environment Key
 
-private struct KeyboardActionsKey: EnvironmentKey {
-    static let defaultValue = KeyboardActions.noop
-}
-
 extension EnvironmentValues {
-    var keyboardActions: KeyboardActions {
-        get { self[KeyboardActionsKey.self] }
-        set { self[KeyboardActionsKey.self] = newValue }
-    }
+    @Entry var keyboardActions: KeyboardActions = .noop
 }
