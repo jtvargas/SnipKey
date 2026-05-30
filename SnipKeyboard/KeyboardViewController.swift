@@ -478,8 +478,57 @@ class KeyboardViewController: UIInputViewController {
             return
         }
         predictiveEngineAsync.schedule(context: context) { [weak self] suggestions, partialWord in
-            self?.predictiveTextState.updateSuggestions(suggestions: suggestions, partialWord: partialWord)
+            guard let self else { return }
+            self.predictiveTextState.updateSuggestions(suggestions: suggestions, partialWord: partialWord)
+            self.updateTouchPrior(suggestions: suggestions, partialWord: partialWord)
         }
+    }
+
+    /// Derive a next-character prior from the in-progress word's top completions and push it
+    /// onto the shared `ProbabilisticTouchContext`, so near-miss taps bias toward the letter
+    /// that finishes the likely word ("after `thr` → enlarge `o`"). Runs in the predictive
+    /// completion (already on the main actor), OFF every touch path, and adds no XPC read —
+    /// it rides the existing coalesced flush. The same context object is read by
+    /// `SmartTouchResolver` on the touch hot path via `weightsForRow`.
+    private func updateTouchPrior(suggestions: [String], partialWord: String) {
+        let prior = Self.nextCharacterPrior(suggestions: suggestions, partialWord: partialWord)
+        qwertyState.inputTracking.touchContext.updatePredictivePrior(prior, isEnglish: Self.isEnglishInputContext)
+    }
+
+    /// Build a `{nextChar: weight}` prior from the characters that would extend `partialWord`
+    /// toward each top completion, weighted by suggestion rank. Returns nil below a 2-char
+    /// prefix (the suggestion set is too noisy to bias touch targets that early).
+    /// Tuning knobs (rank weights, prefix threshold) live here, at the point of use.
+    static func nextCharacterPrior(suggestions: [String], partialWord: String) -> [Character: Float]? {
+        let prefixCount = partialWord.count
+        guard prefixCount >= 2 else { return nil }
+        let rankWeights: [Float] = [0.7, 0.2, 0.1]
+        let lowerPartial = partialWord.lowercased()
+        var prior: [Character: Float] = [:]
+        var rankIndex = 0
+        for suggestion in suggestions {
+            if rankIndex >= rankWeights.count { break }
+            let lowerSuggestion = suggestion.lowercased()
+            // Only true completions of the partial word bias the next character.
+            guard lowerSuggestion.count > prefixCount,
+                  lowerSuggestion.hasPrefix(lowerPartial) else { continue }
+            let nextChar = Array(lowerSuggestion)[prefixCount]
+            guard nextChar.isLetter else { continue }
+            // Distinct next-chars get descending rank weight; duplicates keep the higher rank.
+            if prior[nextChar] == nil {
+                prior[nextChar] = rankWeights[rankIndex]
+                rankIndex += 1
+            }
+        }
+        return prior.isEmpty ? nil : prior
+    }
+
+    /// Whether the active input language is English. The bigram tables are English-only, so
+    /// for non-English input the blend uses the (language-correct) prediction prior alone.
+    /// Mirrors the predictive engine's language source (`Locale.preferredLanguages`) so the
+    /// English-ness check matches the language the suggestions were generated in.
+    static var isEnglishInputContext: Bool {
+        (Locale.preferredLanguages.first ?? "en").lowercased().hasPrefix("en")
     }
 
     // MARK: - QWERTY State Updates
