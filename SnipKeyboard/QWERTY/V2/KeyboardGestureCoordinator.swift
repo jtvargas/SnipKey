@@ -40,6 +40,9 @@ final class KeyboardGestureCoordinator: UIView {
     /// Precomputed grid-Voronoi partition of `resolvedFrames` for O(log n) hit resolution.
     /// Rebuilt alongside `resolvedFrames` in `rebuildLayout`; consumed by `findKey`.
     private var hitGrid: HitGrid?
+    /// Row count of the current layout — kept so `findKey` can self-heal (rebuild the
+    /// grid) if a touch ever arrives before the first `rebuildLayout`.
+    private var currentRowCount = 0
     private var currentPage: KeyboardPage = .letters
 
     /// Signature of the inputs that drove the last full `rebuildLayout()`. If the next
@@ -182,7 +185,8 @@ final class KeyboardGestureCoordinator: UIView {
         // Rebuild the hit grid in lockstep with the frames so the two never diverge.
         // `resolvedFrames` is recomputed on every rebuildLayout (before the render
         // short-circuit), so the grid must be too.
-        hitGrid = Self.buildHitGrid(from: resolvedFrames, rowCount: layout.rows.count)
+        currentRowCount = layout.rows.count
+        hitGrid = Self.buildHitGrid(from: resolvedFrames, rowCount: currentRowCount)
 
         let isDark = state?.appearanceMode == .dark
         let shiftState = state?.shiftState ?? .disabled
@@ -572,16 +576,31 @@ final class KeyboardGestureCoordinator: UIView {
     }
 
     private func findKey(at point: CGPoint) -> KeyFrame? {
-        guard let grid = hitGrid, !resolvedFrames.isEmpty else { return nil }
-        // Resolve any tap inside the keys area (plus a small outward margin) to its owning
-        // Voronoi cell — "closest letter wins", so there are no dead dividers between keys.
-        // Only taps clearly outside the keyboard return nil; off-keyboard drag is already
-        // handled earlier in handleMovedPress (point.y > bounds.maxY + 8).
-        let margin = max(dims.keyGap * 2, 12)
-        guard bounds.insetBy(dx: -margin, dy: -margin).contains(point) else { return nil }
-        let idx = grid.frameIndex(for: point)
-        guard idx >= 0 && idx < resolvedFrames.count else { return nil }
-        return resolvedFrames[idx]
+        guard !resolvedFrames.isEmpty else { return nil }
+        // A delivered touch is by definition inside the view, so it must always resolve
+        // to a key — there are no dead dividers between keys. Resolve via the precomputed
+        // grid-Voronoi partition ("closest letter wins").
+        // Self-heal: a touch can arrive before the first layout pass built the grid.
+        if hitGrid == nil {
+            hitGrid = Self.buildHitGrid(from: resolvedFrames, rowCount: max(currentRowCount, 1))
+        }
+        if let grid = hitGrid {
+            let idx = grid.frameIndex(for: point)
+            if idx >= 0 && idx < resolvedFrames.count { return resolvedFrames[idx] }
+        }
+        // Defensive fallback (no radius cap): nearest key center by squared distance.
+        // Guarantees a delivered touch never resolves to nothing, even if the grid is
+        // somehow unavailable. Off-keyboard drag is handled earlier in handleMovedPress
+        // (point.y > bounds.maxY + 8), before findKey is ever reached for those points.
+        var bestSq = CGFloat.greatestFiniteMagnitude
+        var best: KeyFrame?
+        for f in resolvedFrames {
+            let dx = point.x - f.rect.midX
+            let dy = point.y - f.rect.midY
+            let d = dx * dx + dy * dy
+            if d < bestSq { bestSq = d; best = f }
+        }
+        return best
     }
 
     /// Build the grid-Voronoi partition from row-major `frames`. Keys form clean rows with
