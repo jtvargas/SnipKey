@@ -81,12 +81,18 @@ final class SettingsModel {
     /// to capitalize. Default ON to match iOS defaults.
     var autoCapitalizationEnabled: Bool = true
 
+    /// DEBUG only: overlays each key's tiling touch cell (its `hitRect`) with a visible
+    /// red border/fill in the V2 keyboard, so the per-key hit coverage ("Voronoi" tiling)
+    /// can be inspected. **Default OFF.**
+    var debugHitOverlayEnabled: Bool = false
+
     init(
         afterPasteAction: KeyboardAfterPasteAction = .space,
         isQWERTYKeyboardEnabled: Bool = false,
         useNativeKeyboardV2: Bool = true,
         probabilisticTouchEnabled: Bool = true,
-        autoCapitalizationEnabled: Bool = true
+        autoCapitalizationEnabled: Bool = true,
+        debugHitOverlayEnabled: Bool = false
     ) {
         self.settingsId = "SnipKey-Settings"
         self.afterPasteAction = afterPasteAction
@@ -94,6 +100,7 @@ final class SettingsModel {
         self.useNativeKeyboardV2 = useNativeKeyboardV2
         self.probabilisticTouchEnabled = probabilisticTouchEnabled
         self.autoCapitalizationEnabled = autoCapitalizationEnabled
+        self.debugHitOverlayEnabled = debugHitOverlayEnabled
     }
 }
 
@@ -109,6 +116,7 @@ enum AppGroupSettings {
         static let useNativeKeyboardV2 = "useNativeKeyboardV2"
         static let probabilisticTouchEnabled = "probabilisticTouchEnabled"
         static let autoCapitalizationEnabled = "autoCapitalizationEnabled"
+        static let debugHitOverlayEnabled = "debugHitOverlayEnabled"
     }
 
     static func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {

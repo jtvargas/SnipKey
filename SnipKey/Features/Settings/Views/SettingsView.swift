@@ -228,6 +228,29 @@ struct SettingsView: View {
                     .onChange(of: currentSettings.autoCapitalizationEnabled) { _, newValue in
                         AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
                     }
+
+                    Toggle(isOn: $currentSettings.debugHitOverlayEnabled) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.grid.3x3")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.red)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Show Hit-Test Overlay")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Debug: outline each key's touch cell (reopen keyboard to apply)")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.red)
+                    .onChange(of: currentSettings.debugHitOverlayEnabled) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
+                    }
                 } header: {
                     Text("Experimental")
                 } footer: {
@@ -396,6 +419,10 @@ struct SettingsView: View {
                         myCurrentSettings.autoCapitalizationEnabled,
                         forKey: AppGroupSettings.Key.autoCapitalizationEnabled
                     )
+                    AppGroupSettings.setBool(
+                        myCurrentSettings.debugHitOverlayEnabled,
+                        forKey: AppGroupSettings.Key.debugHitOverlayEnabled
+                    )
                 }
             }
         }
@@ -418,9 +445,11 @@ struct SettingsView: View {
         currentSettings.useNativeKeyboardV2 = true
         currentSettings.probabilisticTouchEnabled = true
         currentSettings.autoCapitalizationEnabled = true
+        currentSettings.debugHitOverlayEnabled = false
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
+        AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
     }
 }
 

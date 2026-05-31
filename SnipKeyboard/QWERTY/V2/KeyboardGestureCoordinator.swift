@@ -43,6 +43,11 @@ final class KeyboardGestureCoordinator: UIView {
     /// Row count of the current layout — kept so `findKey` can self-heal (rebuild the
     /// grid) if a touch ever arrives before the first `rebuildLayout`.
     private var currentRowCount = 0
+    /// Transparent per-key touch targets that tile the entire keys area (one per `KeyFrame`,
+    /// sized to its `hitRect`). They guarantee UIKit's native hit-testing finds a key for
+    /// EVERY point — including the visual gaps between keys — and forward the touch to this
+    /// coordinator. This is the "Voronoi fills the gaps" model: no dead zones by construction.
+    private var keyHitViews: [KeyHitView] = []
     private var currentPage: KeyboardPage = .letters
 
     /// Signature of the inputs that drove the last full `rebuildLayout()`. If the next
@@ -225,6 +230,23 @@ final class KeyboardGestureCoordinator: UIView {
         }
 
         rebuildAccessibilityElements()
+        rebuildHitViews()
+    }
+
+    /// Rebuild the tiling `KeyHitView` touch targets in lockstep with `resolvedFrames`.
+    /// Each covers its key's `hitRect`; together they tile the whole keys area with no gaps,
+    /// so a touch anywhere (including between keys) lands on a real interactive subview that
+    /// forwards to this coordinator — eliminating dead zones regardless of how the system
+    /// hit-tests the single coordinator view.
+    private func rebuildHitViews() {
+        for v in keyHitViews { v.removeFromSuperview() }
+        keyHitViews.removeAll(keepingCapacity: true)
+        for frame in resolvedFrames {
+            let hv = KeyHitView(frame: frame.hitRect)
+            hv.coordinator = self
+            addSubview(hv)
+            keyHitViews.append(hv)
+        }
     }
 
     // MARK: - Accessibility
@@ -562,6 +584,17 @@ final class KeyboardGestureCoordinator: UIView {
 
     // MARK: - Hit Testing
 
+    /// Guarantee every in-bounds point lands on a tiling `KeyHitView` (which forwards the
+    /// touch to this coordinator), even if the default traversal drops the transparent cells
+    /// in the keyboard-extension hit-test context. Zero visual change.
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let hit = super.hitTest(point, with: event)
+        if let hit, hit !== self { return hit }           // a hit cell (or other subview) already caught it
+        guard bounds.contains(point) else { return hit }  // outside the keys area → leave as-is
+        for hv in keyHitViews where hv.frame.contains(point) { return hv }
+        return hit
+    }
+
     /// Apply bigram-weighted smart-touch correction to the raw `findKey` result.
     /// Non-character keys, and presses while smart touch is disabled, pass through unchanged.
     private func smartResolved(rawKey: KeyFrame, at point: CGPoint) -> KeyFrame {
@@ -742,5 +775,49 @@ private final class KeyboardKeyAccessibilityElement: UIAccessibilityElement {
     override func accessibilityActivate() -> Bool {
         onActivate()
         return true
+    }
+}
+
+/// Transparent, tiling touch target placed over each key's `hitRect`. It has no logic of its
+/// own — it exists so UIKit's native hit-testing always finds a real interactive view for
+/// every point in the keys area (gaps included), then forwards the touch to the gesture
+/// coordinator, which resolves and commits it exactly as if it had received the touch directly.
+final class KeyHitView: UIView {
+    weak var coordinator: KeyboardGestureCoordinator?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isMultipleTouchEnabled = true
+        // NOT `.clear`: a fully transparent view is skipped by hit-testing in the keyboard
+        // extension's rendering context (verified — gap/edge presses only registered once the
+        // debug overlay gave the cells a visible fill). A ~2% neutral fill is imperceptible on
+        // both light and dark keyboards but keeps the cell hit-testable.
+        backgroundColor = UIColor(white: 0, alpha: 0.02)
+        // VoiceOver still navigates via the coordinator's accessibility elements.
+        isAccessibilityElement = false
+
+        // DEBUG overlay (off by default): visualize the tiling touch cells (each = one key's
+        // hitRect) so the per-key "Voronoi" coverage of the gaps can be inspected. Toggled
+        // from the app: SnipKey Settings → Experimental → "Show Hit-Test Overlay".
+        if AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false) {
+            layer.borderColor = UIColor.systemRed.withAlphaComponent(0.9).cgColor
+            layer.borderWidth = 1
+            backgroundColor = UIColor.systemRed.withAlphaComponent(0.08)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        coordinator?.touchesBegan(touches, with: event)
+    }
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        coordinator?.touchesMoved(touches, with: event)
+    }
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        coordinator?.touchesEnded(touches, with: event)
+    }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        coordinator?.touchesCancelled(touches, with: event)
     }
 }
