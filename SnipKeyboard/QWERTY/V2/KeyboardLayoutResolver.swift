@@ -81,21 +81,8 @@ enum KeyboardLayoutResolver {
                 // - Middle keys: claim half of each adjacent gap.
                 let isFirst = columnIndex == 0
                 let isLast = columnIndex == itemCount - 1
-                var leftSlop = isFirst ? rect.minX : dims.keyGap / 2
-                var rightSlop = isLast ? max(keysAreaSize.width - rect.maxX, 0) : dims.keyGap / 2
-
-                // Bias the space↔return seam toward Return: users frequently overshoot the
-                // space bar and clip Return, so give space extra hit width on its right and
-                // pull Return's left edge in by the same amount. The two cells still tile.
-                let spaceReturnShift: CGFloat = 14
-                if case .space = item.action,
-                   columnIndex + 1 < itemCount, case .returnKey = row.items[columnIndex + 1].action {
-                    rightSlop += spaceReturnShift
-                }
-                if case .returnKey = item.action,
-                   columnIndex - 1 >= 0, case .space = row.items[columnIndex - 1].action {
-                    leftSlop -= spaceReturnShift   // negative → Return's hit cell starts inside its visual rect
-                }
+                let leftSlop = isFirst ? rect.minX : dims.keyGap / 2
+                let rightSlop = isLast ? max(keysAreaSize.width - rect.maxX, 0) : dims.keyGap / 2
 
                 let hitRect = CGRect(
                     x: rect.minX - leftSlop,

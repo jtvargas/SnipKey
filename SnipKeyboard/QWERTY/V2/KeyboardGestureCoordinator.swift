@@ -612,7 +612,7 @@ final class KeyboardGestureCoordinator: UIView {
         guard !resolvedFrames.isEmpty else { return nil }
         // A delivered touch is by definition inside the view, so it must always resolve
         // to a key — there are no dead dividers between keys. Resolve via the precomputed
-        // grid-Voronoi partition ("closest letter wins").
+        // hit-cell partition ("owning hit cell wins" — the same tiling the user sees).
         // Self-heal: a touch can arrive before the first layout pass built the grid.
         if hitGrid == nil {
             hitGrid = Self.buildHitGrid(from: resolvedFrames, rowCount: max(currentRowCount, 1))
@@ -621,10 +621,12 @@ final class KeyboardGestureCoordinator: UIView {
             let idx = grid.frameIndex(for: point)
             if idx >= 0 && idx < resolvedFrames.count { return resolvedFrames[idx] }
         }
-        // Defensive fallback (no radius cap): nearest key center by squared distance.
-        // Guarantees a delivered touch never resolves to nothing, even if the grid is
-        // somehow unavailable. Off-keyboard drag is handled earlier in handleMovedPress
-        // (point.y > bounds.maxY + 8), before findKey is ever reached for those points.
+        // Defensive fallback, only if the grid is somehow unavailable. Prefer the hit cell
+        // that contains the point (consistent with the grid's hitRect tiling); otherwise
+        // fall back to the nearest key center by squared distance so a delivered touch
+        // never resolves to nothing. Off-keyboard drag is handled earlier in
+        // handleMovedPress (point.y > bounds.maxY + 8), before findKey is ever reached.
+        if let owner = resolvedFrames.first(where: { $0.hitRect.contains(point) }) { return owner }
         var bestSq = CGFloat.greatestFiniteMagnitude
         var best: KeyFrame?
         for f in resolvedFrames {
@@ -636,10 +638,15 @@ final class KeyboardGestureCoordinator: UIView {
         return best
     }
 
-    /// Build the grid-Voronoi partition from row-major `frames`. Keys form clean rows with
-    /// monotonic-x centers, so the Voronoi diagram of the key centers is a rectangular grid:
-    /// row bands at the midpoints between row centers, and per-row column boundaries at the
-    /// midpoints between adjacent key centers. O(n), off the touch path (layout changes only).
+    /// Build the hit-cell partition from row-major `frames`. Boundaries are the seams of the
+    /// per-key `hitRect`s — the exact tiling the user sees (debug overlay) and that the
+    /// `KeyHitView` touch targets cover — so a touch resolves to whichever key's hit cell
+    /// owns the point. Keys form clean rows with monotonic-x hit cells that tile with no
+    /// gaps, so the partition is a rectangular grid: row bands at the seam between
+    /// vertically-adjacent rows, per-row column boundaries at the seam between adjacent keys.
+    /// Using `hitRect` seams (not key centers) is what lets a wide space next to a narrow
+    /// return split at the visual gap instead of deep inside the space bar. O(n), off the
+    /// touch path (layout changes only).
     private static func buildHitGrid(from frames: [KeyFrame], rowCount: Int) -> HitGrid {
         guard rowCount > 0, !frames.isEmpty else {
             return HitGrid(rowYBoundaries: [], rowFrameIndices: [[]], rowXBoundaries: [[]])
@@ -648,18 +655,21 @@ final class KeyboardGestureCoordinator: UIView {
         for (i, f) in frames.enumerated() where f.rowIndex >= 0 && f.rowIndex < rowCount {
             rowFrameIndices[f.rowIndex].append(i)   // frames are row-major → already L→R
         }
-        // Row centers (any key's rect.midY per row) → interior row boundaries at midpoints.
-        let rowCenters: [CGFloat] = (0..<rowCount).map { r in
-            rowFrameIndices[r].first.map { frames[$0].rect.midY } ?? 0
-        }
-        let rowYBoundaries = rowCount > 1
-            ? (1..<rowCount).map { (rowCenters[$0 - 1] + rowCenters[$0]) / 2 }
+        // Row Y boundaries: seam between vertically-adjacent rows' hit cells.
+        let rowYBoundaries: [CGFloat] = rowCount > 1
+            ? (1..<rowCount).map { r -> CGFloat in
+                let upper = rowFrameIndices[r - 1].first.map { frames[$0].hitRect.maxY } ?? 0
+                let lower = rowFrameIndices[r].first.map { frames[$0].hitRect.minY } ?? 0
+                return (upper + lower) / 2
+              }
             : []
-        // Per-row column boundaries at midpoints between adjacent key centers.
+        // Per-row column boundaries: seam between horizontally-adjacent keys' hit cells.
         let rowXBoundaries: [[CGFloat]] = (0..<rowCount).map { r in
             let idxs = rowFrameIndices[r]
             guard idxs.count > 1 else { return [] }
-            return (1..<idxs.count).map { (frames[idxs[$0 - 1]].rect.midX + frames[idxs[$0]].rect.midX) / 2 }
+            return (1..<idxs.count).map {
+                (frames[idxs[$0 - 1]].hitRect.maxX + frames[idxs[$0]].hitRect.minX) / 2
+            }
         }
         return HitGrid(rowYBoundaries: rowYBoundaries, rowFrameIndices: rowFrameIndices, rowXBoundaries: rowXBoundaries)
     }

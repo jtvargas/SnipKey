@@ -108,7 +108,8 @@ struct KeyboardToolbarView: View {
 //            }
 //            .buttonStyle(.plain)
         }
-        .frame(height: dimensions.toolbarHeight)
+        .frame(height: dimensions.toolbarHeight - dimensions.toolbarItemBottomGap)
+        .frame(height: dimensions.toolbarHeight, alignment: .top)
         .padding(.horizontal, 12)
         // React to slash command activation and query changes
         .onChange(of: slashState.isActive) { _, isActive in
@@ -209,6 +210,7 @@ struct SlashTriggerButton: View {
                         )
                         .shadow(color: .black.opacity(0.06), radius: 0, x: 0, y: 0.5)
                 )
+                .debugHitOverlay()
         }
         .buttonStyle(.plain)
     }
@@ -231,6 +233,26 @@ struct SuggestionPillButtonStyle: ButtonStyle {
                     .padding(.horizontal, 2)
                     .opacity(configuration.isPressed ? 1 : 0)
             )
+    }
+}
+
+// MARK: - Debug Hit-Area Overlay
+
+extension View {
+    /// DEBUG (off by default): outline this view's hit area with the same red border/fill
+    /// used for the keys' touch cells, so the suggestion/snippet press regions can be
+    /// inspected. Gated by Settings → "Show Hit-Test Overlay"
+    /// (`AppGroupSettings.Key.debugHitOverlayEnabled`). Read at render time — reopen the
+    /// keyboard to apply, matching the keys overlay. No layout/behavior change when off.
+    @ViewBuilder
+    func debugHitOverlay() -> some View {
+        if AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false) {
+            self
+                .background(Color(.systemRed).opacity(0.08))
+                .overlay(Rectangle().stroke(Color(.systemRed).opacity(0.9), lineWidth: 1))
+        } else {
+            self
+        }
     }
 }
 
@@ -261,7 +283,9 @@ struct PredictiveSuggestionsView: View {
                         .foregroundStyle(Color(.label))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable when overlay is off
                         .contentShape(Rectangle())
+                        .debugHitOverlay()
                 }
                 .buttonStyle(SuggestionPillButtonStyle())
                 .simultaneousGesture(
@@ -311,7 +335,9 @@ struct SlashSuggestionsView: View {
                             }
                             .padding(.horizontal, 14)
                             .frame(maxHeight: .infinity)
+                            .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable when overlay is off
                             .contentShape(Rectangle())
+                            .debugHitOverlay()
                         }
                         .buttonStyle(SuggestionPillButtonStyle())
                     }
@@ -328,6 +354,7 @@ struct SlashSuggestionsView: View {
                     .frame(width: 28, height: 28)
                     .background(Color(.tertiarySystemFill))
                     .clipShape(Circle())
+                    .debugHitOverlay()
             }
             .buttonStyle(.plain)
             .padding(.leading, 4)

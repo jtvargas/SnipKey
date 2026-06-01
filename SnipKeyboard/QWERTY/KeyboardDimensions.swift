@@ -102,6 +102,11 @@ struct KeyboardDimensions: Equatable {
     /// Matches native iOS prediction/suggestion bar height (~44pt)
     var toolbarHeight: CGFloat { 44 }
 
+    /// Empty gap reserved at the bottom of the toolbar so suggestion/snippet hit cells
+    /// don't butt up against the top key row's hit cells. Keeps the toolbar's overall
+    /// height (and thus the keys' top anchor) unchanged.
+    var toolbarItemBottomGap: CGFloat { 6 }
+
     /// Total keyboard height (toolbar + keys area)
     var totalHeight: CGFloat {
         return toolbarHeight + keysAreaHeight
