@@ -19,11 +19,24 @@ final class CalloutController {
     /// Timestamp of the last `dismiss()` (mach time). Drives the burst-suppression above.
     private var lastDismissTime: CFTimeInterval = 0
 
+    /// A key-up schedules the hide briefly in the future instead of hiding instantly, so a
+    /// quickly-following key keeps the SAME bubble alive — it then glides to the new key
+    /// (native feel) instead of popping a fresh component. Cancelled by the next
+    /// `presentInput`/`beginActions`. Fires (fades) only when typing actually pauses.
+    private var pendingDismiss: DispatchWorkItem?
+    private static let dismissDelay: TimeInterval = 0.085
+
+    private func cancelPendingDismiss() {
+        pendingDismiss?.cancel()
+        pendingDismiss = nil
+    }
+
     /// Modes the controller can be in.
     enum Mode {
         case none
         case input(KeyFrame)
         case actions(base: KeyFrame, items: [String], selectedIndex: Int)
+        case snippetsSwitch(base: KeyFrame)
     }
 
     weak var calloutView: KeyboardCalloutView?
@@ -62,6 +75,8 @@ final class CalloutController {
             return
         }
         let display = casedByShift ? character.uppercased() : character
+        // A new key is coming — keep the current bubble alive so show() glides it.
+        cancelPendingDismiss()
         // No-op if already showing this exact key in input mode
         if case .input(let prev) = mode, prev == key {
             return
@@ -76,10 +91,20 @@ final class CalloutController {
     /// Begin showing the long-press accent menu.
     func beginActions(for key: KeyFrame, items: [String]) {
         guard let view = calloutView, !items.isEmpty else { return }
+        cancelPendingDismiss()
         // Default selection is the base character (index 0)
         mode = .actions(base: key, items: items, selectedIndex: 0)
         let rectInCalloutSpace = convertRect(key.rect)
         view.show(.actions(chars: items, keyFrame: rectInCalloutSpace, selectedIndex: 0), isDark: isDark, in: parentBoundsWidth)
+    }
+
+    /// Show the emoji key's long-press "switch to snippets" callout (a single rotated icon).
+    func presentSnippetsSwitch(for key: KeyFrame) {
+        guard let view = calloutView else { return }
+        cancelPendingDismiss()
+        mode = .snippetsSwitch(base: key)
+        let rectInCalloutSpace = convertRect(key.rect)
+        view.show(.snippetsSwitch(keyFrame: rectInCalloutSpace), isDark: isDark, in: parentBoundsWidth)
     }
 
     /// Update the highlighted slot during accent-menu drag.
@@ -106,11 +131,24 @@ final class CalloutController {
     /// during a fast-typing burst (another dismiss within the burst window) so the shared
     /// callout layer doesn't read as the next character dimming.
     func dismiss() {
+        cancelPendingDismiss()
         let now = CACurrentMediaTime()
         let isBurst = (now - lastDismissTime) < Self.burstWindow
         lastDismissTime = now
         guard let view = calloutView else { mode = .none; return }
         view.hide(fade: !isBurst)
         mode = .none
+    }
+
+    /// Used on character key-up: defer the hide so a quickly-following key keeps the same
+    /// bubble (which then glides). If typing pauses, the bubble fades after `dismissDelay`.
+    func dismissInputDeferred() {
+        cancelPendingDismiss()
+        let work = DispatchWorkItem { [weak self] in
+            self?.pendingDismiss = nil
+            self?.dismiss()
+        }
+        pendingDismiss = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.dismissDelay, execute: work)
     }
 }

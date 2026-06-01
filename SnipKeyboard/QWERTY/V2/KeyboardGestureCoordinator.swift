@@ -405,8 +405,12 @@ final class KeyboardGestureCoordinator: UIView {
             // Shift triggers on press for snappier feel; double-tap detection happens in state.
             state?.toggleShift()
             rendererRef.updateShiftState(state?.shiftState ?? .disabled)
-        case .returnKey, .modeChange, .snippetToggle:
+        case .returnKey, .modeChange:
             break  // commit on release for these
+        case .snippetToggle:
+            // Emoji key: tap (on release) switches keyboards; long-press opens the snippets
+            // callout. Nothing happens on touch-down except arming the long-press.
+            press.longPressTask = scheduleLongPress(touchID: id, key: key)
         }
 
         activePresses[id] = press
@@ -553,14 +557,22 @@ final class KeyboardGestureCoordinator: UIView {
             case .modeChange(let page):
                 KeyboardCommitPipeline.commitModeChange(to: page, state: state)
             case .snippetToggle:
-                state.showingSnippets = true
+                // Emoji key: if the long-press snippets callout is up, open snippets;
+                // otherwise a plain tap switches to the next keyboard (system emoji).
+                if case .snippetsSwitch = calloutController.mode {
+                    state.showingSnippets = true
+                } else {
+                    actions.advanceToNextInputMode()
+                }
             }
         }
 
         // Visual cleanup: only dismiss the shared callout/highlight when no other press
         // remains. Otherwise promote the next-most-recent press to drive the visuals.
         if id == mostRecentTouchID {
-            calloutController.dismiss()
+            // Defer the callout hide so a quickly-following key reuses & glides the same
+            // bubble instead of popping a fresh one (native feel). The highlight clears now.
+            calloutController.dismissInputDeferred()
             rendererRef.setHighlightedKey(nil)
             promoteNewMostRecentIfNeeded(removedID: id)
         }
@@ -697,6 +709,18 @@ final class KeyboardGestureCoordinator: UIView {
     /// Create a task that opens the accent menu after 400ms iff the press is still on `key`.
     /// Returns the task so it can be stored on the `ActivePress` and cancelled if needed.
     private func scheduleLongPress(touchID id: ObjectIdentifier, key: KeyFrame) -> Task<Void, Never>? {
+        // Emoji key (was snippetToggle): long-press reveals a "switch to snippets" callout
+        // (the rotated snippets icon). Selected on release in endPress.
+        if case .snippetToggle = key.action {
+            return Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled, let self else { return }
+                guard let press = self.activePresses[id], press.key == key else { return }
+                self.mostRecentTouchID = id
+                self.calloutController.presentSnippetsSwitch(for: key)
+                self.lightImpactHaptic.impactOccurred(intensity: 0.8)
+            }
+        }
         guard case .character(let c) = key.action else { return nil }
         // In URL / email fields, long-pressing "." offers domain TLDs (.com, .net, …),
         // matching native iOS. Everywhere else, "." shows its normal accent menu (ellipsis).

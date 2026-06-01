@@ -316,7 +316,8 @@ final class KeyLayerRenderer {
             case .symbols: return .text("#+=")
             }
         case .snippetToggle:
-            return .symbol(name: "sparkle", pointSize: 16, weight: .regular)
+            // Emoji key: tap switches keyboards (system emoji); long-press → snippets callout.
+            return .symbol(name: "face.smiling", pointSize: 20, weight: .regular)
         }
     }
 

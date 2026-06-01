@@ -218,6 +218,22 @@ struct SlashTriggerButton: View {
 
 /// Horizontally arranged row of up to 3 word completion/correction pills.
 /// Mimics the native iOS QuickType suggestion bar appearance.
+/// Native suggestion-bar press feedback: a rounded gray highlight fills the pill's cell
+/// while it's pressed (no bounce/scale), matching the iOS predictive bar.
+struct SuggestionPillButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color(.systemFill))
+                    .padding(.vertical, 5)
+                    .padding(.horizontal, 2)
+                    .opacity(configuration.isPressed ? 1 : 0)
+            )
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 struct PredictiveSuggestionsView: View {
     let suggestions: [String]
     let onSelect: (String) -> Void
@@ -241,13 +257,13 @@ struct PredictiveSuggestionsView: View {
                     onSelect(suggestion)
                 } label: {
                     Text(suggestion)
-                        .font(.custom("IBMPlexMono-Medium", size: 13))
+                        .font(.custom("IBMPlexMono-Medium", size: 16))
                         .foregroundStyle(Color(.label))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SuggestionPillButtonStyle())
                 .simultaneousGesture(
                     isMiddle
                         ? LongPressGesture(minimumDuration: 0.4)
@@ -289,15 +305,15 @@ struct SlashSuggestionsView: View {
                                         .foregroundStyle(Color(.tertiaryLabel))
                                 }
                                 Text(snippet.title ?? "Untitled")
-                                    .font(.custom("IBMPlexMono-Medium", size: 13))
+                                    .font(.custom("IBMPlexMono-Medium", size: 16))
                                     .foregroundStyle(Color(.label))
                                     .lineLimit(1)
                             }
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, 14)
                             .frame(maxHeight: .infinity)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SuggestionPillButtonStyle())
                     }
                 }
             }
