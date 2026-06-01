@@ -24,9 +24,6 @@ import UIKit
 enum CalloutMode: Equatable {
     case input(character: String, keyFrame: CGRect)
     case actions(chars: [String], keyFrame: CGRect, selectedIndex: Int)
-    /// Long-press on the emoji key: a single small bubble with the (rotated) snippets icon
-    /// that switches to the snippets view on release.
-    case snippetsSwitch(keyFrame: CGRect)
 }
 
 final class KeyboardCalloutView: UIView {
@@ -80,9 +77,6 @@ final class KeyboardCalloutView: UIView {
     /// Action-mode labels (built dynamically; reused across long-presses).
     private var actionLabels: [UILabel] = []
 
-    /// Rotated snippets icon shown in `.snippetsSwitch` mode (emoji-key long-press).
-    private let snippetsIconLayer = CALayer()
-
     private var currentMode: CalloutMode?
 
     /// Slot width used for the current action menu. Wider for multi-character entries
@@ -121,9 +115,6 @@ final class KeyboardCalloutView: UIView {
         highlightShape.isHidden = true
         layer.addSublayer(highlightShape)
 
-        snippetsIconLayer.isHidden = true
-        layer.addSublayer(snippetsIconLayer)
-
         addSubview(inputLabel)
     }
 
@@ -136,73 +127,39 @@ final class KeyboardCalloutView: UIView {
     /// disabled, so transitions between keys do not cross-fade.
     func show(_ mode: CalloutMode, isDark: Bool, in parentWidth: CGFloat, animated: Bool = true) {
         currentIsDark = isDark
-        // Captured BEFORE the configure mutates them — used to glide from the old key.
-        let previousMode = currentMode
-        let oldPosition = layer.position
-        let oldPath = bodyShape.path
-        let wasVisible = (layer.presentation()?.opacity ?? layer.opacity) >= 0.01
-
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
 
         switch mode {
         case .input(let character, let keyFrame):
-            snippetsIconLayer.isHidden = true
             configureInputMode(character: character, keyFrame: keyFrame, isDark: isDark, parentWidth: parentWidth)
         case .actions(let chars, let keyFrame, let selectedIndex):
-            snippetsIconLayer.isHidden = true
             configureActionsMode(chars: chars, keyFrame: keyFrame, selectedIndex: selectedIndex, isDark: isDark, parentWidth: parentWidth)
-        case .snippetsSwitch(let keyFrame):
-            configureSnippetsSwitchMode(keyFrame: keyFrame, isDark: isDark, parentWidth: parentWidth)
         }
 
-        // Cancel any in-flight fade-out and snap to full opacity so a new key never reuses a
-        // half-faded bubble.
+        // A mid-fade callout (opacity dropping toward 0) counts as hidden for the spring
+        // decision. Cancel any in-flight fade-out and snap to full opacity instantly so a
+        // new key never reuses a half-faded bubble.
+        let wasHidden = (layer.presentation()?.opacity ?? layer.opacity) < 0.01
         layer.removeAnimation(forKey: "calloutFade")
         layer.opacity = 1
         currentMode = mode
 
-        // GLIDE: a still-visible input bubble moving to the next key animates its position
-        // (and tooth path, at clamped edges) so it reads as ONE bubble sliding — native feel —
-        // rather than a fresh pop above each key. Explicit animations still run inside the
-        // disabled-actions transaction (only implicit ones are suppressed).
-        if wasVisible, case .input = mode, case .input = previousMode {
-            let newPosition = layer.position
-            if oldPosition != newPosition {
-                let move = CABasicAnimation(keyPath: "position")
-                move.fromValue = NSValue(cgPoint: oldPosition)
-                move.toValue = NSValue(cgPoint: newPosition)
-                move.duration = 0.08
-                move.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                layer.add(move, forKey: "calloutGlide")
-            }
-            if let oldPath, let newPath = bodyShape.path, oldPath != newPath {
-                let pathAnim = CABasicAnimation(keyPath: "path")
-                pathAnim.fromValue = oldPath
-                pathAnim.toValue = newPath
-                pathAnim.duration = 0.08
-                pathAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                bodyShape.add(pathAnim, forKey: "calloutPathGlide")
-            }
-            layer.removeAnimation(forKey: "calloutScale")
-            layer.transform = CATransform3DIdentity
-            return
-        }
+        guard wasHidden else { return }
 
-        // Already visible but not a glide (e.g. switching to/from an accent menu) → no pop.
-        guard !wasVisible else { return }
-
-        // First show: a soft "lift" pop (subtler than a bounce, so it reads as the key
-        // rising rather than a separate component appearing). Instant during a fast burst.
+        // Spring "pop" only on the first show of a typing burst. During rapid typing the
+        // callout shows/hides every keystroke; re-springing each key looks bouncy and adds
+        // render-server churn, so the controller passes `animated: false` within a burst for
+        // an instant pop that matches native iOS.
         if animated {
-            layer.transform = CATransform3DMakeScale(0.88, 0.88, 1.0)
+            layer.transform = CATransform3DMakeScale(0.80, 0.80, 1.0)
             let spring = CASpringAnimation(keyPath: "transform.scale")
-            spring.fromValue = 0.88
+            spring.fromValue = 0.80
             spring.toValue = 1.0
             spring.mass = 1.0
-            spring.stiffness = 260
-            spring.damping = 26
+            spring.stiffness = 220
+            spring.damping = 20
             spring.duration = spring.settlingDuration
             spring.isRemovedOnCompletion = true
             spring.fillMode = .forwards
@@ -433,57 +390,6 @@ final class KeyboardCalloutView: UIView {
             label.frame = CGRect(x: CGFloat(i) * slotW, y: 0, width: slotW, height: bubbleHeight)
             label.textColor = (i == safeIndex) ? .white : (isDark ? .white : .black)
         }
-    }
-
-    // MARK: - Snippets-switch Mode (single rotated icon)
-
-    private func configureSnippetsSwitchMode(keyFrame: CGRect, isDark: Bool, parentWidth: CGFloat) {
-        let bubbleWidth: CGFloat = 52
-        let bubbleHeight = Self.actionBubbleHeight
-
-        let keyCenterX = keyFrame.midX
-        let popupX = keyCenterX - bubbleWidth / 2
-        let clampedX = max(2, min(popupX, parentWidth - bubbleWidth - 2))
-        let popupY = max(0, keyFrame.minY - bubbleHeight - Self.actionGapAboveKey)
-        frame = CGRect(x: clampedX, y: popupY, width: bubbleWidth, height: bubbleHeight)
-
-        let bodyRect = CGRect(x: 0, y: 0, width: bubbleWidth, height: bubbleHeight)
-        let bodyPath = UIBezierPath(roundedRect: bodyRect, cornerRadius: Self.actionCornerRadius).cgPath
-        bodyShape.path = bodyPath
-        bodyShape.shadowPath = bodyPath
-        bodyShape.frame = bodyRect
-        bodyShape.fillColor = backgroundColor(isDark: isDark)
-        highlightShape.isHidden = true
-        inputLabel.isHidden = true
-        for label in actionLabels { label.isHidden = true }
-
-        // The snippets icon, "same icon with a little degree angle rotated".
-        let tint: UIColor = isDark ? .white : .black
-        let img = Self.snippetsIcon(pointSize: 22, tint: tint)
-        snippetsIconLayer.isHidden = false
-        snippetsIconLayer.contents = img?.cgImage
-        snippetsIconLayer.contentsScale = img?.scale ?? UIScreen.main.scale
-        let iw = img?.size.width ?? 22
-        let ih = img?.size.height ?? 22
-        // Reset transform before resizing so bounds/position apply in the unrotated space.
-        snippetsIconLayer.transform = CATransform3DIdentity
-        snippetsIconLayer.bounds = CGRect(x: 0, y: 0, width: iw, height: ih)
-        snippetsIconLayer.position = CGPoint(x: bubbleWidth / 2, y: bubbleHeight / 2)
-        snippetsIconLayer.transform = CATransform3DMakeRotation(-15 * .pi / 180, 0, 0, 1)
-    }
-
-    /// Tinted `sparkle` SF Symbol image for the snippets-switch callout. Cached.
-    private static var cachedSnippetsIcon: (size: CGFloat, rgba: UInt32, image: UIImage?)?
-    private static func snippetsIcon(pointSize: CGFloat, tint: UIColor) -> UIImage? {
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        tint.getRed(&r, green: &g, blue: &b, alpha: &a)
-        let rgba = (UInt32(r * 255) << 24) | (UInt32(g * 255) << 16) | (UInt32(b * 255) << 8) | UInt32(a * 255)
-        if let c = cachedSnippetsIcon, c.size == pointSize, c.rgba == rgba { return c.image }
-        let cfg = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .regular)
-        let img = UIImage(systemName: "sparkle", withConfiguration: cfg)?
-            .withTintColor(tint, renderingMode: .alwaysOriginal)
-        cachedSnippetsIcon = (pointSize, rgba, img)
-        return img
     }
 
     // MARK: - Style

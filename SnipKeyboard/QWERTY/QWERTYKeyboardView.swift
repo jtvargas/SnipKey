@@ -219,7 +219,8 @@ struct SlashTriggerButton: View {
 /// Horizontally arranged row of up to 3 word completion/correction pills.
 /// Mimics the native iOS QuickType suggestion bar appearance.
 /// Native suggestion-bar press feedback: a rounded gray highlight fills the pill's cell
-/// while it's pressed (no bounce/scale), matching the iOS predictive bar.
+/// while it's pressed (no bounce/scale, no animation — appears/clears instantly with the
+/// press so it feels immediate, matching the iOS predictive bar).
 struct SuggestionPillButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -230,7 +231,6 @@ struct SuggestionPillButtonStyle: ButtonStyle {
                     .padding(.horizontal, 2)
                     .opacity(configuration.isPressed ? 1 : 0)
             )
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
