@@ -297,6 +297,27 @@ struct SettingsView: View {
                     .onChange(of: currentSettings.shadowLoggingEnabled) { _, newValue in
                         AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.shadowLoggingEnabled)
                     }
+
+                    NavigationLink {
+                        ShadowTelemetryView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "chart.bar.xaxis")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Shadow Telemetry Report")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Disagreement rate, per-key heatmap, touch landing")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
                 } header: {
                     Text("Experimental")
                 } footer: {
