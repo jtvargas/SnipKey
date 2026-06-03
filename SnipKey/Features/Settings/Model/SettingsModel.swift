@@ -121,6 +121,10 @@ enum AppGroupSettings {
         /// next-gen engine). Default OFF — gated rollout per V2_KEYBOARD_NEXTGEN_PLAN.
         /// When off, the legacy 1D `SmartTouchResolver` path is used unchanged.
         static let useProbabilisticHitResolver = "useProbabilisticHitResolver"
+        /// Shadow-mode telemetry: run the non-acting resolver in parallel and log how often
+        /// it disagrees with the acting one (privacy-safe aggregates). Default OFF. Drives
+        /// the rollout gate + β/offset calibration in V2_KEYBOARD_NEXTGEN_PLAN §11–§12.
+        static let shadowLoggingEnabled = "shadowLoggingEnabled"
     }
 
     static func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {

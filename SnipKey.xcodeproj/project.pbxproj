@@ -148,6 +148,8 @@
 		C499471BC1178E27BCE65613 /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
 		D9F1A2B3C4D5E6F708192A3C /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
 		D9F1A2B3C4D5E6F708192A3D /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
+		E1A2B3C4D5E6F7A8B9C0D1E3 /* TypingTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */; };
+		E1A2B3C4D5E6F7A8B9C0D1E4 /* TypingTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -265,6 +267,7 @@
 		798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpaceBarCursorController.swift; path = V2/SpaceBarCursorController.swift; sourceTree = "<group>"; };
 		85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SmartTouchResolver.swift; path = V2/SmartTouchResolver.swift; sourceTree = "<group>"; };
 		D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProbabilisticHitResolver.swift; path = V2/ProbabilisticHitResolver.swift; sourceTree = "<group>"; };
+		E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TypingTelemetry.swift; path = V2/TypingTelemetry.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -453,6 +456,7 @@
 				798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */,
 				85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */,
 				D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */,
+				E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -756,6 +760,7 @@
 				2442C0CA741CAA2D7A8250C9 /* SpaceBarCursorController.swift in Sources */,
 				854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */,
 				D9F1A2B3C4D5E6F708192A3C /* ProbabilisticHitResolver.swift in Sources */,
+				E1A2B3C4D5E6F7A8B9C0D1E3 /* TypingTelemetry.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -839,6 +844,7 @@
 				1B89BCF6E55C957D694FFC9F /* SpaceBarCursorController.swift in Sources */,
 				C499471BC1178E27BCE65613 /* SmartTouchResolver.swift in Sources */,
 				D9F1A2B3C4D5E6F708192A3D /* ProbabilisticHitResolver.swift in Sources */,
+				E1A2B3C4D5E6F7A8B9C0D1E4 /* TypingTelemetry.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

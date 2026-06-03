@@ -411,6 +411,12 @@ class KeyboardViewController: UIInputViewController {
         setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
     }
 
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Persist shadow-mode telemetry off the hot path (no-op unless shadow logging is on).
+        TypingTelemetry.shared.flush()
+    }
+
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         // System dark-mode toggle (or any other trait change) while the keyboard is

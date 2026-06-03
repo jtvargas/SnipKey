@@ -43,6 +43,11 @@ final class KeyboardGestureCoordinator: UIView {
     private var useProbabilisticHitResolver = AppGroupSettings.bool(
         forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: false)
 
+    /// Shadow-mode telemetry: when on, the non-acting resolver is also computed per eligible
+    /// touch-down and the comparison logged (privacy-safe). Cached per session.
+    private var shadowLoggingEnabled = AppGroupSettings.bool(
+        forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
+
     /// Tunables for the power-diagram resolver. β stays 0 until calibrated on the touch
     /// corpus; the flag gates activation independently so the path can be exercised first.
     private var probabilisticConfig = ProbabilisticHitResolver.Config.default
@@ -155,6 +160,9 @@ final class KeyboardGestureCoordinator: UIView {
             forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
         useProbabilisticHitResolver = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: false)
+        shadowLoggingEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
+        TypingTelemetry.shared.enabled = shadowLoggingEnabled
         calloutController.updateParentWidth(bounds.width)
 
         #if DEBUG
@@ -641,11 +649,12 @@ final class KeyboardGestureCoordinator: UIView {
         // non-character keys. Symbols/number keys carry no meaningful English language prior.
         let touchContext = state.inputTracking.touchContext
         let allowsTransforms = actions?.inputTraits().allowsSmartTransforms ?? true
-        if useProbabilisticHitResolver,
-           rawKey.isCharacterKey,
-           currentPage == .letters,
-           allowsTransforms {
-            return ProbabilisticHitResolver.resolve(
+        // Eligible = a character key on the letters page in a smart-transform field. Only
+        // these get the language-prior engine (symbols/number keys carry no English prior).
+        let eligible = rawKey.isCharacterKey && currentPage == .letters && allowsTransforms
+
+        func newEngine() -> KeyFrame {
+            ProbabilisticHitResolver.resolve(
                 rawKey: rawKey,
                 point: point,
                 frames: resolvedFrames,
@@ -654,15 +663,31 @@ final class KeyboardGestureCoordinator: UIView {
                 config: probabilisticConfig
             )
         }
+        func legacy() -> KeyFrame {
+            SmartTouchResolver.resolve(
+                rawKey: rawKey,
+                point: point,
+                enabled: probabilisticTouchEnabled,
+                frames: resolvedFrames,
+                touchContext: touchContext,
+                dims: dims
+            )
+        }
 
-        return SmartTouchResolver.resolve(
-            rawKey: rawKey,
-            point: point,
-            enabled: probabilisticTouchEnabled,
-            frames: resolvedFrames,
-            touchContext: touchContext,
-            dims: dims
-        )
+        // Acting resolver — what actually commits. New engine only when its flag is on AND
+        // the touch is eligible; otherwise the legacy 1D path (unchanged).
+        let acting: KeyFrame = (useProbabilisticHitResolver && eligible) ? newEngine() : legacy()
+
+        // Shadow mode: compute the OTHER resolver too (only when eligible) and log the
+        // comparison without affecting what commits. The shadow cost is paid only when
+        // shadow logging is on.
+        if shadowLoggingEnabled, eligible {
+            let shadow: KeyFrame = useProbabilisticHitResolver ? legacy() : newEngine()
+            let layoutHash = currentPage.hashValue &* 31 &+ Int(bounds.width.rounded())
+            TypingTelemetry.shared.record(layout: layoutHash, acting: acting, shadow: shadow, point: point)
+        }
+
+        return acting
     }
 
     private func findKey(at point: CGPoint) -> KeyFrame? {
