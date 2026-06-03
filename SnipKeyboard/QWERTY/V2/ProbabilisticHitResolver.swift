@@ -147,6 +147,89 @@ enum ProbabilisticHitResolver {
     }
 }
 
+extension ProbabilisticHitResolver {
+
+    /// Pure Σ-normalized power-diagram winner over character keys — no anchor zone, no
+    /// anti-swallow fallback. For the debug cell visualization only (shows the raw decision
+    /// boundary the engine uses). Returns the winning index into `frames`, or -1.
+    static func debugWinningIndex(
+        point: CGPoint,
+        frames: [KeyFrame],
+        weightFor: (String) -> Float,
+        offsetFor: (KeyFrame) -> CGVector,
+        config: Config
+    ) -> Int {
+        let invSx = config.sigmaX > 0 ? 1 / config.sigmaX : 1
+        let invSy = config.sigmaY > 0 ? 1 / config.sigmaY : 1
+        let tx = Float(point.x) * invSx
+        let ty = Float(point.y) * invSy
+        let logFloor = logf(1.0 / Float(max(config.vocab, 2)))
+        var best = -1
+        var bestScore = Float.greatestFiniteMagnitude
+        for (i, f) in frames.enumerated() where f.isCharacterKey {
+            guard case .character(let c) = f.action else { continue }
+            let off = offsetFor(f)
+            let cx = Float(f.rect.midX + off.dx) * invSx
+            let cy = Float(f.rect.midY + off.dy) * invSy
+            let dx = tx - cx
+            let dy = ty - cy
+            let w = config.beta * max(logf(max(weightFor(c), 1e-6)), logFloor)
+            let score = dx * dx + dy * dy - w
+            if score < bestScore { bestScore = score; best = i }
+        }
+        return best
+    }
+
+    /// Rasterize the decision cells over `bounds` into a coarse CGImage (one color per winning
+    /// key index). Off the hot path — called only on layout/weight change when the debug
+    /// overlay is on. `stepPoints` trades crispness for cost (~6pt ⇒ a few hundred samples).
+    static func debugCellImage(
+        frames: [KeyFrame],
+        bounds: CGRect,
+        stepPoints: CGFloat,
+        weightFor: (String) -> Float,
+        offsetFor: (KeyFrame) -> CGVector,
+        config: Config
+    ) -> CGImage? {
+        let cols = max(Int(bounds.width / stepPoints), 1)
+        let rows = max(Int(bounds.height / stepPoints), 1)
+        guard let ctx = CGContext(
+            data: nil, width: cols, height: rows, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+
+        for ry in 0..<rows {
+            for rx in 0..<cols {
+                let pt = CGPoint(x: (CGFloat(rx) + 0.5) * stepPoints,
+                                 y: (CGFloat(ry) + 0.5) * stepPoints)
+                let idx = debugWinningIndex(point: pt, frames: frames,
+                                            weightFor: weightFor, offsetFor: offsetFor, config: config)
+                guard idx >= 0 else { continue }
+                let (r, g, b) = cellColor(idx)
+                ctx.setFillColor(red: r, green: g, blue: b, alpha: 0.28)
+                // CGContext origin is bottom-left; place view-row `ry` at the top.
+                ctx.fill(CGRect(x: rx, y: rows - 1 - ry, width: 1, height: 1))
+            }
+        }
+        return ctx.makeImage()
+    }
+
+    /// Distinct, stable per-index color via the golden-ratio hue sequence.
+    private static func cellColor(_ index: Int) -> (CGFloat, CGFloat, CGFloat) {
+        let hue = (CGFloat(index) * 0.61803398875).truncatingRemainder(dividingBy: 1.0)
+        return UIColor(hue: hue, saturation: 0.9, brightness: 1.0, alpha: 1).rgbComponents()
+    }
+}
+
+private extension UIColor {
+    func rgbComponents() -> (CGFloat, CGFloat, CGFloat) {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        getRed(&r, green: &g, blue: &b, alpha: &a)
+        return (r, g, b)
+    }
+}
+
 /// Population-prior touch-offset correction — the systematic per-row vertical bias users
 /// exhibit when typing (the registered touch centroid is not the key's geometric center).
 /// Offsets move the power-diagram SITE (`c_k = center + offset`), independent of the language

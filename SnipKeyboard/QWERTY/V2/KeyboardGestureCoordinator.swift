@@ -52,6 +52,10 @@ final class KeyboardGestureCoordinator: UIView {
     /// corpus; the flag gates activation independently so the path can be exercised first.
     private var probabilisticConfig = ProbabilisticHitResolver.Config.default
 
+    /// Debug overlay that paints the next-gen engine's actual decision cells. Shown only when
+    /// the hit-overlay setting AND the next-gen engine are both on; recomputed off the hot path.
+    private let voronoiDebugLayer = CALayer()
+
     #if DEBUG
     private static var didRunResolverSelfTest = false
     #endif
@@ -124,6 +128,13 @@ final class KeyboardGestureCoordinator: UIView {
         // Multi-touch enabled so rolling-type (overlapping fingers) doesn't drop keys.
         isMultipleTouchEnabled = true
         lightImpactHaptic.prepare()
+
+        // Debug Voronoi overlay sits above the key layers (but below the near-transparent
+        // KeyHitView subviews). Hidden unless the debug overlay + next-gen engine are on.
+        voronoiDebugLayer.isHidden = true
+        voronoiDebugLayer.magnificationFilter = .nearest
+        voronoiDebugLayer.zPosition = 50
+        layer.addSublayer(voronoiDebugLayer)
 
         // Coord conversions: callout lives on the keyboard's root view, so its
         // `keyFrame:` rect must be in root-view coords (callout's superview).
@@ -273,6 +284,34 @@ final class KeyboardGestureCoordinator: UIView {
 
         rebuildAccessibilityElements()
         rebuildHitViews()
+        updateVoronoiDebugOverlay()
+    }
+
+    /// Paint the next-gen engine's decision cells when both the debug hit-overlay setting and
+    /// the engine are enabled. Off the hot path (layout changes only). Hidden otherwise.
+    private func updateVoronoiDebugOverlay() {
+        let on = useProbabilisticHitResolver
+            && AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false)
+        guard on, let state, bounds.width > 1, bounds.height > 1, !resolvedFrames.isEmpty else {
+            voronoiDebugLayer.isHidden = true
+            voronoiDebugLayer.contents = nil
+            return
+        }
+        let tc = state.inputTracking.touchContext
+        let image = ProbabilisticHitResolver.debugCellImage(
+            frames: resolvedFrames,
+            bounds: bounds,
+            stepPoints: 6,
+            weightFor: { tc.weight(for: $0.first ?? " ") },
+            offsetFor: { PopulationOffset.offset(for: $0) },
+            config: probabilisticConfig
+        )
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        voronoiDebugLayer.frame = bounds
+        voronoiDebugLayer.contents = image
+        voronoiDebugLayer.isHidden = (image == nil)
+        CATransaction.commit()
     }
 
     /// Rebuild the tiling `KeyHitView` touch targets in lockstep with `resolvedFrames`.
