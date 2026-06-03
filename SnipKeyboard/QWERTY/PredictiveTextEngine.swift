@@ -180,6 +180,7 @@ final class PredictiveTextTracker {
 
 /// Holds the current predictive text suggestions for the toolbar.
 /// Mutations trigger toolbar re-renders, so all setters use equality guards.
+@MainActor
 @Observable
 class PredictiveTextState {
     /// Current word suggestions to display in the toolbar (max 3)
@@ -188,18 +189,34 @@ class PredictiveTextState {
     /// The partial word being completed (used to know how many chars to delete on selection)
     var partialWord: String = ""
 
+    /// User-dismissed for the rest of this keyboard session via long-press on the middle
+    /// pill. Resets next time the keyboard mounts. While `true`, `updateSuggestions` is a no-op.
+    var dismissedForSession: Bool = false
+
     /// Whether suggestions are available and should be shown
     var isActive: Bool { !suggestions.isEmpty }
+
+    /// Non-isolated initializer so the `@Entry` macro can call it from a non-isolated context.
+    /// All stored properties use literal defaults that don't touch main-actor state.
+    nonisolated init() {}
 
     /// Update suggestions from tracker evaluation.
     /// All setters use equality guards to prevent unnecessary re-renders.
     func updateSuggestions(suggestions: [String], partialWord: String) {
+        guard !dismissedForSession else { return }
         if self.suggestions != suggestions {
             self.suggestions = suggestions
         }
         if self.partialWord != partialWord {
             self.partialWord = partialWord
         }
+    }
+
+    /// Dismiss the bar for the remainder of this keyboard session.
+    /// Matches native iOS's "long-press the middle suggestion to silence predictions" gesture.
+    func dismissForSession() {
+        dismissedForSession = true
+        dismiss()
     }
 
     /// Clear all suggestions
@@ -215,13 +232,6 @@ class PredictiveTextState {
 
 // MARK: - SwiftUI Environment Key
 
-private struct PredictiveTextStateKey: EnvironmentKey {
-    static let defaultValue = PredictiveTextState()
-}
-
 extension EnvironmentValues {
-    var predictiveTextState: PredictiveTextState {
-        get { self[PredictiveTextStateKey.self] }
-        set { self[PredictiveTextStateKey.self] = newValue }
-    }
+    @Entry var predictiveTextState: PredictiveTextState = PredictiveTextState()
 }

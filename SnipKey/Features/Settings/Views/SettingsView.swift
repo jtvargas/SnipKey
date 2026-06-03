@@ -153,12 +153,104 @@ struct SettingsView: View {
                                 .frame(width: 28, height: 28)
                                 .background(Color.orange)
                                 .cornerRadius(6)
-                            
+
                             Text("QWERTY Keyboard")
                                 .font(.custom("IBMPlexMono-Medium", size: 15))
                         }
                     }
                     .tint(.orange)
+
+                    Toggle(isOn: $currentSettings.useNativeKeyboardV2) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.indigo)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Native Keyboard V2 (Beta)")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("KeyboardKit-style with finger-slide & accents")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.indigo)
+                    .onChange(of: currentSettings.useNativeKeyboardV2) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
+                    }
+
+                    Toggle(isOn: $currentSettings.probabilisticTouchEnabled) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "target")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.teal)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Smart Touch Targeting")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Improves accuracy when typing fast")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.teal)
+                    .onChange(of: currentSettings.probabilisticTouchEnabled) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
+                    }
+
+                    Toggle(isOn: $currentSettings.autoCapitalizationEnabled) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "textformat")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.green)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Auto-Capitalization")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Capitalize sentence starts and lone \"i\"")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.green)
+                    .onChange(of: currentSettings.autoCapitalizationEnabled) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
+                    }
+
+                    Toggle(isOn: $currentSettings.debugHitOverlayEnabled) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.grid.3x3")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.red)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Show Hit-Test Overlay")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Debug: outline each key's touch cell (reopen keyboard to apply)")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.red)
+                    .onChange(of: currentSettings.debugHitOverlayEnabled) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
+                    }
                 } header: {
                     Text("Experimental")
                 } footer: {
@@ -313,6 +405,24 @@ struct SettingsView: View {
                 settingsViewModel.modelContext = modelContext
                 if let myCurrentSettings = settings.first {
                     currentSettings = myCurrentSettings
+                    // Mirror SwiftData settings to the App Group so the keyboard extension
+                    // can read them synchronously at launch.
+                    AppGroupSettings.setBool(
+                        myCurrentSettings.useNativeKeyboardV2,
+                        forKey: AppGroupSettings.Key.useNativeKeyboardV2
+                    )
+                    AppGroupSettings.setBool(
+                        myCurrentSettings.probabilisticTouchEnabled,
+                        forKey: AppGroupSettings.Key.probabilisticTouchEnabled
+                    )
+                    AppGroupSettings.setBool(
+                        myCurrentSettings.autoCapitalizationEnabled,
+                        forKey: AppGroupSettings.Key.autoCapitalizationEnabled
+                    )
+                    AppGroupSettings.setBool(
+                        myCurrentSettings.debugHitOverlayEnabled,
+                        forKey: AppGroupSettings.Key.debugHitOverlayEnabled
+                    )
                 }
             }
         }
@@ -332,6 +442,14 @@ struct SettingsView: View {
     private func resetKeyboardSettings() {
         currentSettings.afterPasteAction = .space
         currentSettings.isQWERTYKeyboardEnabled = false
+        currentSettings.useNativeKeyboardV2 = true
+        currentSettings.probabilisticTouchEnabled = true
+        currentSettings.autoCapitalizationEnabled = true
+        currentSettings.debugHitOverlayEnabled = false
+        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
+        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
+        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
+        AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
     }
 }
 

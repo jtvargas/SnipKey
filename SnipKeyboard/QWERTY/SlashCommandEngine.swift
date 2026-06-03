@@ -91,6 +91,7 @@ final class SlashCommandTracker {
 
 /// Holds the current slash command suggestions for the toolbar.
 /// Mutations trigger toolbar re-renders, so all setters use equality guards.
+@MainActor
 @Observable
 class SlashCommandState {
     /// Whether the slash command suggestion bar is visible
@@ -104,6 +105,10 @@ class SlashCommandState {
 
     /// Maximum number of matches to keep in memory
     private static let maxResults = 10
+
+    /// Non-isolated initializer so the `@Entry` macro can call it from a non-isolated context.
+    /// All stored properties use literal defaults that don't touch main-actor state.
+    nonisolated init() {}
 
     /// Update activation state from tracker evaluation (Phase 1 — UIKit side).
     /// Only mutates isActive/query. Snippet matching happens in Phase 2 (SwiftUI side).
@@ -242,13 +247,6 @@ class SlashCommandState {
 
 // MARK: - SwiftUI Environment Key
 
-private struct SlashCommandStateKey: EnvironmentKey {
-    static let defaultValue = SlashCommandState()
-}
-
 extension EnvironmentValues {
-    var slashCommandState: SlashCommandState {
-        get { self[SlashCommandStateKey.self] }
-        set { self[SlashCommandStateKey.self] = newValue }
-    }
+    @Entry var slashCommandState: SlashCommandState = SlashCommandState()
 }

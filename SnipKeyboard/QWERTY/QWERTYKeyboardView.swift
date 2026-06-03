@@ -87,6 +87,9 @@ struct KeyboardToolbarView: View {
                         suggestions: predictiveState.suggestions,
                         onSelect: { suggestion in
                             handlePredictiveSelection(suggestion)
+                        },
+                        onDismissForSession: {
+                            predictiveState.dismissForSession()
                         }
                     )
                 } else {
@@ -105,7 +108,8 @@ struct KeyboardToolbarView: View {
 //            }
 //            .buttonStyle(.plain)
         }
-        .frame(height: dimensions.toolbarHeight)
+        .frame(height: dimensions.toolbarHeight - dimensions.toolbarItemBottomGap)
+        .frame(height: dimensions.toolbarHeight, alignment: .top)
         .padding(.horizontal, 12)
         // React to slash command activation and query changes
         .onChange(of: slashState.isActive) { _, isActive in
@@ -154,6 +158,8 @@ struct KeyboardToolbarView: View {
 
         // 4. Dismiss slash command mode
         slashState.dismiss()
+        // Snippet content is multi-word/arbitrary — never carries a smart space.
+        state.inputTracking.pendingSmartSpace = false
     }
 
     // MARK: - Predictive Text Selection
@@ -167,6 +173,9 @@ struct KeyboardToolbarView: View {
 
         // Insert the full suggestion + trailing space
         actions.insertText(suggestion + " ")
+        // Mark the trailing space as a "smart space" so the next punctuation attaches to
+        // the word (native iOS behavior). Consumed/cleared in the commit pipeline.
+        state.inputTracking.pendingSmartSpace = true
 
         // Reset and re-evaluate
         predictiveState.dismiss()
@@ -201,6 +210,7 @@ struct SlashTriggerButton: View {
                         )
                         .shadow(color: .black.opacity(0.06), radius: 0, x: 0, y: 0.5)
                 )
+                .debugHitOverlay()
         }
         .buttonStyle(.plain)
     }
@@ -210,9 +220,48 @@ struct SlashTriggerButton: View {
 
 /// Horizontally arranged row of up to 3 word completion/correction pills.
 /// Mimics the native iOS QuickType suggestion bar appearance.
+/// Native suggestion-bar press feedback: a rounded gray highlight fills the pill's cell
+/// while it's pressed (no bounce/scale, no animation — appears/clears instantly with the
+/// press so it feels immediate, matching the iOS predictive bar).
+struct SuggestionPillButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color(.systemFill))
+                    .padding(.vertical, 5)
+                    .padding(.horizontal, 2)
+                    .opacity(configuration.isPressed ? 1 : 0)
+            )
+    }
+}
+
+// MARK: - Debug Hit-Area Overlay
+
+extension View {
+    /// DEBUG (off by default): outline this view's hit area with the same red border/fill
+    /// used for the keys' touch cells, so the suggestion/snippet press regions can be
+    /// inspected. Gated by Settings → "Show Hit-Test Overlay"
+    /// (`AppGroupSettings.Key.debugHitOverlayEnabled`). Read at render time — reopen the
+    /// keyboard to apply, matching the keys overlay. No layout/behavior change when off.
+    @ViewBuilder
+    func debugHitOverlay() -> some View {
+        if AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false) {
+            self
+                .background(Color(.systemRed).opacity(0.08))
+                .overlay(Rectangle().stroke(Color(.systemRed).opacity(0.9), lineWidth: 1))
+        } else {
+            self
+        }
+    }
+}
+
 struct PredictiveSuggestionsView: View {
     let suggestions: [String]
     let onSelect: (String) -> Void
+    /// Called when the user long-presses the middle pill — matches native iOS, which
+    /// long-presses the user's literal typed word to dismiss predictions for the session.
+    var onDismissForSession: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 0) {
@@ -225,17 +274,26 @@ struct PredictiveSuggestionsView: View {
                         .padding(.vertical, 8)
                 }
 
+                let isMiddle = (suggestions.count >= 2 && index == suggestions.count / 2)
                 Button {
                     onSelect(suggestion)
                 } label: {
                     Text(suggestion)
-                        .font(.custom("IBMPlexMono-Medium", size: 13))
+                        .font(.custom("IBMPlexMono-Medium", size: 16))
                         .foregroundStyle(Color(.label))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable when overlay is off
                         .contentShape(Rectangle())
+                        .debugHitOverlay()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SuggestionPillButtonStyle())
+                .simultaneousGesture(
+                    isMiddle
+                        ? LongPressGesture(minimumDuration: 0.4)
+                            .onEnded { _ in onDismissForSession?() }
+                        : nil
+                )
             }
         }
     }
@@ -271,15 +329,17 @@ struct SlashSuggestionsView: View {
                                         .foregroundStyle(Color(.tertiaryLabel))
                                 }
                                 Text(snippet.title ?? "Untitled")
-                                    .font(.custom("IBMPlexMono-Medium", size: 13))
+                                    .font(.custom("IBMPlexMono-Medium", size: 16))
                                     .foregroundStyle(Color(.label))
                                     .lineLimit(1)
                             }
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, 14)
                             .frame(maxHeight: .infinity)
+                            .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable when overlay is off
                             .contentShape(Rectangle())
+                            .debugHitOverlay()
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SuggestionPillButtonStyle())
                     }
                 }
             }
@@ -294,6 +354,7 @@ struct SlashSuggestionsView: View {
                     .frame(width: 28, height: 28)
                     .background(Color(.tertiarySystemFill))
                     .clipShape(Circle())
+                    .debugHitOverlay()
             }
             .buttonStyle(.plain)
             .padding(.leading, 4)

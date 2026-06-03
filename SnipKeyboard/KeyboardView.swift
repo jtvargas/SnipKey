@@ -597,7 +597,7 @@ struct KeyboardView: View {
 // MARK: - Keyboard View Extension (Root Entry Point)
 
 struct KeyboardViewExt: View {
-    let container = SnipKeyDataManager().makeSharedContainer()
+    @State private var container: ModelContainer?
     @State private var settingsViewModel: SettingsViewModel?
 
     var qwertyState: QWERTYKeyboardState
@@ -607,11 +607,15 @@ struct KeyboardViewExt: View {
 
     var body: some View {
         Group {
-            if let settingsViewModel = settingsViewModel {
+            if let container = container, let settingsViewModel = settingsViewModel {
                 Group {
                     if qwertyState.showingSnippets {
                         KeyboardView()
+                    } else if AppGroupSettings.bool(forKey: AppGroupSettings.Key.useNativeKeyboardV2, default: true) {
+                        // V2 (experimental) — single-root gesture, finger-slide, accents, space cursor.
+                        NativeKeyboardV2View_SwiftUI(adjustCaret: keyboardActions.adjustCaret)
                     } else {
+                        // V1 — original per-key UIControl implementation.
                         QWERTYKeyboardView()
                     }
                 }
@@ -622,34 +626,33 @@ struct KeyboardViewExt: View {
                 .environment(\.slashCommandState, slashCommandState)
                 .environment(\.predictiveTextState, predictiveTextState)
             } else {
-                ProgressView()
-                    .onAppear {
-                        Task {
-                            await loadSettingsViewModel()
-                        }
-                    }
+                // Reserve the full keyboard rect so the system shows the keyboard
+                // frame instantly. No ProgressView — it would draw and animate,
+                // adding visible jitter while SwiftData is still opening.
+                Color.clear
+                    .frame(height: KeyboardDimensions.totalHeight(forScreenWidth: UIScreen.main.bounds.width))
             }
+        }
+        .task {
+            await loadIfNeeded()
         }
     }
 
-    private func loadSettingsViewModel() async {
-        let modelContext = await container.mainContext
+    private func loadIfNeeded() async {
+        guard container == nil else { return }
+        let loaded = await ModelContainerProvider.shared.get()
+        let modelContext = loaded.mainContext
         let viewModel = SettingsViewModel(modelContext: modelContext)
-        
+
         // Read the experimental QWERTY keyboard setting to determine initial view.
-        // If QWERTY is enabled, show the QWERTY keyboard first (showingSnippets = false).
-        // If QWERTY is disabled (default), show the snippet list first (showingSnippets = true).
-        let isQWERTYEnabled = await fetchQWERTYKeyboardSetting(from: modelContext)
-        if isQWERTYEnabled {
-            qwertyState.showingSnippets = false
-        } else {
-            qwertyState.showingSnippets = true
-        }
-        
+        let isQWERTYEnabled = fetchQWERTYKeyboardSetting(from: modelContext)
+        qwertyState.showingSnippets = !isQWERTYEnabled
+
+        container = loaded
         settingsViewModel = viewModel
     }
-    
-    private func fetchQWERTYKeyboardSetting(from context: ModelContext) async -> Bool {
+
+    private func fetchQWERTYKeyboardSetting(from context: ModelContext) -> Bool {
         let descriptor = FetchDescriptor<SettingsModel>()
         do {
             let settings = try context.fetch(descriptor)

@@ -131,7 +131,7 @@ final class KeyPopupView: UIView {
     ///   - keyFrame: The visual key's frame in the keyboard view's coordinate space
     ///   - isDark: Whether the keyboard is in dark mode
     func show(character: String, keyFrame: CGRect, isDark: Bool) {
-        // Update label
+        // Label is a UIView property, not a CALayer property — set outside CATransaction
         label.text = character
         label.font = UIFont.systemFont(ofSize: Self.fontSize, weight: .regular)
 
@@ -144,43 +144,42 @@ final class KeyPopupView: UIView {
             bgColor = UIColor.white.cgColor
             label.textColor = .black
         }
-        bodyShape.fillColor = bgColor
-        tailShape.fillColor = bgColor
 
-        // Position: center the popup body over the key, with tail pointing down at key top
+        // Compute target geometry
         let keyCenterX = keyFrame.midX
         let keyTopY = keyFrame.minY
-
         let popupX = keyCenterX - Self.bodyWidth / 2
         let popupY = keyTopY - (Self.bodyHeight + Self.tailHeight)
-
-        // Clamp popup horizontally to stay within keyboard bounds
         let parentWidth = superview?.bounds.width ?? UIScreen.main.bounds.width
         let clampedX = max(2, min(popupX, parentWidth - Self.bodyWidth - 2))
-
-        // Move the tail to point at the key center, even if the body was clamped.
-        // tailOffsetX is where the key center falls relative to the popup's left edge.
         let tailOffsetX = keyCenterX - clampedX
-        // Clamp the tail within the body (respecting corner radius so it doesn't overlap rounded corners)
         let minTailX = Self.bodyCornerRadius + Self.tailWidth / 2
         let maxTailX = Self.bodyWidth - Self.bodyCornerRadius - Self.tailWidth / 2
         let clampedTailX = max(minTailX, min(tailOffsetX, maxTailX))
 
-        // Reposition tail — single CALayer.position.x write, no path rebuild
+        let wasHidden = isHidden
+
+        // All CALayer mutations wrapped in a single transaction with implicit
+        // animations disabled. Without this, AppKit/UIKit fires default 0.25s
+        // CABasicAnimations on every property change, causing visible cross-fades
+        // and color/position blends as the popup hops between keys during typing.
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        bodyShape.fillColor = bgColor
+        tailShape.fillColor = bgColor
         tailShape.position = CGPoint(x: clampedTailX, y: Self.bodyHeight)
+        frame.origin = CGPoint(x: clampedX, y: max(0, popupY))
+        if wasHidden {
+            isHidden = false
+            layer.transform = CATransform3DMakeScale(0.7, 0.7, 1.0)
+        } else {
+            layer.removeAnimation(forKey: "popupScale")
+            layer.transform = CATransform3DIdentity
+        }
         CATransaction.commit()
 
-        frame.origin = CGPoint(x: clampedX, y: max(0, popupY))
-
-        // Show with spring scale animation
-        if isHidden {
-            isHidden = false
-            // Start slightly scaled down
-            layer.transform = CATransform3DMakeScale(0.7, 0.7, 1.0)
-
-            // Animate to full size with spring
+        // Spring entry animation only on first show (key-to-key reposition is instant)
+        if wasHidden {
             let spring = CASpringAnimation(keyPath: "transform.scale")
             spring.fromValue = 0.7
             spring.toValue = 1.0
@@ -192,18 +191,17 @@ final class KeyPopupView: UIView {
             spring.fillMode = .forwards
             layer.add(spring, forKey: "popupScale")
             layer.transform = CATransform3DIdentity
-        } else {
-            // Already visible (switching between keys) — just reposition, no animation
-            layer.removeAnimation(forKey: "popupScale")
-            layer.transform = CATransform3DIdentity
         }
     }
 
     /// Hide the pop-up instantly.
     func hide() {
         guard !isHidden else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         layer.removeAnimation(forKey: "popupScale")
         layer.transform = CATransform3DIdentity
         isHidden = true
+        CATransaction.commit()
     }
 }
