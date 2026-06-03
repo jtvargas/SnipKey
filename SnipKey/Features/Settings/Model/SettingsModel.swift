@@ -117,6 +117,10 @@ enum AppGroupSettings {
         static let probabilisticTouchEnabled = "probabilisticTouchEnabled"
         static let autoCapitalizationEnabled = "autoCapitalizationEnabled"
         static let debugHitOverlayEnabled = "debugHitOverlayEnabled"
+        /// Staged-enablement flag for the 2D power-diagram hit resolver (Keyboard V2
+        /// next-gen engine). Default OFF — gated rollout per V2_KEYBOARD_NEXTGEN_PLAN.
+        /// When off, the legacy 1D `SmartTouchResolver` path is used unchanged.
+        static let useProbabilisticHitResolver = "useProbabilisticHitResolver"
     }
 
     static func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {

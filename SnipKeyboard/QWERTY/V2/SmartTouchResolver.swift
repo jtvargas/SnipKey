@@ -29,6 +29,7 @@ enum SmartTouchResolver {
     static func resolve(
         rawKey: KeyFrame,
         point: CGPoint,
+        enabled: Bool,
         frames: [KeyFrame],
         touchContext: ProbabilisticTouchContext,
         dims: KeyboardDimensions
@@ -36,10 +37,10 @@ enum SmartTouchResolver {
         // Only re-resolve character-key touches. Non-character keys (shift/space/return)
         // are always the visually-hit target.
         guard case .character = rawKey.action else { return rawKey }
-        // Settings gate. Default ON as of Phase I.
-        guard AppGroupSettings.bool(forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true) else {
-            return rawKey
-        }
+        // Settings gate. The caller passes the cached `probabilisticTouchEnabled` value
+        // (read once per keyboard session) so the hot path avoids a per-keystroke
+        // UserDefaults lookup. Default ON as of Phase I.
+        guard enabled else { return rawKey }
 
         // Collect character keys in the same row as the raw hit, ordered left-to-right.
         // `frames` arrives in row-major order from the resolver, so this filter is

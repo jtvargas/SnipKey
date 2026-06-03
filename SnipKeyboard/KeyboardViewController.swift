@@ -365,6 +365,11 @@ class KeyboardViewController: UIInputViewController {
         ) { [weak self] _ in
             self?.textDocumentProxy.insertText(" ")
         }
+
+        // Tell the system we want to defer left/right edge system gestures (see the
+        // `preferredScreenEdgesDeferringSystemGestures` override). Must be called after the
+        // view hierarchy is set up; re-applied in `viewWillAppear`.
+        setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
     }
     
     //    Simulate fast deletion
@@ -390,6 +395,22 @@ class KeyboardViewController: UIInputViewController {
         }
     }
     
+    // MARK: - Edge gesture deferral
+
+    /// Defer the system's left/right screen-edge pan gestures so the FIRST touch on the
+    /// left/right key columns (Q/A/Z, P/L/M-area, backspace) reaches our keys immediately
+    /// instead of being swallowed for ~1s by `UIScreenEdgePanGestureRecognizer`. Real-device
+    /// only; validated on iOS 16–18. Paired with `setNeedsUpdateOfScreenEdgesDeferringSystemGestures()`
+    /// in `viewDidLoad` / `viewWillAppear`.
+    override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge {
+        [.left, .right]
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
+    }
+
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         // System dark-mode toggle (or any other trait change) while the keyboard is

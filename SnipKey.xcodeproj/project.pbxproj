@@ -146,6 +146,8 @@
 		1B89BCF6E55C957D694FFC9F /* SpaceBarCursorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */; };
 		854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
 		C499471BC1178E27BCE65613 /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
+		D9F1A2B3C4D5E6F708192A3C /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
+		D9F1A2B3C4D5E6F708192A3D /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -262,6 +264,7 @@
 		80EB0CF160026E9B1BAF2EE5 /* NativeKeyboardV2View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NativeKeyboardV2View.swift; path = V2/NativeKeyboardV2View.swift; sourceTree = "<group>"; };
 		798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpaceBarCursorController.swift; path = V2/SpaceBarCursorController.swift; sourceTree = "<group>"; };
 		85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SmartTouchResolver.swift; path = V2/SmartTouchResolver.swift; sourceTree = "<group>"; };
+		D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProbabilisticHitResolver.swift; path = V2/ProbabilisticHitResolver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -449,6 +452,7 @@
 				80EB0CF160026E9B1BAF2EE5 /* NativeKeyboardV2View.swift */,
 				798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */,
 				85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */,
+				D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -751,6 +755,7 @@
 				EFE5647EEF13001D16377DCC /* NativeKeyboardV2View.swift in Sources */,
 				2442C0CA741CAA2D7A8250C9 /* SpaceBarCursorController.swift in Sources */,
 				854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */,
+				D9F1A2B3C4D5E6F708192A3C /* ProbabilisticHitResolver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -833,6 +838,7 @@
 				F3A0883B7A607F9D9FCD5AEE /* NativeKeyboardV2View.swift in Sources */,
 				1B89BCF6E55C957D694FFC9F /* SpaceBarCursorController.swift in Sources */,
 				C499471BC1178E27BCE65613 /* SmartTouchResolver.swift in Sources */,
+				D9F1A2B3C4D5E6F708192A3D /* ProbabilisticHitResolver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

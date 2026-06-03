@@ -127,4 +127,13 @@ final class ProbabilisticTouchContext {
             return source[lower] ?? (1.0 / 26.0)
         }
     }
+
+    /// Probability weight P(char | context) for a single character, reading the same
+    /// pre-baked source as `weightsForRow`. Used by the 2D `ProbabilisticHitResolver`,
+    /// which scores all character keys (not just one row) per touch-down. Unknown chars
+    /// get the uniform fallback. No blending math on the hot path.
+    func weight(for char: Character) -> Float {
+        let source = blendedWeights ?? currentWeights
+        return source[Character(char.lowercased())] ?? (1.0 / 26.0)
+    }
 }

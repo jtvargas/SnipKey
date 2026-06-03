@@ -29,6 +29,28 @@ final class KeyboardGestureCoordinator: UIView {
     private let calloutController: CalloutController
     private let spaceCursor = SpaceBarCursorController()
 
+    /// Cached "probabilistic touch enabled" setting. The value lives in App Group
+    /// UserDefaults (written by the host app's Settings screen) and cannot change while
+    /// the user is typing — flipping it requires leaving the keyboard. So we read it once
+    /// per keyboard session in `configure(...)` instead of on every character touch-down,
+    /// keeping the smart-touch hot path free of repeated settings lookups.
+    private var probabilisticTouchEnabled = AppGroupSettings.bool(
+        forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
+
+    /// Staged-enablement flag for the 2D power-diagram resolver (V2 next-gen engine).
+    /// Cached once per session like `probabilisticTouchEnabled`. When off, the legacy 1D
+    /// `SmartTouchResolver` path runs unchanged. See V2_KEYBOARD_NEXTGEN_PLAN.md.
+    private var useProbabilisticHitResolver = AppGroupSettings.bool(
+        forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: false)
+
+    /// Tunables for the power-diagram resolver. β stays 0 until calibrated on the touch
+    /// corpus; the flag gates activation independently so the path can be exercised first.
+    private var probabilisticConfig = ProbabilisticHitResolver.Config.default
+
+    #if DEBUG
+    private static var didRunResolverSelfTest = false
+    #endif
+
     /// Caret-move callback (only used in cursor mode).
     /// Argument: signed character offset to apply.
     var adjustCaret: ((Int) -> Void)?
@@ -128,7 +150,19 @@ final class KeyboardGestureCoordinator: UIView {
     func configure(actions: KeyboardActions, dims: KeyboardDimensions) {
         self.actions = actions
         self.dims = dims
+        // Refresh cached settings once per keyboard session (this is the cold-start seam).
+        probabilisticTouchEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
+        useProbabilisticHitResolver = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: false)
         calloutController.updateParentWidth(bounds.width)
+
+        #if DEBUG
+        if !Self.didRunResolverSelfTest {
+            Self.didRunResolverSelfTest = true
+            ProbabilisticHitResolver.runEquivalenceSelfTest()
+        }
+        #endif
     }
 
     /// Provide the layout for the current page and rerender.
@@ -599,11 +633,34 @@ final class KeyboardGestureCoordinator: UIView {
     /// Non-character keys, and presses while smart touch is disabled, pass through unchanged.
     private func smartResolved(rawKey: KeyFrame, at point: CGPoint) -> KeyFrame {
         guard let state else { return rawKey }
+        guard probabilisticTouchEnabled else { return rawKey }
+
+        // 2D power-diagram engine (V2 next-gen), gated to the letters page and fields that
+        // allow smart transforms (excludes URL/email/number pads). Non-letters pages and
+        // opted-out fields fall through to the legacy 1D path, which itself no-ops for
+        // non-character keys. Symbols/number keys carry no meaningful English language prior.
+        let touchContext = state.inputTracking.touchContext
+        let allowsTransforms = actions?.inputTraits().allowsSmartTransforms ?? true
+        if useProbabilisticHitResolver,
+           rawKey.isCharacterKey,
+           currentPage == .letters,
+           allowsTransforms {
+            return ProbabilisticHitResolver.resolve(
+                rawKey: rawKey,
+                point: point,
+                frames: resolvedFrames,
+                weightFor: { str in touchContext.weight(for: str.first ?? " ") },
+                offsetFor: { PopulationOffset.offset(for: $0) },
+                config: probabilisticConfig
+            )
+        }
+
         return SmartTouchResolver.resolve(
             rawKey: rawKey,
             point: point,
+            enabled: probabilisticTouchEnabled,
             frames: resolvedFrames,
-            touchContext: state.inputTracking.touchContext,
+            touchContext: touchContext,
             dims: dims
         )
     }
