@@ -301,13 +301,15 @@ final class KeyboardGestureCoordinator: UIView {
             return
         }
         let tc = state.inputTracking.touchContext
+        var cfg = probabilisticConfig
+        cfg.beta *= tc.confidence
         let image = ProbabilisticHitResolver.debugCellImage(
             frames: resolvedFrames,
             bounds: bounds,
             stepPoints: 6,
             weightFor: { tc.weight(for: $0.first ?? " ") },
             offsetFor: { [weak self] in self?.siteOffset(for: $0) ?? .zero },
-            config: probabilisticConfig
+            config: cfg
         )
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -715,13 +717,17 @@ final class KeyboardGestureCoordinator: UIView {
         let eligible = rawKey.isCharacterKey && currentPage == .letters && allowsTransforms
 
         func newEngine() -> KeyFrame {
-            ProbabilisticHitResolver.resolve(
+            // Dynamic λ: scale the language pull by how confident the context is, so word-start
+            // (flat) taps lean on geometry and mid-word (peaked) taps get the full prior.
+            var cfg = probabilisticConfig
+            cfg.beta *= touchContext.confidence
+            return ProbabilisticHitResolver.resolve(
                 rawKey: rawKey,
                 point: point,
                 frames: resolvedFrames,
                 weightFor: { str in touchContext.weight(for: str.first ?? " ") },
                 offsetFor: { [weak self] in self?.siteOffset(for: $0) ?? .zero },
-                config: probabilisticConfig
+                config: cfg
             )
         }
         func legacy() -> KeyFrame {

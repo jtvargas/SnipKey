@@ -275,3 +275,34 @@ enum BigramEngine {
         ]
     ]
 }
+
+/// Curated trigram BOOSTS for the handful of English two-letter prefixes whose next letter is
+/// genuinely predictable. Applied on top of the bigram base by taking the max — so it only ever
+/// RAISES a likely letter's weight, never lowers another. A full trigram table needs a real
+/// corpus; this captures the highest-confidence patterns safely without one.
+enum TrigramEngine {
+
+    /// prefix (last two chars, lowercased) → { predicted next char : target weight }.
+    private static let boosts: [String: [Character: Float]] = [
+        "th": ["e": 0.50, "a": 0.12, "i": 0.10, "o": 0.08, "r": 0.06],
+        "io": ["n": 0.85],
+        "ti": ["o": 0.50, "c": 0.10, "a": 0.08],
+        "in": ["g": 0.40, "e": 0.10, "t": 0.08],
+        "qu": ["e": 0.30, "a": 0.22, "i": 0.20, "o": 0.10],
+        "an": ["d": 0.35, "t": 0.10, "c": 0.08, "y": 0.08],
+        "he": ["r": 0.18, "n": 0.10, "a": 0.10],
+        "re": ["a": 0.16, "s": 0.12, "e": 0.10, "d": 0.08],
+        "at": ["i": 0.30, "e": 0.18, "o": 0.10],
+        "co": ["n": 0.30, "m": 0.18, "u": 0.10, "r": 0.08],
+        "en": ["t": 0.30, "c": 0.10, "d": 0.10, "s": 0.08],
+        "ng": ["e": 0.10] // mostly precedes space; weak boost only
+    ]
+
+    /// Boost map for the given two-character context, or nil when there's no curated entry.
+    static func boost(prev2: Character?, prev1: Character?) -> [Character: Float]? {
+        guard let a = prev2, let b = prev1 else { return nil }
+        let key = String([Character(a.lowercased()), Character(b.lowercased())])
+        guard let m = boosts[key], !m.isEmpty else { return nil }
+        return m
+    }
+}
