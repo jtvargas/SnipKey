@@ -86,10 +86,10 @@ final class SettingsModel {
     /// can be inspected. **Default OFF.**
     var debugHitOverlayEnabled: Bool = false
 
-    /// EXPERIMENTAL: route letters-page character touches through the V2 next-gen 2D
-    /// power-diagram resolver instead of the legacy 1D path. **Default OFF** (gated rollout;
-    /// currently inert because β ships at 0 pending calibration). See V2_KEYBOARD_NEXTGEN_PLAN.
-    var useProbabilisticHitResolver: Bool = false
+    /// Route letters-page character touches through the V2 next-gen 2D power-diagram resolver
+    /// (research-backed defaults + automatic per-user offset learning). **Default ON.**
+    /// See V2_KEYBOARD_NEXTGEN_PLAN.
+    var useProbabilisticHitResolver: Bool = true
 
     /// EXPERIMENTAL: shadow-mode telemetry — run the non-acting resolver in parallel and log
     /// how often it disagrees (privacy-safe, on-device only). **Default OFF.** Used to measure
@@ -103,7 +103,7 @@ final class SettingsModel {
         probabilisticTouchEnabled: Bool = true,
         autoCapitalizationEnabled: Bool = true,
         debugHitOverlayEnabled: Bool = false,
-        useProbabilisticHitResolver: Bool = false,
+        useProbabilisticHitResolver: Bool = true,
         shadowLoggingEnabled: Bool = false
     ) {
         self.settingsId = "SnipKey-Settings"

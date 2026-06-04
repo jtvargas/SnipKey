@@ -521,13 +521,13 @@ struct SettingsView: View {
         currentSettings.probabilisticTouchEnabled = true
         currentSettings.autoCapitalizationEnabled = true
         currentSettings.debugHitOverlayEnabled = false
-        currentSettings.useProbabilisticHitResolver = false
+        currentSettings.useProbabilisticHitResolver = true
         currentSettings.shadowLoggingEnabled = false
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
-        AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)
+        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.shadowLoggingEnabled)
     }
 }

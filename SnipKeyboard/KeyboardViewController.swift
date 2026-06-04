@@ -413,8 +413,9 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        // Persist shadow-mode telemetry off the hot path (no-op unless shadow logging is on).
+        // Persist shadow-mode telemetry + learned per-user offsets off the hot path.
         TypingTelemetry.shared.flush()
+        TouchOffsetModel.shared.flush()
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {

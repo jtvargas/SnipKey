@@ -53,10 +53,15 @@ enum ProbabilisticHitResolver {
         /// Vocabulary size for the log-probability floor `log(1/V)`.
         var vocab: Int
 
+        /// Research-backed shipping defaults. σ ≈ real thumb touch scatter (~a third of a key,
+        /// taller vertically — Azenkot & Zhai 2012, Bi & Zhai 2013). β gives a MODEST language
+        /// pull (a strong bigram shifts a boundary only a few points; the anchor zone still
+        /// protects deliberate center taps). Conservative on purpose — per-user offset learning
+        /// (TouchOffsetModel) does the heavier personalization over time.
         static let `default` = Config(
-            beta: 0,                  // ships OFF-equivalent until calibrated; flag-gated anyway
-            sigmaX: 1.0,
-            sigmaY: 1.2,
+            beta: 0.5,
+            sigmaX: 13,
+            sigmaY: 16,
             anchorFracW: 0.5,
             anchorFracH: 0.6,
             maxCaptureDiagonals: 1.5,

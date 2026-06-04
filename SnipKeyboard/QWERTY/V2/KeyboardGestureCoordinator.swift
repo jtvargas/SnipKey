@@ -41,7 +41,7 @@ final class KeyboardGestureCoordinator: UIView {
     /// Cached once per session like `probabilisticTouchEnabled`. When off, the legacy 1D
     /// `SmartTouchResolver` path runs unchanged. See V2_KEYBOARD_NEXTGEN_PLAN.md.
     private var useProbabilisticHitResolver = AppGroupSettings.bool(
-        forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: false)
+        forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: true)
 
     /// Shadow-mode telemetry: when on, the non-acting resolver is also computed per eligible
     /// touch-down and the comparison logged (privacy-safe). Cached per session.
@@ -170,10 +170,12 @@ final class KeyboardGestureCoordinator: UIView {
         probabilisticTouchEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
         useProbabilisticHitResolver = AppGroupSettings.bool(
-            forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: false)
+            forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: true)
         shadowLoggingEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
         TypingTelemetry.shared.enabled = shadowLoggingEnabled
+        // Per-user offset learning is part of the next-gen engine — on when it is.
+        TouchOffsetModel.shared.enabled = useProbabilisticHitResolver
         calloutController.updateParentWidth(bounds.width)
 
         #if DEBUG
@@ -282,6 +284,7 @@ final class KeyboardGestureCoordinator: UIView {
             rendererRef.updateReturnKeyLabel(label, prominent: prominent, isDark: isDark)
         }
 
+        TouchOffsetModel.shared.currentLayout = currentLayoutHash
         rebuildAccessibilityElements()
         rebuildHitViews()
         updateVoronoiDebugOverlay()
@@ -303,7 +306,7 @@ final class KeyboardGestureCoordinator: UIView {
             bounds: bounds,
             stepPoints: 6,
             weightFor: { tc.weight(for: $0.first ?? " ") },
-            offsetFor: { PopulationOffset.offset(for: $0) },
+            offsetFor: { [weak self] in self?.siteOffset(for: $0) ?? .zero },
             config: probabilisticConfig
         )
         CATransaction.begin()
@@ -468,10 +471,19 @@ final class KeyboardGestureCoordinator: UIView {
             if let state, let actions {
                 KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
             }
+            // Per-user offset learning: a new character means the PREVIOUS one survived (wasn't
+            // backspaced) → confirm it, then stage this touch. Letters page only.
+            if useProbabilisticHitResolver, currentPage == .letters {
+                TouchOffsetModel.shared.confirmPending()
+                TouchOffsetModel.shared.record(keyFrame: key, point: point,
+                                               keyboardWidth: bounds.width, rowCount: currentRowCount)
+            }
             press.longPressTask = scheduleLongPress(touchID: id, key: key)
         case .backspace:
             // Immediate delete on touch-down feels native. Long-press starts rapid-delete.
             commitBackspace()
+            // The just-typed character is being deleted — likely an error; don't learn from it.
+            TouchOffsetModel.shared.discardPending()
             press.rapidDeleteTask = scheduleRapidDelete(touchID: id)
         case .space:
             // Only one touch can own space-cursor at a time. If another touch is already
@@ -676,6 +688,16 @@ final class KeyboardGestureCoordinator: UIView {
         return hit
     }
 
+    /// Stable hash of the current geometry {page, rounded keys-area width}. Distinguishes
+    /// portrait/landscape/host-height layouts so learned offsets and telemetry don't mix.
+    private var currentLayoutHash: Int { currentPage.hashValue &* 31 &+ Int(bounds.width.rounded()) }
+
+    /// Combined per-key site offset (currently the learned per-user model; population baseline
+    /// is 0). Used by both the live resolver and the debug overlay so they never diverge.
+    private func siteOffset(for frame: KeyFrame) -> CGVector {
+        TouchOffsetModel.shared.offset(for: frame, keyboardWidth: bounds.width, rowCount: currentRowCount)
+    }
+
     /// Apply bigram-weighted smart-touch correction to the raw `findKey` result.
     /// Non-character keys, and presses while smart touch is disabled, pass through unchanged.
     private func smartResolved(rawKey: KeyFrame, at point: CGPoint) -> KeyFrame {
@@ -698,7 +720,7 @@ final class KeyboardGestureCoordinator: UIView {
                 point: point,
                 frames: resolvedFrames,
                 weightFor: { str in touchContext.weight(for: str.first ?? " ") },
-                offsetFor: { PopulationOffset.offset(for: $0) },
+                offsetFor: { [weak self] in self?.siteOffset(for: $0) ?? .zero },
                 config: probabilisticConfig
             )
         }
@@ -722,8 +744,7 @@ final class KeyboardGestureCoordinator: UIView {
         // shadow logging is on.
         if shadowLoggingEnabled, eligible {
             let shadow: KeyFrame = useProbabilisticHitResolver ? legacy() : newEngine()
-            let layoutHash = currentPage.hashValue &* 31 &+ Int(bounds.width.rounded())
-            TypingTelemetry.shared.record(layout: layoutHash, acting: acting, shadow: shadow, point: point)
+            TypingTelemetry.shared.record(layout: currentLayoutHash, acting: acting, shadow: shadow, point: point)
         }
 
         return acting
