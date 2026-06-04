@@ -251,6 +251,73 @@ struct SettingsView: View {
                     .onChange(of: currentSettings.debugHitOverlayEnabled) { _, newValue in
                         AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
                     }
+
+                    Toggle(isOn: $currentSettings.useProbabilisticHitResolver) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "scope")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Next-Gen Touch Engine")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Experimental: 2D power-diagram key resolver (reopen keyboard to apply)")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.purple)
+                    .onChange(of: currentSettings.useProbabilisticHitResolver) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)
+                    }
+
+                    Toggle(isOn: $currentSettings.shadowLoggingEnabled) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "chart.bar.doc.horizontal")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Shadow-Mode Logging")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Debug: measure how often the new engine would differ (on-device, private)")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.purple)
+                    .onChange(of: currentSettings.shadowLoggingEnabled) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.shadowLoggingEnabled)
+                    }
+
+                    NavigationLink {
+                        ShadowTelemetryView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "chart.bar.xaxis")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Shadow Telemetry Report")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Disagreement rate, per-key heatmap, touch landing")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
                 } header: {
                     Text("Experimental")
                 } footer: {
@@ -423,6 +490,14 @@ struct SettingsView: View {
                         myCurrentSettings.debugHitOverlayEnabled,
                         forKey: AppGroupSettings.Key.debugHitOverlayEnabled
                     )
+                    AppGroupSettings.setBool(
+                        myCurrentSettings.useProbabilisticHitResolver,
+                        forKey: AppGroupSettings.Key.useProbabilisticHitResolver
+                    )
+                    AppGroupSettings.setBool(
+                        myCurrentSettings.shadowLoggingEnabled,
+                        forKey: AppGroupSettings.Key.shadowLoggingEnabled
+                    )
                 }
             }
         }
@@ -446,10 +521,14 @@ struct SettingsView: View {
         currentSettings.probabilisticTouchEnabled = true
         currentSettings.autoCapitalizationEnabled = true
         currentSettings.debugHitOverlayEnabled = false
+        currentSettings.useProbabilisticHitResolver = true
+        currentSettings.shadowLoggingEnabled = false
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
+        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)
+        AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.shadowLoggingEnabled)
     }
 }
 

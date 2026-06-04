@@ -29,6 +29,37 @@ final class KeyboardGestureCoordinator: UIView {
     private let calloutController: CalloutController
     private let spaceCursor = SpaceBarCursorController()
 
+    /// Cached "probabilistic touch enabled" setting. The value lives in App Group
+    /// UserDefaults (written by the host app's Settings screen) and cannot change while
+    /// the user is typing — flipping it requires leaving the keyboard. So we read it once
+    /// per keyboard session in `configure(...)` instead of on every character touch-down,
+    /// keeping the smart-touch hot path free of repeated settings lookups.
+    private var probabilisticTouchEnabled = AppGroupSettings.bool(
+        forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
+
+    /// Staged-enablement flag for the 2D power-diagram resolver (V2 next-gen engine).
+    /// Cached once per session like `probabilisticTouchEnabled`. When off, the legacy 1D
+    /// `SmartTouchResolver` path runs unchanged. See V2_KEYBOARD_NEXTGEN_PLAN.md.
+    private var useProbabilisticHitResolver = AppGroupSettings.bool(
+        forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: true)
+
+    /// Shadow-mode telemetry: when on, the non-acting resolver is also computed per eligible
+    /// touch-down and the comparison logged (privacy-safe). Cached per session.
+    private var shadowLoggingEnabled = AppGroupSettings.bool(
+        forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
+
+    /// Tunables for the power-diagram resolver. β stays 0 until calibrated on the touch
+    /// corpus; the flag gates activation independently so the path can be exercised first.
+    private var probabilisticConfig = ProbabilisticHitResolver.Config.default
+
+    /// Debug overlay that paints the next-gen engine's actual decision cells. Shown only when
+    /// the hit-overlay setting AND the next-gen engine are both on; recomputed off the hot path.
+    private let voronoiDebugLayer = CALayer()
+
+    #if DEBUG
+    private static var didRunResolverSelfTest = false
+    #endif
+
     /// Caret-move callback (only used in cursor mode).
     /// Argument: signed character offset to apply.
     var adjustCaret: ((Int) -> Void)?
@@ -98,6 +129,13 @@ final class KeyboardGestureCoordinator: UIView {
         isMultipleTouchEnabled = true
         lightImpactHaptic.prepare()
 
+        // Debug Voronoi overlay sits above the key layers (but below the near-transparent
+        // KeyHitView subviews). Hidden unless the debug overlay + next-gen engine are on.
+        voronoiDebugLayer.isHidden = true
+        voronoiDebugLayer.magnificationFilter = .nearest
+        voronoiDebugLayer.zPosition = 50
+        layer.addSublayer(voronoiDebugLayer)
+
         // Coord conversions: callout lives on the keyboard's root view, so its
         // `keyFrame:` rect must be in root-view coords (callout's superview).
         // The accent hit-test also uses root-view coords.
@@ -128,7 +166,24 @@ final class KeyboardGestureCoordinator: UIView {
     func configure(actions: KeyboardActions, dims: KeyboardDimensions) {
         self.actions = actions
         self.dims = dims
+        // Refresh cached settings once per keyboard session (this is the cold-start seam).
+        probabilisticTouchEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
+        useProbabilisticHitResolver = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: true)
+        shadowLoggingEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
+        TypingTelemetry.shared.enabled = shadowLoggingEnabled
+        // Per-user offset learning is part of the next-gen engine — on when it is.
+        TouchOffsetModel.shared.enabled = useProbabilisticHitResolver
         calloutController.updateParentWidth(bounds.width)
+
+        #if DEBUG
+        if !Self.didRunResolverSelfTest {
+            Self.didRunResolverSelfTest = true
+            ProbabilisticHitResolver.runEquivalenceSelfTest()
+        }
+        #endif
     }
 
     /// Provide the layout for the current page and rerender.
@@ -229,8 +284,39 @@ final class KeyboardGestureCoordinator: UIView {
             rendererRef.updateReturnKeyLabel(label, prominent: prominent, isDark: isDark)
         }
 
+        TouchOffsetModel.shared.currentLayout = currentLayoutHash
         rebuildAccessibilityElements()
         rebuildHitViews()
+        updateVoronoiDebugOverlay()
+    }
+
+    /// Paint the next-gen engine's decision cells when both the debug hit-overlay setting and
+    /// the engine are enabled. Off the hot path (layout changes only). Hidden otherwise.
+    private func updateVoronoiDebugOverlay() {
+        let on = useProbabilisticHitResolver
+            && AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false)
+        guard on, let state, bounds.width > 1, bounds.height > 1, !resolvedFrames.isEmpty else {
+            voronoiDebugLayer.isHidden = true
+            voronoiDebugLayer.contents = nil
+            return
+        }
+        let tc = state.inputTracking.touchContext
+        var cfg = probabilisticConfig
+        cfg.beta *= tc.confidence
+        let image = ProbabilisticHitResolver.debugCellImage(
+            frames: resolvedFrames,
+            bounds: bounds,
+            stepPoints: 6,
+            weightFor: { tc.weight(for: $0.first ?? " ") },
+            offsetFor: { [weak self] in self?.siteOffset(for: $0) ?? .zero },
+            config: cfg
+        )
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        voronoiDebugLayer.frame = bounds
+        voronoiDebugLayer.contents = image
+        voronoiDebugLayer.isHidden = (image == nil)
+        CATransaction.commit()
     }
 
     /// Rebuild the tiling `KeyHitView` touch targets in lockstep with `resolvedFrames`.
@@ -387,10 +473,19 @@ final class KeyboardGestureCoordinator: UIView {
             if let state, let actions {
                 KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
             }
+            // Per-user offset learning: a new character means the PREVIOUS one survived (wasn't
+            // backspaced) → confirm it, then stage this touch. Letters page only.
+            if useProbabilisticHitResolver, currentPage == .letters {
+                TouchOffsetModel.shared.confirmPending()
+                TouchOffsetModel.shared.record(keyFrame: key, point: point,
+                                               keyboardWidth: bounds.width, rowCount: currentRowCount)
+            }
             press.longPressTask = scheduleLongPress(touchID: id, key: key)
         case .backspace:
             // Immediate delete on touch-down feels native. Long-press starts rapid-delete.
             commitBackspace()
+            // The just-typed character is being deleted — likely an error; don't learn from it.
+            TouchOffsetModel.shared.discardPending()
             press.rapidDeleteTask = scheduleRapidDelete(touchID: id)
         case .space:
             // Only one touch can own space-cursor at a time. If another touch is already
@@ -595,17 +690,70 @@ final class KeyboardGestureCoordinator: UIView {
         return hit
     }
 
+    /// Stable hash of the current geometry {page, rounded keys-area width}. Distinguishes
+    /// portrait/landscape/host-height layouts so learned offsets and telemetry don't mix.
+    private var currentLayoutHash: Int { currentPage.hashValue &* 31 &+ Int(bounds.width.rounded()) }
+
+    /// Combined per-key site offset (currently the learned per-user model; population baseline
+    /// is 0). Used by both the live resolver and the debug overlay so they never diverge.
+    private func siteOffset(for frame: KeyFrame) -> CGVector {
+        TouchOffsetModel.shared.offset(for: frame, keyboardWidth: bounds.width, rowCount: currentRowCount)
+    }
+
     /// Apply bigram-weighted smart-touch correction to the raw `findKey` result.
     /// Non-character keys, and presses while smart touch is disabled, pass through unchanged.
     private func smartResolved(rawKey: KeyFrame, at point: CGPoint) -> KeyFrame {
         guard let state else { return rawKey }
-        return SmartTouchResolver.resolve(
-            rawKey: rawKey,
-            point: point,
-            frames: resolvedFrames,
-            touchContext: state.inputTracking.touchContext,
-            dims: dims
-        )
+        guard probabilisticTouchEnabled else { return rawKey }
+
+        // 2D power-diagram engine (V2 next-gen), gated to the letters page and fields that
+        // allow smart transforms (excludes URL/email/number pads). Non-letters pages and
+        // opted-out fields fall through to the legacy 1D path, which itself no-ops for
+        // non-character keys. Symbols/number keys carry no meaningful English language prior.
+        let touchContext = state.inputTracking.touchContext
+        let allowsTransforms = actions?.inputTraits().allowsSmartTransforms ?? true
+        // Eligible = a character key on the letters page in a smart-transform field. Only
+        // these get the language-prior engine (symbols/number keys carry no English prior).
+        let eligible = rawKey.isCharacterKey && currentPage == .letters && allowsTransforms
+
+        func newEngine() -> KeyFrame {
+            // Dynamic λ: scale the language pull by how confident the context is, so word-start
+            // (flat) taps lean on geometry and mid-word (peaked) taps get the full prior.
+            var cfg = probabilisticConfig
+            cfg.beta *= touchContext.confidence
+            return ProbabilisticHitResolver.resolve(
+                rawKey: rawKey,
+                point: point,
+                frames: resolvedFrames,
+                weightFor: { str in touchContext.weight(for: str.first ?? " ") },
+                offsetFor: { [weak self] in self?.siteOffset(for: $0) ?? .zero },
+                config: cfg
+            )
+        }
+        func legacy() -> KeyFrame {
+            SmartTouchResolver.resolve(
+                rawKey: rawKey,
+                point: point,
+                enabled: probabilisticTouchEnabled,
+                frames: resolvedFrames,
+                touchContext: touchContext,
+                dims: dims
+            )
+        }
+
+        // Acting resolver — what actually commits. New engine only when its flag is on AND
+        // the touch is eligible; otherwise the legacy 1D path (unchanged).
+        let acting: KeyFrame = (useProbabilisticHitResolver && eligible) ? newEngine() : legacy()
+
+        // Shadow mode: compute the OTHER resolver too (only when eligible) and log the
+        // comparison without affecting what commits. The shadow cost is paid only when
+        // shadow logging is on.
+        if shadowLoggingEnabled, eligible {
+            let shadow: KeyFrame = useProbabilisticHitResolver ? legacy() : newEngine()
+            TypingTelemetry.shared.record(layout: currentLayoutHash, acting: acting, shadow: shadow, point: point)
+        }
+
+        return acting
     }
 
     private func findKey(at point: CGPoint) -> KeyFrame? {

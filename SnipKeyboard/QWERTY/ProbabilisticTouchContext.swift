@@ -43,8 +43,26 @@ final class ProbabilisticTouchContext {
     /// Prior's share of the blend; the bigram gets the remainder. Tunable.
     private static let priorBlendFactor: Float = 0.6
 
+    /// The character before `lastCharacter` — gives the 2-char context for trigram boosts.
+    private var secondLastCharacter: Character?
+
+    /// Temporally-smoothed weights the next-gen resolver reads (via `weight(for:)`). EMA of the
+    /// raw source so the catch-zones rebalance gradually between keystrokes instead of snapping
+    /// (plan §6 anti-jitter). Snapped (not eased) at word boundaries to avoid cross-word lag.
+    private(set) var smoothedWeights: [Character: Float]
+
+    /// How "peaked" the current distribution is, in [minConfidence, 1]. Drives dynamic λ: the
+    /// resolver scales β by this so it pulls hard when context is confident (mid-word) and barely
+    /// at all when it isn't (first letter of a word). Plan §7.
+    private(set) var confidence: Float = 0.35
+
+    private static let smoothingAlpha: Float = 0.4      // EMA rate for smoothedWeights
+    private static let smoothingDeadband: Float = 0.01  // skip a tiny update
+    private static let minConfidence: Float = 0.25      // floor so β is never fully zeroed
+
     init() {
         self.currentWeights = BigramEngine.wordInitialFrequencies
+        self.smoothedWeights = BigramEngine.wordInitialFrequencies
     }
 
     /// Update after a character is typed.
@@ -54,11 +72,19 @@ final class ProbabilisticTouchContext {
     func recordCharacter(_ char: Character) {
         let lower = Character(char.lowercased())
         if lower != lastCharacter {
+            secondLastCharacter = lastCharacter
             lastCharacter = lower
-            currentWeights = BigramEngine.weights(after: lower)
+            // Bigram base, then raise the predicted letters for high-confidence trigram prefixes
+            // (max-merge: only ever increases a likely letter, never lowers another).
+            var base = BigramEngine.weights(after: lower)
+            if let boost = TrigramEngine.boost(prev2: secondLastCharacter, prev1: lower) {
+                for (ch, b) in boost { base[ch] = max(base[ch] ?? 0, b) }
+            }
+            currentWeights = base
             // Keep the blend consistent with the new local context within a word.
             // Off the touch-commit critical span (same call site as today).
             rebakeBlendedWeights()
+            updateSmoothingAndConfidence(reset: false)
         }
     }
 
@@ -70,9 +96,13 @@ final class ProbabilisticTouchContext {
             lastCharacter = nil
             currentWeights = BigramEngine.wordInitialFrequencies
         }
+        secondLastCharacter = nil
         // Word boundary — the prefix prior no longer applies.
         predictivePrior = nil
         blendedWeights = nil
+        // Snap (don't ease) at the word boundary so the previous word's context doesn't bleed
+        // into the first keystrokes of the next one.
+        updateSmoothingAndConfidence(reset: true)
     }
 
     /// Push (or clear) the predictive next-character prior. Produced on `@MainActor`
@@ -83,7 +113,36 @@ final class ProbabilisticTouchContext {
         predictivePrior = prior
         isEnglishContext = isEnglish
         rebakeBlendedWeights()
+        updateSmoothingAndConfidence(reset: false)
     }
+
+    /// Ease `smoothedWeights` toward the current raw source and recompute `confidence`. Runs only
+    /// off the touch path (context change / predictive update). `reset` snaps instantly.
+    private func updateSmoothingAndConfidence(reset: Bool) {
+        let target = blendedWeights ?? currentWeights
+        if reset || smoothedWeights.isEmpty {
+            smoothedWeights = target
+        } else {
+            let a = Self.smoothingAlpha
+            let fallback: Float = 1.0 / 26.0
+            var next = smoothedWeights
+            var maxDelta: Float = 0
+            for k in Set(smoothedWeights.keys).union(target.keys) {
+                let old = smoothedWeights[k] ?? fallback
+                let nv = old + a * ((target[k] ?? fallback) - old)
+                next[k] = nv
+                maxDelta = max(maxDelta, abs(nv - old))
+            }
+            if maxDelta >= Self.smoothingDeadband { smoothedWeights = next }
+        }
+        // Confidence = how peaked the distribution is. Flat (word start) → minConfidence;
+        // strongly peaked (e.g. after "th") → 1.
+        let peak = smoothedWeights.values.max() ?? fallbackPeak
+        let normalized = min(max((peak - 0.12) / (0.35 - 0.12), 0), 1)
+        confidence = Self.minConfidence + normalized * (1 - Self.minConfidence)
+    }
+
+    private var fallbackPeak: Float { 1.0 / 26.0 }
 
     /// Recompute `blendedWeights` from the current `predictivePrior` + `currentWeights`.
     /// Runs only off the touch path (predictive completion / char record), so the
@@ -126,5 +185,13 @@ final class ProbabilisticTouchContext {
             let lower = Character(charString.lowercased())
             return source[lower] ?? (1.0 / 26.0)
         }
+    }
+
+    /// Probability weight P(char | context) for a single character, reading the same
+    /// pre-baked source as `weightsForRow`. Used by the 2D `ProbabilisticHitResolver`,
+    /// which scores all character keys (not just one row) per touch-down. Unknown chars
+    /// get the uniform fallback. No blending math on the hot path.
+    func weight(for char: Character) -> Float {
+        smoothedWeights[Character(char.lowercased())] ?? (1.0 / 26.0)
     }
 }

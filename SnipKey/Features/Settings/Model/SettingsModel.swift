@@ -86,13 +86,25 @@ final class SettingsModel {
     /// can be inspected. **Default OFF.**
     var debugHitOverlayEnabled: Bool = false
 
+    /// Route letters-page character touches through the V2 next-gen 2D power-diagram resolver
+    /// (research-backed defaults + automatic per-user offset learning). **Default ON.**
+    /// See V2_KEYBOARD_NEXTGEN_PLAN.
+    var useProbabilisticHitResolver: Bool = true
+
+    /// EXPERIMENTAL: shadow-mode telemetry — run the non-acting resolver in parallel and log
+    /// how often it disagrees (privacy-safe, on-device only). **Default OFF.** Used to measure
+    /// the rollout gate and gather a calibration corpus.
+    var shadowLoggingEnabled: Bool = false
+
     init(
         afterPasteAction: KeyboardAfterPasteAction = .space,
         isQWERTYKeyboardEnabled: Bool = false,
         useNativeKeyboardV2: Bool = true,
         probabilisticTouchEnabled: Bool = true,
         autoCapitalizationEnabled: Bool = true,
-        debugHitOverlayEnabled: Bool = false
+        debugHitOverlayEnabled: Bool = false,
+        useProbabilisticHitResolver: Bool = true,
+        shadowLoggingEnabled: Bool = false
     ) {
         self.settingsId = "SnipKey-Settings"
         self.afterPasteAction = afterPasteAction
@@ -101,6 +113,8 @@ final class SettingsModel {
         self.probabilisticTouchEnabled = probabilisticTouchEnabled
         self.autoCapitalizationEnabled = autoCapitalizationEnabled
         self.debugHitOverlayEnabled = debugHitOverlayEnabled
+        self.useProbabilisticHitResolver = useProbabilisticHitResolver
+        self.shadowLoggingEnabled = shadowLoggingEnabled
     }
 }
 
@@ -117,6 +131,14 @@ enum AppGroupSettings {
         static let probabilisticTouchEnabled = "probabilisticTouchEnabled"
         static let autoCapitalizationEnabled = "autoCapitalizationEnabled"
         static let debugHitOverlayEnabled = "debugHitOverlayEnabled"
+        /// Staged-enablement flag for the 2D power-diagram hit resolver (Keyboard V2
+        /// next-gen engine). Default OFF — gated rollout per V2_KEYBOARD_NEXTGEN_PLAN.
+        /// When off, the legacy 1D `SmartTouchResolver` path is used unchanged.
+        static let useProbabilisticHitResolver = "useProbabilisticHitResolver"
+        /// Shadow-mode telemetry: run the non-acting resolver in parallel and log how often
+        /// it disagrees with the acting one (privacy-safe aggregates). Default OFF. Drives
+        /// the rollout gate + β/offset calibration in V2_KEYBOARD_NEXTGEN_PLAN §11–§12.
+        static let shadowLoggingEnabled = "shadowLoggingEnabled"
     }
 
     static func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {
