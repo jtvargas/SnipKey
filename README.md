@@ -104,7 +104,7 @@ Mark any snippet as **secure** and it will require FaceID or TouchID before it c
 | **4 Snippet Types** | Save text, URLs, images, and PDFs |
 | **Tag System** | Organize snippets with custom tags, each with its own name, SF Symbol icon, and color |
 | **Biometric Security** | Lock sensitive snippets behind FaceID or TouchID |
-| **Keyboard Reminders** | Tap 🔔 on the keyboard to schedule a reminder (a local notification in 2 minutes); view upcoming & delivered reminders in the app, with a badge while reminders are pending |
+| **Keyboard Reminders** | Tap 🔔 on the keyboard for a quick reminder, or type `/remind me to … at <time>` to schedule one in natural language; view upcoming & delivered reminders in the app, with a badge while reminders are pending |
 | **iCloud Sync** | Sync across all your devices via Apple's CloudKit |
 | **Bulk Creation** | Paste a list of items to create multiple snippets at once |
 | **Search & Filter** | Full-text search across titles, content, and tags with tag-based filtering |
@@ -144,6 +144,14 @@ Tap the 🔔 on the keyboard's toolbar to set yourself a reminder — it schedul
 that fires in **2 minutes**. Because the keyboard schedules it directly, the notification fires even
 if you never reopen SnipKey (a backgrounded app is suspended and can't schedule on demand). Each tap
 is an independent reminder.
+
+You can also schedule in **natural language**: type `/remind me to call the doctor at 3PM` and a
+**"Create reminder"** suggestion pill appears. Tapping it removes the text and schedules the reminder,
+with a confirmation banner. It's intent-aware about *when*: `at 3pm` / `at 3:30` (today, or tomorrow
+if passed), `tomorrow` / `Friday` / `April 15` (→ 9 AM), `this afternoon` / `tonight` / `before bed`
+(deterministic times), `next week` / `next month`, relative `in 15 seconds` … `in 2 weeks`, and a
+plain `/remind call John` with no time (→ in 1 hour). Parsing runs entirely on-device — no network,
+no latency. Full rules: [`REMINDER_NLP.md`](REMINDER_NLP.md).
 
 In the app, the **Snippets** screen has a 🔔 toolbar button that opens a **Reminders** list of your
 upcoming and recently delivered reminders (swipe to delete, or clear all). When reminders are

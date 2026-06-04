@@ -70,6 +70,12 @@ class KeyboardViewController: UIInputViewController {
     /// Observable predictive text state — shared with SwiftUI toolbar for suggestions display.
     let predictiveTextState = PredictiveTextState()
 
+    // MARK: - NLP Reminders
+
+    /// Observable reminder state — drives the "Create reminder" pill when the user types
+    /// `/remind … at <time>`. Updated from the coalesced side-effect flush. See ReminderParseEngine.
+    let reminderSuggestionState = ReminderSuggestionState()
+
     // MARK: - Hot-path coalescing (V2)
 
     /// True only during the host's synchronous `textDidChange` re-entrancy triggered by our
@@ -136,6 +142,18 @@ class KeyboardViewController: UIInputViewController {
                 #endif
                 LocalNotificationScheduler.schedule(
                     ReminderRequest(fireDelay: delay, message: "Time to use SnipKey!")
+                )
+            },
+            createReminder: { [weak self] body, fireDate in
+                guard let self = self else { return }
+                // NLP `/remind … at <time>` flow: schedule at the parsed absolute time. Same
+                // suspended-app rationale and Full Access requirement as `requestReminder`.
+                guard self.hasFullAccess else {
+                    print("[Reminder] Full Access required to schedule from the keyboard")
+                    return
+                }
+                LocalNotificationScheduler.schedule(
+                    ReminderRequest(fireDate: fireDate, title: "Reminder", message: body)
                 )
             },
             evaluateSlashCommand: { [weak self] in
@@ -275,7 +293,8 @@ class KeyboardViewController: UIInputViewController {
                 qwertyState: qwertyState,
                 keyboardActions: keyboardActionsStruct,
                 slashCommandState: slashCommandState,
-                predictiveTextState: predictiveTextState
+                predictiveTextState: predictiveTextState,
+                reminderSuggestionState: reminderSuggestionState
             )
         )
         
@@ -529,7 +548,18 @@ class KeyboardViewController: UIInputViewController {
         sideEffectFlushScheduled = false
         let context = textDocumentProxy.documentContextBeforeInput
         runSlashEvaluation(context: context)
+        runReminderEvaluation(context: context)
         runPredictiveEvaluation(context: context)
+    }
+
+    /// NLP reminder evaluation from an already-read context snapshot. Cheap: `update` early-outs
+    /// unless the text contains the `/remind` trigger, and the detector is allocated once.
+    private func runReminderEvaluation(context: String?) {
+        guard !qwertyState.showingSnippets else {
+            reminderSuggestionState.clear()
+            return
+        }
+        reminderSuggestionState.update(context: context)
     }
 
     /// Slash-command evaluation from an already-read context snapshot. Shared by the
@@ -551,6 +581,11 @@ class KeyboardViewController: UIInputViewController {
         guard !qwertyState.showingSnippets else { return }
         guard !slashCommandState.isActive else {
             // Clear suggestions when slash is active.
+            predictiveTextState.dismiss()
+            return
+        }
+        // Yield the suggestion bar to the "Create reminder" pill when a /remind command is parsed.
+        guard !reminderSuggestionState.isActive else {
             predictiveTextState.dismiss()
             return
         }

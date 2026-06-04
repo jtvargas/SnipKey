@@ -142,11 +142,13 @@
 		C499471BC1178E27BCE65613 /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
 		C6C79CE1B8ACC91139B273DD /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
 		CC72D06329CE5A0FD24F039D /* KeyboardLayoutFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */; };
+		D0F2F46440C35CB437608B91 /* ReminderParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */; };
 		D4F176DB438B2BCE533956F6 /* KeyboardLayoutResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */; };
 		D9F1A2B3C4D5E6F708192A3C /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
 		D9F1A2B3C4D5E6F708192A3D /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
 		E1A2B3C4D5E6F7A8B9C0D1E3 /* TypingTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */; };
 		E1A2B3C4D5E6F7A8B9C0D1E4 /* TypingTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */; };
+		E61BA06D36BBCF27D8463618 /* ReminderParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */; };
 		E700E7444943F0F8E705293A /* AccentMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE452F555419A6F46984CBBC /* AccentMap.swift */; };
 		E9395E039E047952A59EE0E8 /* KeyLayerRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */; };
 		EBA12BC3F47C57B75EBA44F4 /* RemindersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F559D4F5BD052FAD0F47B8 /* RemindersView.swift */; };
@@ -255,6 +257,7 @@
 		06F4F3242BB7484000399C78 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
 		06FC79722BC489D900382400 /* OnBoardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnBoardingView.swift; sourceTree = "<group>"; };
 		1C830E3C63663CCF65E72BF1 /* KeyboardCalloutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardCalloutView.swift; path = V2/KeyboardCalloutView.swift; sourceTree = "<group>"; };
+		263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReminderParseEngine.swift; sourceTree = "<group>"; };
 		3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutResolver.swift; path = V2/KeyboardLayoutResolver.swift; sourceTree = "<group>"; };
 		426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardGestureCoordinator.swift; path = V2/KeyboardGestureCoordinator.swift; sourceTree = "<group>"; };
 		798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpaceBarCursorController.swift; path = V2/SpaceBarCursorController.swift; sourceTree = "<group>"; };
@@ -472,6 +475,7 @@
 				D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */,
 				E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */,
 				A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */,
+				263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -807,6 +811,7 @@
 				E1A2B3C4D5E6F7A8B9C0D1E3 /* TypingTelemetry.swift in Sources */,
 				A7B8C9D0E1F2A3B4C5D6E7F8 /* TouchOffsetModel.swift in Sources */,
 				C2B69DCF6F147603AE4534CC /* LocalNotificationScheduler.swift in Sources */,
+				E61BA06D36BBCF27D8463618 /* ReminderParseEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -896,6 +901,7 @@
 				9AD80476CD0C9C51C700F601 /* LocalNotificationScheduler.swift in Sources */,
 				B89C0449762FBFE1BC7FB157 /* NotificationPresenter.swift in Sources */,
 				EBA12BC3F47C57B75EBA44F4 /* RemindersView.swift in Sources */,
+				D0F2F46440C35CB437608B91 /* ReminderParseEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

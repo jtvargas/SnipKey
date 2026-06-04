@@ -78,6 +78,44 @@ Wiring:
 - `RemindersView` filters by `LocalNotificationScheduler.identifierPrefix`, lists **Upcoming**
   (pending, by fire time) and **Delivered**, and is the diagnostic for "did it actually schedule?".
 
+## Natural-language `/remind`
+
+The keyboard also recognizes a typed command and offers a one-tap **"Create reminder"** suggestion
+pill — no need to background the app or press the 🔔. Type, for example:
+
+```
+/remind me to call the doctor at 3PM
+```
+
+- **Parsing** is fully on-device — zero latency, no network — in `ReminderParser` (see
+  [`SnipKeyboard/QWERTY/ReminderParseEngine.swift`](SnipKeyboard/QWERTY/ReminderParseEngine.swift)).
+  It's **intent-aware**: it separates *which day* from *what time* and decides the time
+  deterministically (explicit clock → time-of-day phrase → 9 AM default → now + 1 hour), rather than
+  trusting `NSDataDetector`'s noon default. `NSDataDetector` (C-based, near-zero memory, safe under
+  the 48 MB ceiling) supplies the **day**; custom logic fills what it misses (`noon`, `next week`,
+  `next month`, bare `at 3`, relative `in N units`). **Full rules + examples:**
+  **[`REMINDER_NLP.md`](REMINDER_NLP.md)**.
+- Sub-minute precision is preserved: the calendar trigger includes `.second`, so "in 15 seconds"
+  fires on time instead of rounding to the minute.
+- **Trigger:** the explicit `/remind` keyword plus a real task or time. A bare time in normal text
+  (no `/remind`) never shows the pill, and `/remind` with nothing typed yet shows nothing.
+- The pill takes precedence over the predictive/slash suggestions and shows the resolved time
+  ("Create reminder · 3:00 PM"). Tapping it: deletes the typed command, schedules the reminder, and
+  shows a confirmation banner ("Reminder created for today/tomorrow at 3:00 PM").
+- **Defaults:** explicit clock time fires that day (rolling to **tomorrow** if already passed);
+  a date with no time fires at **9:00 AM**; time-of-day words map deterministically
+  (afternoon → 3 PM, tonight → 7 PM, …); and a bare `/remind <task>` with no time → **now + 1 hour**.
+- The reminder is built as `ReminderRequest(fireDate:title:"Reminder", message: <task>)` and scheduled
+  by the **same** `LocalNotificationScheduler.schedule(_:)` (an absolute `fireDate` uses a
+  `UNCalendarNotificationTrigger`). Because it reuses the shared `identifierPrefix`, it appears in
+  `RemindersView` and feeds the in-app bell badge automatically.
+
+Wiring: the controller updates `ReminderSuggestionState` from the coalesced side-effect flush
+(`runReminderEvaluation`); the toolbar renders the pill (`CreateReminderPill`) and calls a new
+`KeyboardActions.createReminder(body:fireDate:)` closure, which schedules under the same Full Access
+check as the 🔔 button. The confirmation banner is a shared `.reminderToast()` modifier on both the
+V1 and V2 keyboard roots. The 🔔 quick button stays as a complementary fixed-delay path.
+
 ## Upcoming badge
 
 The Snippets 🔔 toolbar button (`HomeView2.RemindersButtonView`) shows a red count of **pending**

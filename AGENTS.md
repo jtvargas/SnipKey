@@ -532,6 +532,17 @@ timer and delivers regardless of app state.
 - The Snippets 🔔 toolbar button (`HomeView2`) opens `RemindersView` and shows a red count badge of
   pending reminders, refreshed on appear/active/sheet-close and via the
   `NotificationPresenter.remindersDidChange` broadcast when one fires in-foreground.
+- **Natural-language `/remind`:** typing `/remind … <time>` is parsed on-device in
+  `SnipKeyboard/QWERTY/ReminderParseEngine.swift` (`ReminderParser` + `ReminderSuggestionState`).
+  It's intent-aware — separates *day* (from `NSDataDetector`) from *time* (explicit clock →
+  time-of-day phrase map → 9 AM default → now + 1 hour), and adds what `NSDataDetector` misses
+  (`noon`, `next week`/`next month`, bare `at 3`, relative `in N seconds…weeks`). Past today-times
+  roll to tomorrow; calendar trigger includes `.second`. **Full spec: `REMINDER_NLP.md`.**
+  The controller updates the state in the coalesced flush (`runReminderEvaluation`); the toolbar shows
+  `CreateReminderPill`, which deletes the command and calls `KeyboardActions.createReminder(body:fireDate:)`
+  → `ReminderRequest(fireDate:title:"Reminder",…)` (calendar trigger). Confirmation banner is the shared
+  `.reminderToast()` modifier on both keyboard roots. Reuses the same `identifierPrefix`, so it lands in
+  `RemindersView` + the badge.
 - Requires **Full Access** (already a SnipKey baseline) and granted notification permission.
 
 See **[`LOCAL_NOTIFICATIONS.md`](LOCAL_NOTIFICATIONS.md)** for the full design, the why, and testing

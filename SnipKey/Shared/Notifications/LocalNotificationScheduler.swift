@@ -18,16 +18,27 @@ enum ReminderAction {
 /// A request to schedule a local notification. Built by whoever triggers it (keyboard or app).
 struct ReminderRequest {
     let action: ReminderAction
-    /// Seconds from now to fire. 120 = 2 minutes (the product requirement).
+    /// Seconds from now to fire. 120 = 2 minutes (the product requirement). Ignored when
+    /// `fireDate` is set.
     let fireDelay: TimeInterval
+    /// Absolute time to fire. When non-nil it takes precedence over `fireDelay` and the
+    /// notification is scheduled with a calendar trigger (used by the NLP `/remind … at <time>`
+    /// flow). Nil = use the relative `fireDelay` (the 🔔 quick button).
+    let fireDate: Date?
+    /// Notification title. Defaults to the app name; the `/remind` flow passes "Reminder".
+    let title: String
     /// Optional user-facing message used as the notification body.
     let message: String?
 
     init(action: ReminderAction = .scheduleReminder,
          fireDelay: TimeInterval = 120,
+         fireDate: Date? = nil,
+         title: String = "SnipKey",
          message: String? = nil) {
         self.action = action
         self.fireDelay = fireDelay
+        self.fireDate = fireDate
+        self.title = title
         self.message = message
     }
 }
@@ -70,23 +81,31 @@ enum LocalNotificationScheduler {
 
             switch request.action {
             case .scheduleReminder:
-                let delay = max(request.fireDelay, 1) // UN requires > 0
                 let createdAt = Date()
-                let fireDate = createdAt.addingTimeInterval(delay)
 
-                let timeFormatter = DateFormatter()
-                timeFormatter.dateFormat = "h:mm:ss a"
+                // Build the trigger + resolved fire date. An absolute `fireDate` (NLP `/remind`)
+                // uses a calendar trigger; otherwise fall back to the relative delay (🔔 button).
+                let fireDate: Date
+                let trigger: UNNotificationTrigger
+                if let requestedDate = request.fireDate {
+                    fireDate = requestedDate
+                    // Include seconds so short relative reminders ("in 15 seconds") fire on time
+                    // rather than rounding to the minute boundary.
+                    let comps = Calendar.current.dateComponents(
+                        [.year, .month, .day, .hour, .minute, .second], from: requestedDate)
+                    trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+                } else {
+                    let delay = max(request.fireDelay, 1) // UN requires > 0
+                    fireDate = createdAt.addingTimeInterval(delay)
+                    trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
+                }
 
                 let content = UNMutableNotificationContent()
-                content.title = "SnipKey"
+                content.title = request.title
                 content.body = request.message ?? "Reminder from your keyboard."
-                // Distinct per reminder so two never look identical (avoids visual coalescing) and
-                // the in-app list reads clearly.
-                content.subtitle = "Fires at \(timeFormatter.string(from: fireDate))"
                 content.sound = .default
                 content.userInfo = ["createdAt": createdAt.timeIntervalSince1970]
 
-                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
                 // Unique identifier per tap → each tap schedules its own independent notification.
                 let identifier = "\(identifierPrefix)\(UUID().uuidString)"
                 let req = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
@@ -94,7 +113,7 @@ enum LocalNotificationScheduler {
                     if let error {
                         print("[Reminder] schedule failed: \(error)")
                     } else {
-                        print("[Reminder] scheduled \(identifier), fires in \(Int(delay))s")
+                        print("[Reminder] scheduled \(identifier), fires at \(fireDate)")
                     }
                 }
             }
