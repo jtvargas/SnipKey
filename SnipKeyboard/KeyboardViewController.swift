@@ -119,6 +119,25 @@ class KeyboardViewController: UIInputViewController {
                     self?.openURL(url)
                 }
             },
+            requestReminder: { [weak self] in
+                guard let self = self else { return }
+                // Schedule the local notification directly from the keyboard so it fires even
+                // while SnipKey stays suspended in the background. Requires Full Access; the app
+                // owns the one-time authorization prompt. DEBUG uses a short delay for testing;
+                // release uses the required 120s.
+                guard self.hasFullAccess else {
+                    print("[Reminder] Full Access required to schedule from the keyboard")
+                    return
+                }
+                #if DEBUG
+                let delay: TimeInterval = 10
+                #else
+                let delay: TimeInterval = 120
+                #endif
+                LocalNotificationScheduler.schedule(
+                    ReminderRequest(fireDelay: delay, message: "Time to use SnipKey!")
+                )
+            },
             evaluateSlashCommand: { [weak self] in
                 // V1 path: read context and evaluate synchronously.
                 guard let self = self else { return }

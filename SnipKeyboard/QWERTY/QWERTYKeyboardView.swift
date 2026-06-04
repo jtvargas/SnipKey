@@ -97,16 +97,21 @@ struct KeyboardToolbarView: View {
                 }
             }
 
-//            // Settings button — opens main SnipKey app
-//            Button {
-//                actions.openApp()
-//            } label: {
-//                Image(systemName: "gearshape")
-//                    .font(.system(size: 16, weight: .medium))
-//                    .foregroundStyle(Color(.secondaryLabel))
-//                    .padding(6)
-//            }
-//            .buttonStyle(.plain)
+            // Reminder button — schedules a local notification (fires in 2 min; 10s DEBUG).
+            // Matches the suggestion pills' hit area + press feedback. See LOCAL_NOTIFICATIONS.md.
+            Button {
+                actions.requestReminder()
+            } label: {
+                Image(systemName: "bell.badge")
+                    .font(.custom("IBMPlexMono-Medium", size: 16))
+                    .foregroundStyle(Color(.secondaryLabel))
+                    .frame(minWidth: 44, maxHeight: .infinity)   // 44pt-wide, fills toolbar height
+                    .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable
+                    .contentShape(Rectangle())                    // whole frame is the tap target
+                    .debugHitOverlay()
+            }
+            .buttonStyle(SuggestionPillButtonStyle())             // instant pressed highlight, like pills
+            .accessibilityLabel("Remind me in 2 minutes")
         }
         .frame(height: dimensions.toolbarHeight - dimensions.toolbarItemBottomGap)
         .frame(height: dimensions.toolbarHeight, alignment: .top)

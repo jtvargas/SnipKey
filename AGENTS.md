@@ -517,6 +517,27 @@ These channels are used by the snippet browsing view (`KeyboardView.swift`). The
 | `selectText` / `selectTextEmpty` | Text selection events |
 | `hasFullAccess` | Full Access status broadcast |
 
+### Keyboard-triggered local notifications
+
+The keyboard's 🔔 button schedules a local notification (fires in 2 minutes). It must fire even
+while the main app stays **suspended** in the background, so the **keyboard schedules it directly**
+via `UNUserNotificationCenter` — a suspended app runs no code and can't schedule on the keyboard's
+behalf, and iOS won't wake it for a cross-process signal. Once `add` succeeds, the system owns the
+timer and delivers regardless of app state.
+
+- Scheduling logic is shared: `SnipKey/Shared/Notifications/LocalNotificationScheduler.swift`
+  (dual-membership — both targets).
+- The main app only owns the one-time authorization prompt and the foreground-presentation delegate
+  (`SnipKey/Features/Notifications/NotificationPresenter.swift`, app-only).
+- The Snippets 🔔 toolbar button (`HomeView2`) opens `RemindersView` and shows a red count badge of
+  pending reminders, refreshed on appear/active/sheet-close and via the
+  `NotificationPresenter.remindersDidChange` broadcast when one fires in-foreground.
+- Requires **Full Access** (already a SnipKey baseline) and granted notification permission.
+
+See **[`LOCAL_NOTIFICATIONS.md`](LOCAL_NOTIFICATIONS.md)** for the full design, the why, and testing
+steps. (An earlier App Group + Darwin design — where the app scheduled — was dropped because it
+can't fire while the app is suspended.)
+
 ### Key Constraints
 
 - Keyboard extensions run in a **constrained memory environment** (~48 MB limit)

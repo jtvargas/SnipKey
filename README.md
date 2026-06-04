@@ -104,6 +104,7 @@ Mark any snippet as **secure** and it will require FaceID or TouchID before it c
 | **4 Snippet Types** | Save text, URLs, images, and PDFs |
 | **Tag System** | Organize snippets with custom tags, each with its own name, SF Symbol icon, and color |
 | **Biometric Security** | Lock sensitive snippets behind FaceID or TouchID |
+| **Keyboard Reminders** | Tap 🔔 on the keyboard to schedule a reminder (a local notification in 2 minutes); view upcoming & delivered reminders in the app, with a badge while reminders are pending |
 | **iCloud Sync** | Sync across all your devices via Apple's CloudKit |
 | **Bulk Creation** | Paste a list of items to create multiple snippets at once |
 | **Search & Filter** | Full-text search across titles, content, and tags with tag-based filtering |
@@ -136,6 +137,20 @@ soft, invisible "catch zone" that quietly flexes toward what you most likely mea
 It can be toggled in **Settings → Experimental → Next-Gen Touch Engine**. Engineering details live in
 [`V2_KEYBOARD_ARCHITECTURE.md`](V2_KEYBOARD_ARCHITECTURE.md) and
 [`V2_KEYBOARD_NEXTGEN_PLAN.md`](V2_KEYBOARD_NEXTGEN_PLAN.md).
+
+### Reminders
+
+Tap the 🔔 on the keyboard's toolbar to set yourself a reminder — it schedules a local notification
+that fires in **2 minutes**. Because the keyboard schedules it directly, the notification fires even
+if you never reopen SnipKey (a backgrounded app is suspended and can't schedule on demand). Each tap
+is an independent reminder.
+
+In the app, the **Snippets** screen has a 🔔 toolbar button that opens a **Reminders** list of your
+upcoming and recently delivered reminders (swipe to delete, or clear all). When reminders are
+pending, the bell shows a small red count badge.
+
+Requires **Allow Full Access** for the keyboard and notification permission (the app asks once).
+Engineering details live in [`LOCAL_NOTIFICATIONS.md`](LOCAL_NOTIFICATIONS.md).
 
 ---
 
