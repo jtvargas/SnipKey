@@ -99,6 +99,7 @@ Mark any snippet as **secure** and it will require FaceID or TouchID before it c
 |---|---|
 | **Custom Keyboard** | Access all your snippets from any app via a dedicated keyboard extension |
 | **Full QWERTY Keyboard** | Complete replacement keyboard with letters, numbers, symbols — no need to switch keyboards |
+| **Next-Gen Touch Engine** | Native-feel typing that quietly corrects off-center taps, biases toward the letter you likely meant, and learns your personal thumb offsets over time — keys never visibly move. On by default. |
 | **Slash Commands** | Type `/` followed by a snippet name to trigger inline autocomplete and paste snippets without leaving the typing flow |
 | **4 Snippet Types** | Save text, URLs, images, and PDFs |
 | **Tag System** | Organize snippets with custom tags, each with its own name, SF Symbol icon, and color |
@@ -111,6 +112,30 @@ Mark any snippet as **secure** and it will require FaceID or TouchID before it c
 | **Dark Mode** | System, light, or dark appearance |
 | **Onboarding** | Guided setup walkthrough to get the keyboard enabled quickly |
 | **Free Forever** | No subscriptions, no ads, no paywalls — optional tips to support development |
+
+### Intelligent Typing Engine (V2)
+
+The custom keyboard ships with a **next-generation touch engine** (on by default) that makes typing
+more accurate and forgiving without ever moving the keys you see. In plain terms: each letter has a
+soft, invisible "catch zone" that quietly flexes toward what you most likely meant.
+
+- **2D probabilistic key selection** — instead of a rigid grid, a touch resolves by combining *where*
+  you tapped with *what you're likely typing*, in both axes (handles cross-row near-misses, not just
+  left/right).
+- **Automatic per-user adaptation** — the keyboard learns where *your* thumbs actually land relative
+  to each key and shifts the invisible targets to match. No setup, no "training mode" — it just gets
+  better as you type, on-device only.
+- **Language-aware boundaries** — common letters and predictable letter-pairs (e.g. `th→e`, `qu→`vowel)
+  get slightly larger catch zones; correction backs off at the start of a word where there's no
+  context yet.
+- **Native feel preserved** — commit-on-touch-down, instant highlight, callouts, accent long-press,
+  and space-cursor all unchanged; the engine only changes *which key a near-boundary tap resolves to*.
+- **Safe by design** — a deliberate, centered tap is never overridden; correction is disabled in
+  password / URL / email / number fields; all learning stays on your device and is never transmitted.
+
+It can be toggled in **Settings → Experimental → Next-Gen Touch Engine**. Engineering details live in
+[`V2_KEYBOARD_ARCHITECTURE.md`](V2_KEYBOARD_ARCHITECTURE.md) and
+[`V2_KEYBOARD_NEXTGEN_PLAN.md`](V2_KEYBOARD_NEXTGEN_PLAN.md).
 
 ---
 

@@ -61,6 +61,17 @@ All paths are under `/SnipKeyboard/`. V2 code lives in `QWERTY/V2/`; shared code
 | `QWERTY/V2/PredictiveTextEngineAsync.swift` | `UITextChecker` off-main, 40ms debounce, token-guarded coalescing. |
 | `QWERTY/QWERTYKeyboardView.swift` | SwiftUI toolbar (slash pills, predictive pills), debug overlay. |
 
+### Next-Gen Touch Engine (default ON) — see §3.4
+| File | Role |
+|---|---|
+| `QWERTY/V2/ProbabilisticHitResolver.swift` | The 2D **power-diagram** key resolver: Σ-normalized argmin over key centers with log-space language weights, anchor zone, anti-swallow guard. Also the coarse rasterized debug-cell image. Strict superset of nearest-center at β=0. |
+| `QWERTY/V2/TouchOffsetModel.swift` | Automatic per-user offset learning: 6-cluster EMA of fractional touch offsets, confidence-gated (pending→confirm on next char, discard on backspace), divergence guard, layout-hash keyed, App Group persisted. |
+| `QWERTY/V2/TypingTelemetry.swift` | Shadow-mode telemetry (off by default): acting-vs-shadow disagreement, privacy-safe (anonymous key indices + normalized in-cell position), App Group JSON export. |
+| `QWERTY/BigramEngine.swift` → `TrigramEngine` | Bigram tables + curated high-confidence trigram boosts (`th→e`, `qu→`vowel, …) max-merged onto the bigram base. |
+| `QWERTY/ProbabilisticTouchContext.swift` | Per-key prior source; tracks last two chars (trigram), EMA-smooths weights with deadband, exposes a `confidence` factor for dynamic λ. |
+| `QWERTY/DynamicHitResolver.swift` / `QWERTY/V2/SmartTouchResolver.swift` | Legacy 1D bigram boundary shift — the fallback path used for non-letters / when the engine is off. |
+| `Features/Settings/Views/ShadowTelemetryView.swift` (app) | Host-app report: disagreement rate, per-key heatmap, mean touch landing. |
+
 ### State & bridge
 | File | Role |
 |---|---|
@@ -136,6 +147,36 @@ UITouch down (delivered to KeyHitView → coordinator.touchesBegan)
 **Deferred (post-runloop, off the touch path):** one `documentContextBeforeInput` XPC read →
 slash evaluation + predictive scheduling; predictive runs off-main via `Task.detached` after a
 40ms debounce.
+
+### 3.4 Next-Gen Touch Engine (`smartResolved` path, default ON)
+
+`smartResolved(...)` is the seam where a near-boundary letter tap is corrected. With the engine on
+(default), eligible touches (character key, letters page, smart-transform field) go through the 2D
+**power-diagram** resolver instead of the legacy 1D shift; everything else (space/return/shift,
+symbols, URL/password fields) falls back to the legacy `SmartTouchResolver` unchanged.
+
+```
+smartResolved(rawKey, point)                         [eligible letter tap]
+  cfg.beta = baseβ × touchContext.confidence         dynamic λ (flat word-start → ~0 pull)
+  ProbabilisticHitResolver.resolve:
+     t', c_k′ = Σ-normalize(point, center + siteOffset(k))   σx=13, σy=16
+     anchor zone? → keep rawKey                       deliberate center taps never overridden
+     k* = argmin_k ‖t'−c_k′‖² − β·clip(log P(k|ctx))  ~30-key argmin, ~150 ns
+     anti-swallow? → fall back to rawKey
+  → commit-on-touch-down (unchanged)
+  → TouchOffsetModel: confirmPending() + record(k, point)   learn off the hot path
+  (backspace → TouchOffsetModel.discardPending())
+
+P(k|ctx)  = smoothedWeights (EMA, deadband, word-boundary reset) of:
+              bigram(prev) ⊕ curated trigram boost(prev2,prev1) ⊕ predictive word-prior
+siteOffset = TouchOffsetModel learned per-cluster offset (fractions × key size, layout-hash keyed)
+```
+
+**Safety/feel invariants:** keys never move (only invisible sites/weights change); anchor zone
+protects center taps; off in secure/URL/email/number fields and non-letter pages; learning gated on
+confirmed (non-backspaced) keystrokes; everything on-device. **Shadow mode** (off by default) runs the
+*other* resolver in parallel and logs disagreements for tuning; the **Voronoi debug overlay** (off by
+default) paints the live decision cells.
 
 ---
 
@@ -298,9 +339,11 @@ Flag: `AppGroupSettings.Key.useNativeKeyboardV2` (default `true`), read in
 | Setting | Key | Default | Effect |
 |---|---|---|---|
 | Native V2 keyboard | `useNativeKeyboardV2` | `true` | V2 coordinator vs V1 per-key SwiftUI |
-| Probabilistic touch | `probabilisticTouchEnabled` | `true` | Bigram boundary correction in `SmartTouchResolver` |
+| Probabilistic touch | `probabilisticTouchEnabled` | `true` | Master gate for touch correction (legacy + next-gen) |
+| **Next-gen touch engine** | `useProbabilisticHitResolver` | `true` | 2D power-diagram resolver + per-user learning vs legacy 1D shift |
 | Auto-capitalization | `autoCapitalizationEnabled` | `true` | Sentence/word auto-cap + auto-"I" |
-| Debug hit overlay | `debugHitOverlayEnabled` | `false` | Red outlines on hit cells & toolbar buttons |
+| Debug hit overlay | `debugHitOverlayEnabled` | `false` | Red hit-cell outlines; + live Voronoi cells when the engine is on |
+| Shadow-mode logging | `shadowLoggingEnabled` | `false` | Records acting-vs-shadow resolver disagreement (tuning/telemetry) |
 
 Settings are read at cold start (and on commit), not live — change requires reopening the keyboard,
 which intentionally avoids main-thread work mid-typing.

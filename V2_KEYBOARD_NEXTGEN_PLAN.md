@@ -1,6 +1,7 @@
 # SnipKey Keyboard V2 — Next-Gen Typing Quality Plan
 
-> **Status:** Planning only. No source changes are implied by this document.
+> **Status:** **IMPLEMENTED and shipping by default** (see Implementation Status below). One item —
+> data-driven *tuning* — is intentionally left as optional future work.
 > **Goal:** A keyboard that feels extremely smooth, highly accurate, fast/reliable, consistent under
 > high typing speed, predictable and forgiving — comparable to or better than the perceived typing
 > quality of the stock iOS keyboard.
@@ -8,6 +9,34 @@
 > Produced via a 4-phase pipeline: Phase 1 four parallel Sonnet research agents → Phase 2 Opus
 > synthesis → Phase 3 Sonnet adversarial validation → Phase 4 this plan. Companion reference:
 > [`V2_KEYBOARD_ARCHITECTURE.md`](./V2_KEYBOARD_ARCHITECTURE.md).
+
+---
+
+## Implementation Status (current)
+
+The next-gen engine is **enabled by default** alongside the V2 keyboard. What shipped vs. what's
+deferred:
+
+| Area | Status | Where |
+|---|---|---|
+| Left-edge system-gesture deferral | ✅ Shipped | `KeyboardViewController` |
+| ProMotion 120 Hz plist flag | ✅ Shipped | `SnipKeyboard/Info.plist` |
+| Trait/dark-mode color correctness | ✅ Already handled | `KeyLayerRenderer` |
+| 2D power-diagram resolver (Σ-norm argmin, anchor zone, anti-swallow) | ✅ Shipped, **default ON** | `ProbabilisticHitResolver` |
+| Per-key weights + smoothing (EMA + deadband, word-boundary reset) | ✅ Shipped | `ProbabilisticTouchContext` |
+| Curated trigram boosts (high-confidence patterns) | ✅ Shipped | `TrigramEngine` (in `BigramEngine.swift`) |
+| Dynamic λ (β scaled by context confidence) | ✅ Shipped | `ProbabilisticTouchContext.confidence` + coordinator |
+| Online per-user offset learning (clustered, confidence-gated, persisted) | ✅ Shipped | `TouchOffsetModel` |
+| Shadow-mode telemetry + report screen | ✅ Shipped (off by default) | `TypingTelemetry`, `ShadowTelemetryView` |
+| Live Voronoi debug overlay | ✅ Shipped (off by default) | coordinator `updateVoronoiDebugOverlay` |
+| Settings toggles + version-string alignment | ✅ Shipped | `SettingsView`, `SettingsModel`, pbxproj |
+| **Data-driven tuning** of β / σ / offset sign-scale | ⏸️ **Optional future** — see §15 | — |
+| Population-prior fixed offsets (`PopulationOffset`) | ⏸️ Infra present, scale 0 (per-user learning preferred) | `PopulationOffset` |
+| Full corpus-trained trigram / sequence decoding | ⏸️ Out of scope (needs a corpus) | — |
+| Haptics | 🚫 Excluded by product decision | — |
+
+Shipped defaults (research-shaped, conservative): `β = 0.5`, `σx = 13`, `σy = 16`, anchor inner
+`50%×60%`, offset learning `α = 0.06` over 6 clusters with a 30-sample trust ramp.
 
 ---
 
@@ -416,6 +445,42 @@ offsets, then online offsets → Tier 3 trigram → Tier 5 polish.
    `primaryLanguage`.
 4. Confirm Full-Access status assumptions for haptics in the current entitlements.
 5. Confirm the offset divergence-guard caps and the confidence-decile threshold against real corpus stats.
+
+---
+
+## 15. Optional Future Work — Data-Driven Tuning (NOT yet implemented)
+
+> Recorded here as a deliberate, optional follow-up. The engine ships with conservative,
+> research-shaped defaults that already feel good; this step would *refine* those numbers from real
+> typing data. It changes constants only — **no performance or size impact**, and it is not required
+> for the engine to work well.
+
+**What it is.** Calibrate the engine's dials — `β` (language pull), `σx/σy` (touch scatter), the
+offset learning rate/threshold, the anchor size, and the dynamic-λ confidence mapping — against a real
+typing corpus instead of literature averages.
+
+**How to do it when wanted (the tooling already exists):**
+1. Enable **Settings → Experimental → Shadow-Mode Logging** and type normally for a while (ideally on a
+   real device, since simulator clicks aren't representative thumb input).
+2. Open **Settings → Experimental → Shadow Telemetry Report** and read:
+   - the **disagreement rate** (is the engine too aggressive `>~3%` or too timid?), and
+   - the **mean in-cell touch landing** (confirms the offset direction/magnitude — i.e. whether to give
+     `PopulationOffset` a non-zero scale and which sign).
+3. Adjust `ProbabilisticHitResolver.Config.default` (β, σ) and, if a clear population bias shows,
+   `PopulationOffset.scale`/fractions; optionally tune `TouchOffsetModel` (`alpha`, `learnThreshold`)
+   and the confidence mapping in `ProbabilisticTouchContext`.
+4. Re-run shadow mode to confirm the disagreement rate and subjective feel improved; gate per §12.
+
+**Adjacent optional items (also deferred, also no perf/size cost to typing):**
+- **Full corpus-trained trigram / character LM** — replace the curated `TrigramEngine` boosts with a
+  real table generated offline from an English corpus (still small, ~tens of KB), and optionally per
+  major language gated by `primaryLanguage`.
+- **Population fixed offsets** — give `PopulationOffset` a calibrated non-zero scale so brand-new users
+  get offset correction before per-user learning converges.
+- **Per-update boundary displacement clamp** — an extra jitter bound on top of the EMA smoothing, only
+  worth adding if fast-typist testing ever shows boundary drift.
+
+None of the above are needed for the current shipping experience; they are pure refinements.
 
 ---
 
