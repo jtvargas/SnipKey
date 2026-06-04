@@ -23,9 +23,10 @@ phrases to **noon** and doesn't recognize "noon", "next week", or bare "at 3").
 
 The text after the last `/remind` is resolved in this order; the first match wins:
 
-1. **Relative duration** — `in <N> <unit>`:
-   - `second` / `minute` / `hour` → **exact** `now + offset`.
-   - `day` / `week` / `month` → that future day at **9:00 AM**.
+1. **Relative duration** — shorthand (`10s`, `5m`, `2hr`, `1d`, `2w`) or words (`in 15 minutes`,
+   `3 days`), with or without a leading "in". **All units fire at the exact offset** `now + N`
+   (days/weeks/months keep the same wall-clock time of day — *not* snapped to 9 AM, since a duration
+   is unambiguous). Takes top priority. See **Duration shorthand** below.
 2. **`next week` / `next month`** → next **Monday** 9:00 AM / **first of next month** 9:00 AM.
 3. **Time-of-day phrase** (deterministic map, below) → that time, on the day `NSDataDetector` finds
    (or **today** if none).
@@ -40,6 +41,34 @@ The text after the last `/remind` is resolved in this order; the first match win
 
 **Pill gating:** the "Create reminder" pill appears once there's a real **task** *or* an explicit
 time. `/remind` with nothing typed yet shows nothing.
+
+---
+
+## Duration shorthand
+
+Durations are unambiguous, so they're matched **first** and always fire at the exact offset from
+now. Both compact (`10s`) and spaced (`10 sec`) forms work, with or without "in".
+
+| Input | Fires | | Input | Fires |
+|---|---|---|---|---|
+| `10s` / `30 sec` | now + seconds | | `1d` | tomorrow, same time |
+| `1m` / `15 min` | now + minutes | | `2d` / `3 days` | now + N days, same time |
+| `1h` / `2hr` / `3hrs` | now + hours | | `1w` / `2 weeks` | now + N×7 days, same time |
+
+Real-world: `remind me in 10s`, `check oven in 45m`, `call mom in 2h`, `wake me in 8h`.
+
+### Accepted unit synonyms (normalized)
+
+| Unit | Forms |
+|---|---|
+| seconds | `s` `sec` `secs` `second` `seconds` |
+| minutes | `m` `min` `mins` `minute` `minutes` |
+| hours | `h` `hr` `hrs` `hour` `hours` |
+| days | `d` `day` `days` |
+| weeks | `w` `wk` `wks` `week` `weeks` |
+
+Safety: a **spaced single letter** is deliberately *not* a unit, so "2 m&ms" never reads as
+"2 minutes", and `tomorrow at 3pm` / `3pm` / `15:30` are never mistaken for durations.
 
 ---
 
@@ -75,11 +104,12 @@ Reference "now" for the relative examples: **Thursday, June 4, 3:23 PM**.
 | `me at 3pm` | Reminder | today 3:00 PM (→ tomorrow if passed) |
 | `me at 3:30` | Reminder | today 3:30 PM (→ tomorrow if passed) |
 | `me at 3` | Reminder | today 3:00 PM (PM assumed; → tomorrow if passed) |
-| `me in 2 hours` | Reminder | today 5:23 PM (exact) |
-| `me in 30 minutes` | Reminder | today 3:53 PM (exact) |
-| `me in 15 seconds` | Reminder | today 3:23 PM + 15s (exact) |
-| `me in 3 days` | Reminder | Sun Jun 7, 9:00 AM |
-| `me in 2 weeks` | Reminder | Thu Jun 18, 9:00 AM |
+| `me in 2 hours` / `me 2h` | Reminder | today 5:23 PM (exact) |
+| `me in 30 minutes` / `me 30m` | Reminder | today 3:53 PM (exact) |
+| `me in 15 seconds` / `me 15s` | Reminder | today 3:23 PM + 15s (exact) |
+| `me in 3 days` / `me 3d` | Reminder | Sun Jun 7, **3:23 PM** (same time, exact) |
+| `me in 2 weeks` / `me 2w` | Reminder | Thu Jun 18, **3:23 PM** (same time, exact) |
+| `check oven in 45m` | Check oven | today 4:08 PM (exact) |
 | `me to check in at 5pm` | Check in | today 5:00 PM |
 | `me to take medicine this morning` | Take medicine | today 9:00 AM (→ tomorrow if passed) |
 | `me before bed to floss` | Floss | today 9:00 PM |

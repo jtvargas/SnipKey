@@ -78,11 +78,15 @@ enum ReminderParser {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
     }()
 
-    /// Relative durations `NSDataDetector` won't parse: "in 15 seconds" … "in 2 weeks". Captures
-    /// the count and the unit.
+    /// Relative durations `NSDataDetector` won't parse — both compact shorthand ("10s", "2hr",
+    /// "1d", "2w") and spaced words ("15 min", "3 days", "2 weeks"), with an optional leading "in".
+    /// Group 1 = amount; group 2 = an **attached** unit (compact — single letters allowed);
+    /// group 3 = a **spaced** unit (multi-char only — a bare spaced "m"/"s" is intentionally NOT a
+    /// unit, so "2 m&ms" can't read as minutes). The optional "in " is inside the match so it's
+    /// stripped from the body cleanly.
     private static let relativeRegex: NSRegularExpression? = {
         try? NSRegularExpression(
-            pattern: #"\bin\s+(\d+)\s+(second|sec|minute|min|hour|hr|day|week|wk|month)s?\b"#,
+            pattern: #"\b(?:in\s+)?(\d+)(?:(secs?|mins?|hrs?|wks?|s|m|h|d|w)|\s+(seconds?|minutes?|hours?|days?|weeks?|months?|secs?|mins?|hrs?|wks?))\b"#,
             options: [.caseInsensitive])
     }()
 
@@ -193,32 +197,51 @@ enum ReminderParser {
         return h < 12 ? h + 12 : h
     }
 
-    /// "in <N> <unit>": sub-day units fire at the exact offset; day/week/month fire at 9 AM on the
-    /// target day (per spec). Returns the resolved date and the matched substring.
+    /// Resolve a relative duration ("10s", "5m", "2hr", "1d", "2 weeks", "in 45m") to an exact
+    /// offset from now — same wall-clock time, never snapped to 9 AM (durations are unambiguous).
+    /// Returns the resolved date and the matched substring (incl. any leading "in").
     private static func matchRelative(in command: String, now: Date, cal: Calendar) -> (date: Date, phrase: String)? {
         guard let regex = relativeRegex else { return nil }
         let ns = NSRange(command.startIndex..<command.endIndex, in: command)
         guard let m = regex.firstMatch(in: command, options: [], range: ns),
               let full = Range(m.range, in: command),
               let countRange = Range(m.range(at: 1), in: command),
-              let unitRange = Range(m.range(at: 2), in: command),
               let n = Int(command[countRange]) else {
             return nil
         }
+        // Unit comes from the attached (group 2) or spaced (group 3) branch, whichever matched.
+        let unitText: String
+        if let r = Range(m.range(at: 2), in: command) { unitText = String(command[r]) }
+        else if let r = Range(m.range(at: 3), in: command) { unitText = String(command[r]) }
+        else { return nil }
+
+        guard let unit = canonicalUnit(unitText) else { return nil }
         let phrase = String(command[full])
-        let day: (Int, Calendar.Component) -> Date = { value, comp in
-            self.at(defaultHour, 0,
-                    on: cal.startOfDay(for: cal.date(byAdding: comp, value: value, to: now) ?? now),
-                    cal: cal)
+        let resolved: Date
+        switch unit {
+        case .second: resolved = now.addingTimeInterval(Double(n))
+        case .minute: resolved = now.addingTimeInterval(Double(n * 60))
+        case .hour:   resolved = now.addingTimeInterval(Double(n * 3600))
+        case .day:    resolved = cal.date(byAdding: .day, value: n, to: now) ?? now
+        case .week:   resolved = cal.date(byAdding: .day, value: n * 7, to: now) ?? now
+        case .month:  resolved = cal.date(byAdding: .month, value: n, to: now) ?? now
         }
-        switch command[unitRange].lowercased() {
-        case "second", "sec": return (now.addingTimeInterval(Double(max(n, 1))), phrase)
-        case "minute", "min": return (now.addingTimeInterval(Double(n * 60)), phrase)
-        case "hour", "hr":    return (now.addingTimeInterval(Double(n * 3600)), phrase)
-        case "day":           return (day(n, .day), phrase)
-        case "week", "wk":    return (day(n * 7, .day), phrase)
-        case "month":         return (day(n, .month), phrase)
-        default:              return nil
+        // UN requires a positive interval; guards "0m" and any clamp edge.
+        return (max(resolved, now.addingTimeInterval(1)), phrase)
+    }
+
+    private enum DurationUnit { case second, minute, hour, day, week, month }
+
+    /// Normalize every accepted synonym to a canonical unit.
+    private static func canonicalUnit(_ text: String) -> DurationUnit? {
+        switch text.lowercased() {
+        case "s", "sec", "secs", "second", "seconds":  return .second
+        case "m", "min", "mins", "minute", "minutes":  return .minute
+        case "h", "hr", "hrs", "hour", "hours":        return .hour
+        case "d", "day", "days":                        return .day
+        case "w", "wk", "wks", "week", "weeks":        return .week
+        case "month", "months":                         return .month
+        default:                                        return nil
         }
     }
 
