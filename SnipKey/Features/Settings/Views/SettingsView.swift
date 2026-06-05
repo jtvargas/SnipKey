@@ -99,7 +99,27 @@ struct SettingsView: View {
                 } header: {
                     Text("General")
                 }
-                
+
+                // MARK: - Integrations Section
+                Section {
+                    NavigationLink {
+                        IntegrationsView()
+                    } label: {
+                        SettingsRow(
+                            icon: "puzzlepiece.extension.fill",
+                            iconColor: .red,
+                            title: "Integrations",
+                            subtitle: "\(IntegrationRegistry.enabledCount(currentSettings)) on",
+                            showChevron: false
+                        )
+                    }
+                } header: {
+                    Text("Integrations")
+                } footer: {
+                    Text("Connect SnipKey to other apps, like Apple Reminders.")
+                        .font(.custom("IBMPlexMono-Regular", size: 12))
+                }
+
                 // MARK: - Snippets Section
                 Section {
                     NavigationLink {
@@ -140,25 +160,6 @@ struct SettingsView: View {
                     Text("Keyboard")
                 } footer: {
                     Text("Customize what happens after pasting a snippet from the keyboard extension.")
-                        .font(.custom("IBMPlexMono-Regular", size: 12))
-                }
-
-                // MARK: - Integrations Section
-                Section {
-                    NavigationLink {
-                        IntegrationsView()
-                    } label: {
-                        SettingsRow(
-                            icon: "puzzlepiece.extension.fill",
-                            iconColor: .red,
-                            title: "Integrations",
-                            subtitle: currentSettings.remindersIntegrationEnabled ? "1 on" : nil
-                        )
-                    }
-                } header: {
-                    Text("Integrations")
-                } footer: {
-                    Text("Connect SnipKey to other apps, like Apple Reminders.")
                         .font(.custom("IBMPlexMono-Regular", size: 12))
                 }
 

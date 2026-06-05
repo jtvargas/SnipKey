@@ -25,6 +25,9 @@ struct IntegrationDescriptor: Identifiable {
     let subtitle: String
     let iconName: String          // SF Symbol, rendered in the 28×28 badge
     let iconColor: Color
+    /// Whether this integration is currently on, derived from settings. Drives the dynamic
+    /// "N on" count so it's never hardcoded — a new integration just provides its own flag.
+    let isEnabled: (SettingsModel) -> Bool
     /// Builds the detail screen. Type-erased so the registry stays a plain value array.
     let makeDetail: () -> AnyView
 }
@@ -35,10 +38,18 @@ enum IntegrationRegistry {
         IntegrationDescriptor(
             id: .reminders,
             title: "Reminders",
-            subtitle: "Create reminders in SnipKey or the Reminders app",
+            subtitle: "Create reminders in SnipKey or Apple Reminders",
             iconName: "checklist",
             iconColor: .red,
+            isEnabled: { $0.remindersIntegrationEnabled },
             makeDetail: { AnyView(RemindersIntegrationView()) }
         )
     ]
+
+    /// How many integrations are currently on (powers the "N on" badge). Extensible: counts
+    /// every registered integration's own `isEnabled`, so adding a second needs no changes here.
+    static func enabledCount(_ settings: SettingsModel?) -> Int {
+        guard let settings else { return 0 }
+        return all.filter { $0.isEnabled(settings) }.count
+    }
 }

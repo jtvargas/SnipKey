@@ -2,20 +2,24 @@
 //  RemindersIntegrationView.swift
 //  SnipKey (main app only)
 //
-//  Configure the Reminders integration: enable it, grant EventKit permission (this is the ONLY
-//  place the system prompt is presented — the keyboard can't prompt), and choose where reminders
-//  are created. "Reminders App" is selectable only once permission is granted. Every change is
-//  mirrored to the App Group so the keyboard reads it at its next launch. See INTEGRATIONS.md.
+//  Configure the Reminders integration. Flipping the toggle on automatically asks for Reminders
+//  permission (this is the only place the system prompt can appear — the keyboard can't prompt);
+//  on grant the integration turns on and the destination switches to Apple Reminders. On denial it
+//  stays off and explains how to fix it. Every change is mirrored to the App Group so the keyboard
+//  reads it at its next launch. See INTEGRATIONS.md.
 //
 
 import EventKit
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct RemindersIntegrationView: View {
+    @Environment(\.openURL) private var openURL
     @Query private var settings: [SettingsModel]
     @State private var authStatus: EKAuthorizationStatus = EventKitReminderService.authorizationStatus()
     @State private var requesting = false
+    @State private var showPermissionNeeded = false
 
     var body: some View {
         if let model = settings.first {
@@ -27,98 +31,141 @@ struct RemindersIntegrationView: View {
 
     @ViewBuilder
     private func content(_ model: SettingsModel) -> some View {
-        @Bindable var model = model
         List {
-            // MARK: Enable
+            // MARK: What this does
             Section {
-                Toggle(isOn: $model.remindersIntegrationEnabled) {
+                Text("Create reminders straight from your keyboard. When this is on, typing a command like “/remind tomorrow at 9am call mom” adds it to Apple Reminders instead of keeping it inside SnipKey.")
+                    .font(.custom("IBMPlexMono-Regular", size: 13))
+                    .foregroundColor(Color.label)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 2)
+            }
+
+            // MARK: Enable (auto-requests permission)
+            Section {
+                Toggle(isOn: enableBinding(model)) {
                     badge("checklist", .red, "Enable Reminders")
                 }
                 .tint(.red)
-                .onChange(of: model.remindersIntegrationEnabled) { _, enabled in
-                    AppGroupSettings.setBool(enabled, forKey: AppGroupSettings.Key.remindersIntegrationEnabled)
-                    // Turning the integration off snaps the destination back to SnipKey.
-                    if !enabled { setDestination(.snipKey, on: model) }
-                }
+                .disabled(requesting)
             } footer: {
-                Text("Let SnipKey create reminders in Apple Reminders. Off by default — your existing reminders keep working exactly as before.")
+                Text("Your reminder data stays on your device. SnipKey doesn’t send your reminders to any other app or service.")
                     .font(.custom("IBMPlexMono-Regular", size: 12))
             }
 
-            if model.remindersIntegrationEnabled {
-                // MARK: Permission
+            // MARK: Permission needed (denied / restricted / turned off later)
+            if showPermissionNeeded {
                 Section {
-                    HStack(spacing: 12) {
-                        badge("lock.shield", .orange, permissionTitle)
-                        Spacer()
-                        if isAuthorized {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                        } else {
-                            Button(requesting ? "…" : "Grant") { requestAccess(model) }
-                                .font(.custom("IBMPlexMono-Medium", size: 14))
-                                .disabled(requesting || authStatus == .denied || authStatus == .restricted)
-                        }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Reminders access is off")
+                            .font(.custom("IBMPlexMono-SemiBold", size: 14))
+                            .foregroundColor(Color.label)
+                        Text("SnipKey needs your permission to add reminders to Apple Reminders. Turn it on in Settings to use this integration.")
+                            .font(.custom("IBMPlexMono-Regular", size: 13))
+                            .foregroundColor(Color.secondaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Open Settings") { openAppSettings() }
+                            .font(.custom("IBMPlexMono-Medium", size: 14))
+                            .foregroundColor(.red)
                     }
-                } footer: {
-                    if authStatus == .denied || authStatus == .restricted {
-                        Text("Reminders access is off. Enable it in Settings → SnipKey → Reminders, then return here.")
-                            .font(.custom("IBMPlexMono-Regular", size: 12))
-                    }
+                    .padding(.vertical, 2)
                 }
+            }
 
-                // MARK: Destination
+            // MARK: Destination (only once enabled + allowed)
+            if model.remindersIntegrationEnabled, isAuthorized {
                 Section {
-                    Picker(selection: $model.reminderDestination) {
+                    Picker(selection: destinationBinding(model)) {
                         ForEach(ReminderDestination.allCases) { dest in
-                            Text(dest.displayName)
-                                .tag(dest)
-                                .disabled(dest == .remindersApp && !isAuthorized)
+                            Text(dest.displayName).tag(dest)
                         }
                     } label: {
                         badge("arrow.triangle.branch", .blue, "Create reminders in")
                     }
-                    .onChange(of: model.reminderDestination) { _, dest in
-                        // Never persist .remindersApp without permission.
-                        let safe: ReminderDestination = (dest == .remindersApp && !isAuthorized) ? .snipKey : dest
-                        setDestination(safe, on: model)
-                    }
                 } footer: {
-                    Text("Only one destination is active at a time — a reminder is never created in both. \"Reminders App\" needs the permission above.")
+                    Text("Choose where “/remind” creates reminders. Only one is ever used — a reminder is never created in two places.")
                         .font(.custom("IBMPlexMono-Regular", size: 12))
                 }
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Reminders")
-        .onAppear { authStatus = EventKitReminderService.authorizationStatus() }
+        .onAppear {
+            authStatus = EventKitReminderService.authorizationStatus()
+            // Surface the fix-it message if the integration is on but access was later revoked.
+            showPermissionNeeded = model.remindersIntegrationEnabled && !isAuthorized
+        }
+    }
+
+    // MARK: - Toggle / destination bindings
+
+    /// Intercepts the toggle so enabling runs the permission flow before the model flips on.
+    private func enableBinding(_ model: SettingsModel) -> Binding<Bool> {
+        Binding(
+            get: { model.remindersIntegrationEnabled },
+            set: { handleToggle($0, model) }
+        )
+    }
+
+    private func destinationBinding(_ model: SettingsModel) -> Binding<ReminderDestination> {
+        Binding(
+            get: { model.reminderDestination },
+            set: { setDestination($0, on: model) }
+        )
+    }
+
+    // MARK: - Permission flow
+
+    private func handleToggle(_ turnOn: Bool, _ model: SettingsModel) {
+        guard turnOn else { disable(model); return }
+        switch EventKitReminderService.authorizationStatus() {
+        case .fullAccess:
+            enable(model)                          // already allowed — no prompt needed
+        case .notDetermined:
+            guard !requesting else { return }
+            requesting = true
+            EventKitReminderService.requestAccess { granted in
+                requesting = false
+                authStatus = EventKitReminderService.authorizationStatus()
+                if granted {
+                    enable(model)
+                } else {
+                    showPermissionNeeded = true    // declined → stays off
+                }
+            }
+        default:                                   // denied / restricted — can't re-prompt
+            authStatus = EventKitReminderService.authorizationStatus()
+            showPermissionNeeded = true            // guide the user to Settings; stays off
+        }
+    }
+
+    private func enable(_ model: SettingsModel) {
+        model.remindersIntegrationEnabled = true
+        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.remindersIntegrationEnabled)
+        authStatus = EventKitReminderService.authorizationStatus()
+        showPermissionNeeded = false
+        // Automatically route reminders to Apple Reminders once it's enabled + allowed.
+        setDestination(.remindersApp, on: model)
+    }
+
+    private func disable(_ model: SettingsModel) {
+        model.remindersIntegrationEnabled = false
+        AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.remindersIntegrationEnabled)
+        showPermissionNeeded = false
+        setDestination(.snipKey, on: model)
+    }
+
+    private func setDestination(_ dest: ReminderDestination, on model: SettingsModel) {
+        if model.reminderDestination != dest { model.reminderDestination = dest }
+        AppGroupSettings.setString(dest.rawValue, forKey: AppGroupSettings.Key.reminderDestination)
     }
 
     // MARK: - Helpers
 
     private var isAuthorized: Bool { authStatus == .fullAccess }
 
-    private var permissionTitle: String {
-        isAuthorized ? "Reminders access granted" : "Allow Reminders access"
-    }
-
-    /// Persist a destination to SwiftData + mirror to the App Group in one place (guards the
-    /// `.onChange` re-entrancy when we correct an illegal selection).
-    private func setDestination(_ dest: ReminderDestination, on model: SettingsModel) {
-        if model.reminderDestination != dest { model.reminderDestination = dest }
-        AppGroupSettings.setString(dest.rawValue, forKey: AppGroupSettings.Key.reminderDestination)
-    }
-
-    private func requestAccess(_ model: SettingsModel) {
-        requesting = true
-        EventKitReminderService.requestAccess { _ in
-            authStatus = EventKitReminderService.authorizationStatus()
-            requesting = false
-            // If still not granted, make sure we didn't leave .remindersApp selected.
-            if !isAuthorized, model.reminderDestination == .remindersApp {
-                setDestination(.snipKey, on: model)
-            }
-        }
+    private func openAppSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
     }
 
     private func badge(_ icon: String, _ color: Color, _ title: String) -> some View {
