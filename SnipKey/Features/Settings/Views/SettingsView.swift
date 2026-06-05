@@ -142,7 +142,26 @@ struct SettingsView: View {
                     Text("Customize what happens after pasting a snippet from the keyboard extension.")
                         .font(.custom("IBMPlexMono-Regular", size: 12))
                 }
-                
+
+                // MARK: - Integrations Section
+                Section {
+                    NavigationLink {
+                        IntegrationsView()
+                    } label: {
+                        SettingsRow(
+                            icon: "puzzlepiece.extension.fill",
+                            iconColor: .red,
+                            title: "Integrations",
+                            subtitle: currentSettings.remindersIntegrationEnabled ? "1 on" : nil
+                        )
+                    }
+                } header: {
+                    Text("Integrations")
+                } footer: {
+                    Text("Connect SnipKey to other apps, like Apple Reminders.")
+                        .font(.custom("IBMPlexMono-Regular", size: 12))
+                }
+
                 // MARK: - Experimental Section
                 Section {
                     Toggle(isOn: $currentSettings.isQWERTYKeyboardEnabled) {
@@ -498,6 +517,14 @@ struct SettingsView: View {
                         myCurrentSettings.shadowLoggingEnabled,
                         forKey: AppGroupSettings.Key.shadowLoggingEnabled
                     )
+                    AppGroupSettings.setBool(
+                        myCurrentSettings.remindersIntegrationEnabled,
+                        forKey: AppGroupSettings.Key.remindersIntegrationEnabled
+                    )
+                    AppGroupSettings.setString(
+                        myCurrentSettings.reminderDestination.rawValue,
+                        forKey: AppGroupSettings.Key.reminderDestination
+                    )
                 }
             }
         }
@@ -523,12 +550,16 @@ struct SettingsView: View {
         currentSettings.debugHitOverlayEnabled = false
         currentSettings.useProbabilisticHitResolver = true
         currentSettings.shadowLoggingEnabled = false
+        currentSettings.remindersIntegrationEnabled = false
+        currentSettings.reminderDestination = .snipKey
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.shadowLoggingEnabled)
+        AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.remindersIntegrationEnabled)
+        AppGroupSettings.setString(ReminderDestination.snipKey.rawValue, forKey: AppGroupSettings.Key.reminderDestination)
     }
 }
 

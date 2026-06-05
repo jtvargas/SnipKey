@@ -76,6 +76,15 @@ class KeyboardViewController: UIInputViewController {
     /// `/remind … at <time>`. Updated from the coalesced side-effect flush. See ReminderParseEngine.
     let reminderSuggestionState = ReminderSuggestionState()
 
+    // MARK: - Reminder destination (Integrations)
+
+    /// Active reminder destination + integration enable flag. Read ONCE per session in
+    /// `viewDidLoad` (never per keystroke), mirroring how every other App Group setting is read.
+    /// A change in the host app takes effect the next time the keyboard is loaded — same semantics
+    /// as the V2/hit-resolver toggles. See INTEGRATIONS.md.
+    private var remindersIntegrationEnabled = false
+    private var reminderDestination: ReminderDestination = .snipKey
+
     // MARK: - Hot-path coalescing (V2)
 
     /// True only during the host's synchronous `textDidChange` re-entrancy triggered by our
@@ -127,10 +136,10 @@ class KeyboardViewController: UIInputViewController {
             },
             requestReminder: { [weak self] in
                 guard let self = self else { return }
-                // Schedule the local notification directly from the keyboard so it fires even
-                // while SnipKey stays suspended in the background. Requires Full Access; the app
-                // owns the one-time authorization prompt. DEBUG uses a short delay for testing;
-                // release uses the required 120s.
+                // 🔔 quick button. Requires Full Access; the app owns the one-time authorization
+                // prompt. DEBUG uses a short delay for testing; release uses the required 120s.
+                // Routed through the selected destination (convert the relative delay to an
+                // absolute fire date so SnipKey + Reminders App share one router).
                 guard self.hasFullAccess else {
                     print("[Reminder] Full Access required to schedule from the keyboard")
                     return
@@ -140,21 +149,19 @@ class KeyboardViewController: UIInputViewController {
                 #else
                 let delay: TimeInterval = 120
                 #endif
-                LocalNotificationScheduler.schedule(
-                    ReminderRequest(fireDelay: delay, message: "Time to use SnipKey!")
-                )
+                self.routeReminder(title: "SnipKey",
+                                   body: "Time to use SnipKey!",
+                                   fireDate: Date().addingTimeInterval(delay))
             },
             createReminder: { [weak self] body, fireDate in
                 guard let self = self else { return }
-                // NLP `/remind … at <time>` flow: schedule at the parsed absolute time. Same
-                // suspended-app rationale and Full Access requirement as `requestReminder`.
+                // NLP `/remind … at <time>` flow: deliver at the parsed absolute time via the
+                // selected destination. Same Full Access requirement as `requestReminder`.
                 guard self.hasFullAccess else {
                     print("[Reminder] Full Access required to schedule from the keyboard")
                     return
                 }
-                LocalNotificationScheduler.schedule(
-                    ReminderRequest(fireDate: fireDate, title: "Reminder", message: body)
-                )
+                self.routeReminder(title: "Reminder", body: body, fireDate: fireDate)
             },
             evaluateSlashCommand: { [weak self] in
                 // V1 path: read context and evaluate synchronously.
@@ -267,6 +274,13 @@ class KeyboardViewController: UIInputViewController {
         // Without this warmup, first-keyboard-open paid ~50–200ms of synchronous
         // SQLite + CloudKit setup on the main thread.
         Task { await ModelContainerProvider.shared.warmup() }
+
+        // Cache the reminder destination once per session (off the keystroke path forever after).
+        remindersIntegrationEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.remindersIntegrationEnabled, default: false)
+        reminderDestination = ReminderDestination(appGroupRawValue: AppGroupSettings.string(
+            forKey: AppGroupSettings.Key.reminderDestination,
+            default: ReminderDestination.default.rawValue))
 
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
@@ -560,6 +574,39 @@ class KeyboardViewController: UIInputViewController {
             return
         }
         reminderSuggestionState.update(context: context)
+    }
+
+    // MARK: - Reminder destination routing
+
+    /// `.remindersApp` only when the integration is enabled AND it's the chosen destination;
+    /// otherwise `.snipKey`. The selected destination always wins; a reminder is never created in
+    /// both. (Both flags are session-cached, read once in `viewDidLoad`.)
+    private var effectiveReminderDestination: ReminderDestination {
+        (remindersIntegrationEnabled && reminderDestination == .remindersApp) ? .remindersApp : .snipKey
+    }
+
+    /// Single funnel for creating a reminder. Only ever called from pill-accept (`/remind`) or the
+    /// 🔔 button — never on the keystroke path — so EventKit work never touches typing performance.
+    private func routeReminder(title: String, body: String, fireDate: Date) {
+        switch effectiveReminderDestination {
+        case .snipKey:
+            // Existing behavior, untouched: a SnipKey local notification at the parsed time.
+            LocalNotificationScheduler.schedule(
+                ReminderRequest(fireDate: fireDate, title: title, message: body))
+
+        case .remindersApp:
+            // PRIMARY: write the EKReminder directly using the permission granted in the app.
+            // Succeeds if the keyboard's process can see that grant (to be confirmed on-device).
+            EventKitReminderService.create(title: body, dueDate: fireDate) { ok in
+                guard !ok else { return }   // direct write succeeded — done, single artifact.
+                // FALLBACK (reached only if iOS denied the keyboard's process / no calendar /
+                // save error): schedule a SnipKey notification so the reminder is never lost.
+                // The full "materialize in Reminders on next app open" hand-off (PendingReminderQueue)
+                // is added only if the verification spike shows the direct write is blocked.
+                LocalNotificationScheduler.schedule(
+                    ReminderRequest(fireDate: fireDate, title: title, message: body))
+            }
+        }
     }
 
     /// Slash-command evaluation from an already-read context snapshot. Shared by the

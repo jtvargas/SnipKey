@@ -29,17 +29,24 @@ struct ReminderRequest {
     let title: String
     /// Optional user-facing message used as the notification body.
     let message: String?
+    /// Optional explicit notification identifier (must include `identifierPrefix`). Nil ⇒ a fresh
+    /// `identifierPrefix + UUID` is generated (today's behavior). The Reminders-App fallback passes
+    /// a known id so the main app can cancel the still-pending safety notification once it
+    /// materializes the real `EKReminder`.
+    let identifier: String?
 
     init(action: ReminderAction = .scheduleReminder,
          fireDelay: TimeInterval = 120,
          fireDate: Date? = nil,
          title: String = "SnipKey",
-         message: String? = nil) {
+         message: String? = nil,
+         identifier: String? = nil) {
         self.action = action
         self.fireDelay = fireDelay
         self.fireDate = fireDate
         self.title = title
         self.message = message
+        self.identifier = identifier
     }
 }
 
@@ -106,8 +113,9 @@ enum LocalNotificationScheduler {
                 content.sound = .default
                 content.userInfo = ["createdAt": createdAt.timeIntervalSince1970]
 
-                // Unique identifier per tap → each tap schedules its own independent notification.
-                let identifier = "\(identifierPrefix)\(UUID().uuidString)"
+                // Caller-supplied id (Reminders-App fallback, so it can be cancelled later) or a
+                // fresh one per tap → each tap schedules its own independent notification.
+                let identifier = request.identifier ?? "\(identifierPrefix)\(UUID().uuidString)"
                 let req = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
                 center.add(req) { error in
                     if let error {
