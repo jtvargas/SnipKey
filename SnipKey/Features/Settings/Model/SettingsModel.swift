@@ -109,14 +109,9 @@ final class SettingsModel {
     var reminderDestination: ReminderDestination = ReminderDestination.snipKey
 
     /// Master switch for the Timer integration (Integrations → Timers). **Default OFF.** When OFF,
-    /// the `/timer` command is inert.
+    /// the `/timer` command is inert. When ON, `/timer` schedules a local SnipKey notification that
+    /// fires when the countdown ends.
     var timerIntegrationEnabled: Bool = false
-
-    /// When ON, `/timer` opens SnipKey to start a real **AlarmKit** timer with a live Lock Screen /
-    /// Dynamic Island countdown (only the foreground app can host the Live Activity). When **OFF
-    /// (default)**, `/timer` stays in the current app and fires a local SnipKey notification when
-    /// the timer ends. Requires AlarmKit permission only when ON.
-    var timerLiveCountdownEnabled: Bool = false
 
     init(
         afterPasteAction: KeyboardAfterPasteAction = .space,
@@ -129,8 +124,7 @@ final class SettingsModel {
         shadowLoggingEnabled: Bool = false,
         remindersIntegrationEnabled: Bool = false,
         reminderDestination: ReminderDestination = .snipKey,
-        timerIntegrationEnabled: Bool = false,
-        timerLiveCountdownEnabled: Bool = false
+        timerIntegrationEnabled: Bool = false
     ) {
         self.settingsId = "SnipKey-Settings"
         self.afterPasteAction = afterPasteAction
@@ -144,7 +138,6 @@ final class SettingsModel {
         self.remindersIntegrationEnabled = remindersIntegrationEnabled
         self.reminderDestination = reminderDestination
         self.timerIntegrationEnabled = timerIntegrationEnabled
-        self.timerLiveCountdownEnabled = timerLiveCountdownEnabled
     }
 }
 
@@ -177,9 +170,6 @@ enum AppGroupSettings {
         static let reminderDestination = "reminderDestination"
         /// Master enable for the Timer integration. When false the `/timer` command is inert. Bool.
         static let timerIntegrationEnabled = "timerIntegrationEnabled"
-        /// When true, `/timer` deep-links into the app to start a real AlarmKit live countdown;
-        /// when false, it fires a local notification. Bool.
-        static let timerLiveCountdownEnabled = "timerLiveCountdownEnabled"
     }
 
     static func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {

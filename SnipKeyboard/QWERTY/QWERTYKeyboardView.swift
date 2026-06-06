@@ -230,7 +230,7 @@ struct KeyboardToolbarView: View {
             actions.deleteBackward()
         }
 
-        // 2. Start the timer (controller checks Full Access, tries AlarmKit, falls back to a notification).
+        // 2. Start the timer (controller checks Full Access, then schedules a local notification).
         actions.createTimer(parsed.duration, "Timer")
 
         // 3. Confirmation toast + reset.

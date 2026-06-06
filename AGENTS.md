@@ -564,15 +564,13 @@ routes both the `/remind` pill and the 🔔 button to exactly one destination �
   the keyboard inherits the app's grant; if not, build the `PendingReminderQueue` contingency).
 - The Integrations list is driven by a lightweight `IntegrationRegistry` so new integrations need no
   refactor. Nothing here touches the keystroke hot path.
-- **Timers (`/timer`)** is the second integration: typing `/timer 1h 30m` shows a Create timer pill.
-  A **Live countdown** toggle (default OFF) picks the behavior: OFF → a local-notification countdown
-  (stay in your app); ON → the keyboard deep-links `snipkey://timer?seconds=N` into the app, which
-  starts a real **AlarmKit** Live Activity (Lock Screen + Dynamic Island, via the **`SnipKeyTimerWidget`**
-  extension). Only the foreground app can host the AlarmKit Live Activity — the keyboard's process
-  can't, hence the deep-link. Parser: `SnipKeyboard/QWERTY/TimerParseEngine.swift`; service:
-  `SnipKey/Shared/Timers/AlarmKitTimerService.swift`; URL handler: `SnipKeyApp.handleIncomingURL`.
-  AlarmKit needs only `NSAlarmKitUsageDescription` (no entitlement, requested when Live countdown is
-  turned on) + the app's `NSSupportsLiveActivities`.
+- **Timers (`/timer`)** is the second integration: typing `/timer 1h 30m` (or `90`, `15m`, `1h 5m 10s`)
+  shows a Create timer pill; tapping it schedules a **SnipKey local notification** that fires when the
+  countdown ends (you stay in your current app). Parser: `SnipKeyboard/QWERTY/TimerParseEngine.swift`;
+  it reuses `LocalNotificationScheduler` (`ReminderRequest(fireDelay:)`) and is gated on
+  `timerIntegrationEnabled`. (AlarmKit / Live Activity was evaluated and dropped — only the foreground
+  app can host an AlarmKit Live Activity, which a keyboard extension can't, so it would've required an
+  app-switch on every `/timer`.)
 
 See **[`INTEGRATIONS.md`](INTEGRATIONS.md)** for the full design, the try-direct-then-fallback
 rationale, and how to extend it.

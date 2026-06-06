@@ -82,7 +82,7 @@ struct KeyboardActions {
     let createReminder: (_ body: String, _ fireDate: Date) -> Void
 
     /// Start a parsed `/timer <duration>` countdown of `duration` seconds. `label` is the timer's
-    /// display title. See TimerParseEngine / AlarmKitTimerService.
+    /// display title. Schedules a local SnipKey notification when it ends. See TimerParseEngine.
     let createTimer: (_ duration: TimeInterval, _ label: String) -> Void
 
     /// Evaluate the current text context for slash command patterns.

@@ -11,10 +11,6 @@
 	<string>SnipKey adds your reminders to Apple Reminders when you choose the Reminders app as your destination in Integrations.</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>SnipKey adds your reminders to Apple Reminders when you choose the Reminders app as your destination in Integrations.</string>
-	<!-- The keyboard attempts a direct AlarmKit timer creation under "try direct"; the main app
-	     owns the permission prompt. -->
-	<key>NSAlarmKitUsageDescription</key>
-	<string>SnipKey uses timers to count down on your Lock Screen and Dynamic Island and alert you when time's up, when you type a /timer command.</string>
 	<!-- Unlock 120Hz ProMotion for CADisplayLink-driven work in the extension.
 	     Must be validated empirically in-extension (host provides the surface). -->
 	<key>CADisableMinimumFrameDurationOnPhone</key>

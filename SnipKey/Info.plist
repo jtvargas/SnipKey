@@ -8,10 +8,6 @@
 	<string>SnipKey adds your reminders to Apple Reminders when you choose the Reminders app as your destination in Integrations.</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>SnipKey adds your reminders to Apple Reminders when you choose the Reminders app as your destination in Integrations.</string>
-	<key>NSAlarmKitUsageDescription</key>
-	<string>SnipKey uses timers to count down on your Lock Screen and Dynamic Island and alert you when time's up, when you type a /timer command.</string>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

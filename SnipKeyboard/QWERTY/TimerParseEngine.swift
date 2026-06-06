@@ -52,7 +52,7 @@ enum TimerParser {
     /// The keyword that activates parsing.
     static let trigger = "/timer"
 
-    /// Clamp bounds: a timer must be at least 1 second; AlarmKit/UN countdowns cap at a day.
+    /// Clamp bounds: a timer must be at least 1 second and at most a day.
     private static let minSeconds = 1
     private static let maxSeconds = 24 * 3600
 

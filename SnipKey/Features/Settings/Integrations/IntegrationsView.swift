@@ -77,7 +77,7 @@ struct IntegrationsView: View {
             } header: {
                 Text("Commands")
             } footer: {
-                Text("Your reminder data stays on your device. SnipKey doesn’t send it to any other app or service.")
+                Text("SnipKey doesn’t track or collect anything you do with integrations. Your reminders stay on your device — kept in SnipKey, or sent straight to Apple Reminders if you choose that destination — and are never shared with any third-party or external service.")
                     .font(.custom("IBMPlexMono-Regular", size: 12))
             }
         }

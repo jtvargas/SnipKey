@@ -93,11 +93,6 @@ class KeyboardViewController: UIInputViewController {
     /// `/timer` is inert (no pill). See INTEGRATIONS.md.
     private var timerIntegrationEnabled = false
 
-    /// When true, `/timer` deep-links into the app to start a real AlarmKit live countdown (only the
-    /// foreground app can host the Live Activity); when false, it fires a local notification. Cached
-    /// per session.
-    private var timerLiveCountdownEnabled = false
-
     // MARK: - Hot-path coalescing (V2)
 
     /// True only during the host's synchronous `textDidChange` re-entrancy triggered by our
@@ -178,8 +173,7 @@ class KeyboardViewController: UIInputViewController {
             },
             createTimer: { [weak self] duration, label in
                 guard let self = self else { return }
-                // Same Full Access requirement as reminders (the fallback schedules a local
-                // notification, and AlarmKit scheduling needs it too).
+                // Full Access is required to schedule a local notification from the keyboard.
                 guard self.hasFullAccess else {
                     print("[Timer] Full Access required to create from the keyboard")
                     return
@@ -306,8 +300,6 @@ class KeyboardViewController: UIInputViewController {
             default: ReminderDestination.default.rawValue))
         timerIntegrationEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.timerIntegrationEnabled, default: false)
-        timerLiveCountdownEnabled = AppGroupSettings.bool(
-            forKey: AppGroupSettings.Key.timerLiveCountdownEnabled, default: false)
 
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
@@ -651,20 +643,11 @@ class KeyboardViewController: UIInputViewController {
     // MARK: - Timer routing
 
     /// Single funnel for creating a timer. Only ever called from the `/timer` pill-accept — never on
-    /// the keystroke path. iOS only lets the FOREGROUND APP start an AlarmKit Live Activity, so:
-    ///  • Live countdown ON → deep-link into SnipKey, which starts the real AlarmKit timer (live
-    ///    Lock Screen / Dynamic Island countdown).
-    ///  • Live countdown OFF (default) → fire a local-notification countdown; the user stays put.
+    /// the keystroke path. Schedules a SnipKey local notification that fires when the countdown ends
+    /// (the user stays in their current app).
     private func routeTimer(duration: TimeInterval, label: String) {
-        if timerLiveCountdownEnabled {
-            let seconds = Int(duration.rounded())
-            if let url = URL(string: "snipkey://timer?seconds=\(seconds)") {
-                openURL(url)   // opens the app; it materializes the AlarmKit Live Activity
-            }
-        } else {
-            LocalNotificationScheduler.schedule(
-                ReminderRequest(fireDelay: duration, title: "Timer", message: "\(label) — time's up"))
-        }
+        LocalNotificationScheduler.schedule(
+            ReminderRequest(fireDelay: duration, title: "Timer", message: "\(label) — time's up"))
     }
 
     /// Slash-command evaluation from an already-read context snapshot. Shared by the

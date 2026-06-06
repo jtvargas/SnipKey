@@ -530,10 +530,6 @@ struct SettingsView: View {
                         myCurrentSettings.timerIntegrationEnabled,
                         forKey: AppGroupSettings.Key.timerIntegrationEnabled
                     )
-                    AppGroupSettings.setBool(
-                        myCurrentSettings.timerLiveCountdownEnabled,
-                        forKey: AppGroupSettings.Key.timerLiveCountdownEnabled
-                    )
                 }
             }
         }
@@ -562,7 +558,6 @@ struct SettingsView: View {
         currentSettings.remindersIntegrationEnabled = false
         currentSettings.reminderDestination = .snipKey
         currentSettings.timerIntegrationEnabled = false
-        currentSettings.timerLiveCountdownEnabled = false
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
@@ -572,7 +567,6 @@ struct SettingsView: View {
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.remindersIntegrationEnabled)
         AppGroupSettings.setString(ReminderDestination.snipKey.rawValue, forKey: AppGroupSettings.Key.reminderDestination)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.timerIntegrationEnabled)
-        AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.timerLiveCountdownEnabled)
     }
 }
 

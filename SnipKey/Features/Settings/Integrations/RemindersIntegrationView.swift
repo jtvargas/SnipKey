@@ -49,7 +49,7 @@ struct RemindersIntegrationView: View {
                 .tint(.red)
                 .disabled(requesting)
             } footer: {
-                Text("Your reminder data stays on your device. SnipKey doesn’t send your reminders to any other app or service.")
+                Text("Reminders are created on your device — kept in SnipKey, or sent straight to Apple Reminders when you choose it as the destination. SnipKey doesn’t track or collect your reminders, and never sends them to any third-party or external service.")
                     .font(.custom("IBMPlexMono-Regular", size: 12))
             }
 
