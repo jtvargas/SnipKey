@@ -96,6 +96,23 @@ final class SettingsModel {
     /// the rollout gate and gather a calibration corpus.
     var shadowLoggingEnabled: Bool = false
 
+    // MARK: - Integrations
+
+    /// Master switch for the Reminders integration (Integrations → Reminders). **Default OFF** so
+    /// existing users see no behavior change until they opt in. When OFF, the reminder destination
+    /// is forced to `.snipKey` at routing time regardless of the stored picker value.
+    var remindersIntegrationEnabled: Bool = false
+
+    /// Where `/remind` (and the 🔔 quick button) deliver. **Default `.snipKey`** = existing
+    /// local-notification behavior. Persisted like `afterPasteAction` (a `Codable` enum).
+    /// NB: `@Model` requires a fully-qualified default (`ReminderDestination.snipKey`, not `.snipKey`).
+    var reminderDestination: ReminderDestination = ReminderDestination.snipKey
+
+    /// Master switch for the Timer integration (Integrations → Timers). **Default OFF.** When OFF,
+    /// the `/timer` command is inert. When ON, `/timer` schedules a local SnipKey notification that
+    /// fires when the countdown ends.
+    var timerIntegrationEnabled: Bool = false
+
     init(
         afterPasteAction: KeyboardAfterPasteAction = .space,
         isQWERTYKeyboardEnabled: Bool = false,
@@ -104,7 +121,10 @@ final class SettingsModel {
         autoCapitalizationEnabled: Bool = true,
         debugHitOverlayEnabled: Bool = false,
         useProbabilisticHitResolver: Bool = true,
-        shadowLoggingEnabled: Bool = false
+        shadowLoggingEnabled: Bool = false,
+        remindersIntegrationEnabled: Bool = false,
+        reminderDestination: ReminderDestination = .snipKey,
+        timerIntegrationEnabled: Bool = false
     ) {
         self.settingsId = "SnipKey-Settings"
         self.afterPasteAction = afterPasteAction
@@ -115,6 +135,9 @@ final class SettingsModel {
         self.debugHitOverlayEnabled = debugHitOverlayEnabled
         self.useProbabilisticHitResolver = useProbabilisticHitResolver
         self.shadowLoggingEnabled = shadowLoggingEnabled
+        self.remindersIntegrationEnabled = remindersIntegrationEnabled
+        self.reminderDestination = reminderDestination
+        self.timerIntegrationEnabled = timerIntegrationEnabled
     }
 }
 
@@ -139,6 +162,14 @@ enum AppGroupSettings {
         /// it disagrees with the acting one (privacy-safe aggregates). Default OFF. Drives
         /// the rollout gate + β/offset calibration in V2_KEYBOARD_NEXTGEN_PLAN §11–§12.
         static let shadowLoggingEnabled = "shadowLoggingEnabled"
+        /// Master enable for the Reminders integration. When false, the keyboard behaves exactly
+        /// as today (SnipKey local notifications only). Bool.
+        static let remindersIntegrationEnabled = "remindersIntegrationEnabled"
+        /// Active reminder destination — `ReminderDestination.rawValue` ("snipKey"/"remindersApp").
+        /// The keyboard reads this synchronously once per session to route reminder creation. String.
+        static let reminderDestination = "reminderDestination"
+        /// Master enable for the Timer integration. When false the `/timer` command is inert. Bool.
+        static let timerIntegrationEnabled = "timerIntegrationEnabled"
     }
 
     static func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {
@@ -146,6 +177,14 @@ enum AppGroupSettings {
     }
 
     static func setBool(_ value: Bool, forKey key: String) {
+        UserDefaults(suiteName: suite)?.set(value, forKey: key)
+    }
+
+    static func string(forKey key: String, default defaultValue: String) -> String {
+        UserDefaults(suiteName: suite)?.string(forKey: key) ?? defaultValue
+    }
+
+    static func setString(_ value: String, forKey key: String) {
         UserDefaults(suiteName: suite)?.set(value, forKey: key)
     }
 }

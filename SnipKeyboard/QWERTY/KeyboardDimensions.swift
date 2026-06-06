@@ -25,8 +25,8 @@ struct KeyboardDimensions: Equatable {
 
     /// Vertical gap between rows
     var rowGap: CGFloat {
-        // Match native iOS keyboard row spacing (~11-12pt)
-        return 12
+        // Match native iOS keyboard row spacing (~11pt)
+        return 11
     }
 
     /// Left/right margin from screen edge to first/last key

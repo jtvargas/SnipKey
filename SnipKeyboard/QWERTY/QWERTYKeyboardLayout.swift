@@ -54,10 +54,10 @@ struct QWERTYKeyboardLayout {
     static let symbolsRows: [[KeyAction]] = [
         // Row 0: [ ] { } # % ^ * + =
         "[]{}#%^*+=".map { .character(String($0)) },
-        // Row 1: _ \ | ~ < > . , ? !
-        ["_", "\\", "|", "~", "<", ">", ".", ",", "?", "!"].map { .character($0) },
-        // Row 2: [123] - / : ; ( ) [Backspace]
-        [.modeChange(.numbers)] + "-/:;()".map { .character(String($0)) } + [.backspace],
+        // Row 1: _ \ | ~ < > € £ ¥ •
+        ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"].map { .character($0) },
+        // Row 2: [123] . , ? ! ' [Backspace]
+        [.modeChange(.numbers)] + ".,?!'".map { .character(String($0)) } + [.backspace],
         // Row 3: [ABC] [Snippets] [Space] [Return]
         [.modeChange(.letters), .snippetToggle, .space, .returnKey]
     ]

@@ -174,5 +174,7 @@ struct NativeKeyboardV2View_SwiftUI: View {
             Spacer(minLength: 0)
         }
         .frame(height: dims.totalHeight)
+        .reminderToast()
+        .timerToast()
     }
 }

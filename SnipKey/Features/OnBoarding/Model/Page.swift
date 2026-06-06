@@ -19,7 +19,7 @@ enum Page: String, CaseIterable {
         switch self {
         case .page1: "Welcome to SnipKey"
         case .page2: "Save Time, Type Quicker"
-        case .page3: "Create Shortcuts Anywhere"
+        case .page3: "Use Commands Anywhere"
         case .page4: "Your Data is Safe"
         case .page5: "✋Set Up Your Keyboard"
         }
@@ -70,7 +70,7 @@ enum Page: String, CaseIterable {
         switch self {
         case .page1: "Access text and image snippets instantly with the keyboard extension.\n\nSave time using quick shortcuts."
         case .page2:  "Create snippets for frequently used text and URLs.\n\nAccess and paste them anywhere with the keyboard extension."
-        case .page3: "Quickly create shortcuts directly from your keyboard."
+        case .page3: "Type commands like “/remind tomorrow at 9am call mom” to quickly create reminders with natural language.\n\nKeep reminders inside SnipKey or connect Apple Reminders from Settings."
         case .page4: "All your snippets are encrypted and synced across devices with iCloud."
         case .page5: "1. Open App Settings > Keyboards.\n2. Turn on 'Shortcuts'.\n3. Enable 'Full Access' for media features like images and PDFs."
         }

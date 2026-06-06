@@ -103,6 +103,7 @@ final class KeyLayerRenderer {
             background.frame = frame.rect
             background.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: frame.rect.size), cornerRadius: dims.cornerRadius).cgPath
             background.fillColor = backgroundColor(for: frame.action, isDark: isDark).cgColor
+            applyNativeKeyShadow(to: background, isDark: isDark)
             hostLayer.addSublayer(background)
 
             let glyphLayer = makeGlyphLayer(for: frame, scale: scale, isDark: isDark)
@@ -255,7 +256,7 @@ final class KeyLayerRenderer {
             let textLayer = CATextLayer()
             textLayer.contentsScale = scale
             textLayer.alignmentMode = .center
-            let fontSize = textFontSize(for: frame.action)
+            let fontSize = textFontSize(for: frame.action, keyHeight: frame.rect.height)
             // Vertically center the text within the key, with a small upward bias to match
             // native iOS (Apple's glyphs sit slightly above mathematical center).
             let inset = max((frame.rect.height - fontSize - 4) / 2, 0)
@@ -298,17 +299,17 @@ final class KeyLayerRenderer {
             case .locked:   return .symbol(name: "capslock.fill", pointSize: 17, weight: .regular)
             }
         case .backspace:
-            return .symbol(name: "delete.left", pointSize: 18, weight: .regular)
+            return .symbol(name: "delete.left", pointSize: 19, weight: .regular)
         case .space:
             return .text("")
         case .returnKey:
             if let override = returnKeyOverride {
                 return override.prominent
                     ? .text(override.label)
-                    : .symbol(name: "return", pointSize: 17, weight: .regular)
+                    : .symbol(name: "return", pointSize: 20, weight: .regular)
             }
             // Default before any label is pushed in: outlined return symbol.
-            return .symbol(name: "return", pointSize: 17, weight: .regular)
+            return .symbol(name: "return", pointSize: 20, weight: .regular)
         case .modeChange(let page):
             switch page {
             case .letters: return .text("ABC")
@@ -327,11 +328,15 @@ final class KeyLayerRenderer {
         return ""
     }
 
-    private func textFontSize(for action: KeyAction) -> CGFloat {
-        if case .character(let c) = action, c.first?.isLetter == true { return 22 }
-        if case .returnKey = action { return 16 }
-        if case .modeChange = action { return 14 }
-        return 18
+    private func textFontSize(for action: KeyAction, keyHeight: CGFloat) -> CGFloat {
+        if case .character(let c) = action {
+            let ch = c.first
+            if ch?.isLetter == true || ch?.isNumber == true { return round(keyHeight * 0.50) }
+            return round(keyHeight * 0.43)
+        }
+        if case .returnKey = action { return round(keyHeight * 0.36) }
+        if case .modeChange = action { return round(keyHeight * 0.36) }
+        return round(keyHeight * 0.43)
     }
 
     /// Render an SF Symbol to a `UIImage` of pixel-perfect size at the current screen scale,
@@ -383,17 +388,34 @@ final class KeyLayerRenderer {
         case .character, .space:
             return isDark
                 ? UIColor(white: 0.40, alpha: 0.55)
-                : UIColor.white   // Native iOS light mode: all character keys are pure white.
+                : UIColor(white: 1.0, alpha: 0.94)
         case .returnKey, .shift, .backspace, .modeChange, .snippetToggle:
             return isDark
-                ? UIColor(white: 0.25, alpha: 0.65)
-                // Light mode: barely-perceptible off-white for special keys — a subtle
-                // depth cue without the heavy gray differentiation the dark palette uses.
-                : UIColor(white: 0.92, alpha: 1.0)
+                ? UIColor(white: 0.40, alpha: 0.55)
+                : UIColor(red: 0.674, green: 0.704, blue: 0.747, alpha: 0.88)
         }
     }
 
+    private func applyNativeKeyShadow(to layer: CAShapeLayer, isDark: Bool) {
+        if isDark {
+            layer.shadowOpacity = 0
+            return
+        }
+
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+        layer.shadowRadius = 0
+        layer.shadowOpacity = 0.24
+        layer.shadowPath = layer.path
+    }
+
     private func glyphColor(for action: KeyAction, isDark: Bool) -> UIColor {
+        if case .returnKey = action {
+            let prominent = returnKeyOverride?.prominent ?? false
+            if !prominent {
+                return isDark ? UIColor(white: 0.48, alpha: 1.0) : UIColor(white: 0.82, alpha: 1.0)
+            }
+        }
         // Explicit black/white — `UIColor.label` is a dynamic color whose `.cgColor`
         // resolves through the current trait collection at access time. CATextLayer has
         // no trait collection of its own, so `.label.cgColor` would fall back to whatever

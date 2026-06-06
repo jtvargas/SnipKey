@@ -11,6 +11,7 @@ import CloudKitSyncMonitor
 import AlertToast
 import UniformTypeIdentifiers
 import TipKit
+import UserNotifications
 
 
 
@@ -21,6 +22,7 @@ struct HomeView2: View {
     @AppStorage("isKeyboardShortcutEnabled") var isKeyboardShortcutEnabled: Bool = false
     @Environment(\.requestReview) var requestReview
     @Environment(\.modelContext) var modelContex
+    @Environment(\.scenePhase) private var scenePhase
     
     @State var viewModel = SnippetViewModel()
     
@@ -39,6 +41,8 @@ struct HomeView2: View {
     @State  var snippetsSelection = Set<SnippetItem>()
     @State var text: String = ""
     @State var isPresentingSettings: Bool = false
+    @State var isPresentedReminders: Bool = false
+    @State private var pendingReminderCount: Int = 0
     @State var isPresentedMoveOrCreateTags: Bool = false
     @State var isPresentedFormModal: Bool = false
     @State var isPresentedKeyboardGuide: Bool = false
@@ -73,14 +77,18 @@ struct HomeView2: View {
                             )
                             .presentationDetents([.height(425)])
                         }
+                        .sheet(isPresented: $isPresentedReminders) {
+                            RemindersView()
+                        }
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading){
                                 HStack{
                                     InfoButtonView()
                                     IcloudSaveIndocatorView()
                                     TipsDevButtonView()
+                                    RemindersButtonView()
                                 }
-                                
+
                             }
                             ToolbarItem(placement: .primaryAction){
                                 if snippetsSelection.isEmpty && !editMode.isEditing  {
@@ -136,6 +144,17 @@ struct HomeView2: View {
             if !snippets.isEmpty {
                 CreateSnippetTip.alreadyDiscovered = true
             }
+            refreshReminderCount()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active { refreshReminderCount() }
+        }
+        .onChange(of: isPresentedReminders) { _, isPresented in
+            // Returning from the Reminders sheet (after delete/clear) → re-read the count.
+            if !isPresented { refreshReminderCount() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NotificationPresenter.remindersDidChange)) { _ in
+            refreshReminderCount()
         }
         .onChange(of: snippets) { oldPhase, newPhase in
             if newPhase.count % 2 == 0 && !isRequestedRating {
@@ -383,6 +402,37 @@ struct HomeView2: View {
         } label : {
             Image(systemName: "gift.fill")
                 .foregroundStyle(Color.yellow)
+        }
+    }
+
+    @ViewBuilder
+    func RemindersButtonView() -> some View {
+        Button {
+            isPresentedReminders = true
+        } label: {
+            Image(systemName: "bell")
+                .foregroundStyle(Color.label.gradient)
+                .overlay(alignment: .topLeading) {
+                    if pendingReminderCount > 0 {
+                        Text("\(pendingReminderCount)")
+                            .font(.custom("IBMPlexMono-Medium", size: 9))
+                            .foregroundStyle(.white)
+                            .padding(2)
+                            .frame(minWidth: 15, minHeight: 15)
+                            .background(Circle().fill(Color.customError))
+                            .offset(x: -7, y: -2)
+                    }
+                }
+        }
+    }
+
+    /// Reads the number of upcoming (pending) reminders so the bell can badge it.
+    private func refreshReminderCount() {
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            let count = requests.filter {
+                $0.identifier.hasPrefix(LocalNotificationScheduler.identifierPrefix)
+            }.count
+            DispatchQueue.main.async { pendingReminderCount = count }
         }
     }
     

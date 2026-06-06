@@ -517,6 +517,64 @@ These channels are used by the snippet browsing view (`KeyboardView.swift`). The
 | `selectText` / `selectTextEmpty` | Text selection events |
 | `hasFullAccess` | Full Access status broadcast |
 
+### Keyboard-triggered local notifications
+
+The keyboard's 🔔 button schedules a local notification (fires in 2 minutes). It must fire even
+while the main app stays **suspended** in the background, so the **keyboard schedules it directly**
+via `UNUserNotificationCenter` — a suspended app runs no code and can't schedule on the keyboard's
+behalf, and iOS won't wake it for a cross-process signal. Once `add` succeeds, the system owns the
+timer and delivers regardless of app state.
+
+- Scheduling logic is shared: `SnipKey/Shared/Notifications/LocalNotificationScheduler.swift`
+  (dual-membership — both targets).
+- The main app only owns the one-time authorization prompt and the foreground-presentation delegate
+  (`SnipKey/Features/Notifications/NotificationPresenter.swift`, app-only).
+- The Snippets 🔔 toolbar button (`HomeView2`) opens `RemindersView` and shows a red count badge of
+  pending reminders, refreshed on appear/active/sheet-close and via the
+  `NotificationPresenter.remindersDidChange` broadcast when one fires in-foreground.
+- **Natural-language `/remind`:** typing `/remind … <time>` is parsed on-device in
+  `SnipKeyboard/QWERTY/ReminderParseEngine.swift` (`ReminderParser` + `ReminderSuggestionState`).
+  It's intent-aware — separates *day* (from `NSDataDetector`) from *time* (explicit clock →
+  time-of-day phrase map → 9 AM default → now + 1 hour), and adds what `NSDataDetector` misses
+  (`noon`, `next week`/`next month`, bare `at 3`, relative `in N seconds…weeks`). Past today-times
+  roll to tomorrow; calendar trigger includes `.second`. **Full spec: `REMINDER_NLP.md`.**
+  The controller updates the state in the coalesced flush (`runReminderEvaluation`); the toolbar shows
+  `CreateReminderPill`, which deletes the command and calls `KeyboardActions.createReminder(body:fireDate:)`
+  → `ReminderRequest(fireDate:title:"Reminder",…)` (calendar trigger). Confirmation banner is the shared
+  `.reminderToast()` modifier on both keyboard roots. Reuses the same `identifierPrefix`, so it lands in
+  `RemindersView` + the badge.
+- Requires **Full Access** (already a SnipKey baseline) and granted notification permission.
+
+See **[`LOCAL_NOTIFICATIONS.md`](LOCAL_NOTIFICATIONS.md)** for the full design, the why, and testing
+steps. (An earlier App Group + Darwin design — where the app scheduled — was dropped because it
+can't fire while the app is suspended.)
+
+### Integrations (reminder destinations)
+
+`Settings → Integrations → Reminders` lets the user send reminders to the **native iOS Reminders
+app** (EventKit) instead of SnipKey's local notifications. A single `ReminderDestination` enum
+(`.snipKey` default / `.remindersApp`) is persisted in `SettingsModel` and mirrored to the
+`group.snipkey` App Group; the keyboard reads it once per session and `KeyboardViewController.routeReminder`
+routes both the `/remind` pill and the 🔔 button to exactly one destination — never both.
+
+- EventKit work is encapsulated in `SnipKey/Shared/Reminders/EventKitReminderService.swift`
+  (dual-membership). The **main app** owns the permission prompt (`RemindersIntegrationView`); the
+  keyboard **attempts a direct write** using that grant and **falls back** to a SnipKey notification
+  if its process isn't authorized (TCC is per-process/per-bundle-ID — **confirm on-device** whether
+  the keyboard inherits the app's grant; if not, build the `PendingReminderQueue` contingency).
+- The Integrations list is driven by a lightweight `IntegrationRegistry` so new integrations need no
+  refactor. Nothing here touches the keystroke hot path.
+- **Timers (`/timer`)** is the second integration: typing `/timer 1h 30m` (or `90`, `15m`, `1h 5m 10s`)
+  shows a Create timer pill; tapping it schedules a **SnipKey local notification** that fires when the
+  countdown ends (you stay in your current app). Parser: `SnipKeyboard/QWERTY/TimerParseEngine.swift`;
+  it reuses `LocalNotificationScheduler` (`ReminderRequest(fireDelay:)`) and is gated on
+  `timerIntegrationEnabled`. (AlarmKit / Live Activity was evaluated and dropped — only the foreground
+  app can host an AlarmKit Live Activity, which a keyboard extension can't, so it would've required an
+  app-switch on every `/timer`.)
+
+See **[`INTEGRATIONS.md`](INTEGRATIONS.md)** for the full design, the try-direct-then-fallback
+rationale, and how to extend it.
+
 ### Key Constraints
 
 - Keyboard extensions run in a **constrained memory environment** (~48 MB limit)

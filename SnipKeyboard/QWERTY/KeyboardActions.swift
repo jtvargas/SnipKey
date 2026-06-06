@@ -73,6 +73,18 @@ struct KeyboardActions {
     /// Open the main SnipKey app (for settings access from the keyboard)
     let openApp: () -> Void
 
+    /// Schedule a generic local notification from the keyboard (🔔 quick button). The controller
+    /// supplies `hasFullAccess` and the delay. See LOCAL_NOTIFICATIONS.md.
+    let requestReminder: () -> Void
+
+    /// Schedule a parsed `/remind … at <time>` reminder at an absolute fire date.
+    /// `body` is the notification text, `fireDate` the resolved time. See ReminderParseEngine.
+    let createReminder: (_ body: String, _ fireDate: Date) -> Void
+
+    /// Start a parsed `/timer <duration>` countdown of `duration` seconds. `label` is the timer's
+    /// display title. Schedules a local SnipKey notification when it ends. See TimerParseEngine.
+    let createTimer: (_ duration: TimeInterval, _ label: String) -> Void
+
     /// Evaluate the current text context for slash command patterns.
     /// Called after character insertion, deletion, and other key events.
     let evaluateSlashCommand: () -> Void
@@ -120,6 +132,9 @@ struct KeyboardActions {
         showPopup: { _, _, _ in },
         hidePopup: {},
         openApp: {},
+        requestReminder: {},
+        createReminder: { _, _ in },
+        createTimer: { _, _ in },
         evaluateSlashCommand: {},
         evaluatePredictiveText: {},
         scheduleSideEffects: {},

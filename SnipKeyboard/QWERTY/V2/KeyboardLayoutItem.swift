@@ -43,11 +43,13 @@ struct KeyboardRow {
     let items: [KeyboardLayoutItem]
     let leadingInset: CGFloat
     let trailingInset: CGFloat
+    let gapsAfter: [CGFloat]?
 
-    init(items: [KeyboardLayoutItem], leadingInset: CGFloat = 0, trailingInset: CGFloat = 0) {
+    init(items: [KeyboardLayoutItem], leadingInset: CGFloat = 0, trailingInset: CGFloat = 0, gapsAfter: [CGFloat]? = nil) {
         self.items = items
         self.leadingInset = leadingInset
         self.trailingInset = trailingInset
+        self.gapsAfter = gapsAfter
     }
 }
 

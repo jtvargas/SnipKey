@@ -54,7 +54,8 @@ enum KeyboardLayoutResolver {
             // Per-row width budget accounts for leading/trailing insets (rows 1 and 2 use
             // these so their letters stay the same width as row 0 instead of stretching).
             let usableRowWidth = max(usableKeyboardWidth - row.leadingInset - row.trailingInset, 0)
-            let widths = computeWidths(for: row.items, usableRowWidth: usableRowWidth, keyGap: dims.keyGap)
+            let gaps = resolvedGaps(for: row, defaultGap: dims.keyGap)
+            let widths = computeWidths(for: row.items, usableRowWidth: usableRowWidth, gaps: gaps)
 
             var x = dims.sideEdge + row.leadingInset
             let y = dims.topEdge + CGFloat(rowIndex) * (keyHeight + dims.rowGap)
@@ -81,8 +82,10 @@ enum KeyboardLayoutResolver {
                 // - Middle keys: claim half of each adjacent gap.
                 let isFirst = columnIndex == 0
                 let isLast = columnIndex == itemCount - 1
-                let leftSlop = isFirst ? rect.minX : dims.keyGap / 2
-                let rightSlop = isLast ? max(keysAreaSize.width - rect.maxX, 0) : dims.keyGap / 2
+                let previousGap = columnIndex > 0 && columnIndex - 1 < gaps.count ? gaps[columnIndex - 1] : dims.keyGap
+                let nextGap = columnIndex < gaps.count ? gaps[columnIndex] : dims.keyGap
+                let leftSlop = isFirst ? rect.minX : previousGap / 2
+                let rightSlop = isLast ? max(keysAreaSize.width - rect.maxX, 0) : nextGap / 2
 
                 let hitRect = CGRect(
                     x: rect.minX - leftSlop,
@@ -99,11 +102,23 @@ enum KeyboardLayoutResolver {
                     columnIndex: columnIndex,
                     isCharacterKey: isChar
                 ))
-                x += w + dims.keyGap
+                x += w + (columnIndex < gaps.count ? gaps[columnIndex] : 0)
             }
         }
 
         return frames
+    }
+
+    private static func resolvedGaps(for row: KeyboardRow, defaultGap: CGFloat) -> [CGFloat] {
+        let expectedCount = max(row.items.count - 1, 0)
+        guard expectedCount > 0 else { return [] }
+        guard let custom = row.gapsAfter else {
+            return Array(repeating: defaultGap, count: expectedCount)
+        }
+
+        if custom.count == expectedCount { return custom }
+        if custom.count > expectedCount { return Array(custom.prefix(expectedCount)) }
+        return custom + Array(repeating: defaultGap, count: expectedCount - custom.count)
     }
 
     /// Two-pass width algorithm:
@@ -113,11 +128,11 @@ enum KeyboardLayoutResolver {
     private static func computeWidths(
         for row: [KeyboardLayoutItem],
         usableRowWidth: CGFloat,
-        keyGap: CGFloat
+        gaps: [CGFloat]
     ) -> [CGFloat] {
         guard !row.isEmpty else { return [] }
 
-        let gapsTotal = keyGap * CGFloat(row.count - 1)
+        let gapsTotal = gaps.reduce(CGFloat(0), +)
         let widthForKeys = max(usableRowWidth - gapsTotal, 0)
 
         var inputCount = 0

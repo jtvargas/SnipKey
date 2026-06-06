@@ -35,7 +35,10 @@ struct SnipKeyApp: App {
     init() {
         let modelContext = container.mainContext
         try? Tips.configure()
-        
+
+        // Set the UN delegate before launch finishes so foreground banners present.
+        NotificationPresenter.shared.bootstrap()
+
         let settingsViewModel = SettingsViewModel(modelContext: modelContext)
         _settingsViewModel = State(initialValue: settingsViewModel)
     }
@@ -70,9 +73,13 @@ struct SnipKeyApp: App {
                         TipDevView()
                     }
                     .onAppear() {
-                       
+
                         settingsViewModel.setupKeyboardSettings()
-                        
+
+                        // Request notification permission once. The keyboard schedules reminders
+                        // directly (see LocalNotificationScheduler); the app just owns the prompt.
+                        LocalNotificationScheduler.requestAuthorizationIfNeeded()
+
                         if !isWelcomeAlreadyDisplayed {
                             DispatchQueue.main
                                 .asyncAfter(deadline: .now() +  1.0){
@@ -99,7 +106,7 @@ struct SnipKeyApp: App {
         }
         .modelContainer(container)
     }
-    
+
     private var selectedAppearance: AppAppearance {
         AppAppearance(rawValue: appAppearance) ?? .system
     }
