@@ -81,6 +81,10 @@ struct KeyboardActions {
     /// `body` is the notification text, `fireDate` the resolved time. See ReminderParseEngine.
     let createReminder: (_ body: String, _ fireDate: Date) -> Void
 
+    /// Start a parsed `/timer <duration>` countdown of `duration` seconds. `label` is the timer's
+    /// display title. See TimerParseEngine / AlarmKitTimerService.
+    let createTimer: (_ duration: TimeInterval, _ label: String) -> Void
+
     /// Evaluate the current text context for slash command patterns.
     /// Called after character insertion, deletion, and other key events.
     let evaluateSlashCommand: () -> Void
@@ -130,6 +134,7 @@ struct KeyboardActions {
         openApp: {},
         requestReminder: {},
         createReminder: { _, _ in },
+        createTimer: { _, _ in },
         evaluateSlashCommand: {},
         evaluatePredictiveText: {},
         scheduleSideEffects: {},

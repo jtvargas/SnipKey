@@ -15,6 +15,7 @@ import SwiftUI
 /// Stable identifier for an integration. Adding one starts here.
 enum IntegrationID: String, CaseIterable, Identifiable {
     case reminders
+    case timer
     var id: String { rawValue }
 }
 
@@ -43,6 +44,15 @@ enum IntegrationRegistry {
             iconColor: .red,
             isEnabled: { $0.remindersIntegrationEnabled },
             makeDetail: { AnyView(RemindersIntegrationView()) }
+        ),
+        IntegrationDescriptor(
+            id: .timer,
+            title: "Timers",
+            subtitle: "Start countdown timers from the keyboard",
+            iconName: "timer",
+            iconColor: .indigo,
+            isEnabled: { $0.timerIntegrationEnabled },
+            makeDetail: { AnyView(TimerIntegrationView()) }
         )
     ]
 

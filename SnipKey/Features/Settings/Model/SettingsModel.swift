@@ -108,6 +108,16 @@ final class SettingsModel {
     /// NB: `@Model` requires a fully-qualified default (`ReminderDestination.snipKey`, not `.snipKey`).
     var reminderDestination: ReminderDestination = ReminderDestination.snipKey
 
+    /// Master switch for the Timer integration (Integrations → Timers). **Default OFF.** When OFF,
+    /// the `/timer` command is inert.
+    var timerIntegrationEnabled: Bool = false
+
+    /// When ON, `/timer` opens SnipKey to start a real **AlarmKit** timer with a live Lock Screen /
+    /// Dynamic Island countdown (only the foreground app can host the Live Activity). When **OFF
+    /// (default)**, `/timer` stays in the current app and fires a local SnipKey notification when
+    /// the timer ends. Requires AlarmKit permission only when ON.
+    var timerLiveCountdownEnabled: Bool = false
+
     init(
         afterPasteAction: KeyboardAfterPasteAction = .space,
         isQWERTYKeyboardEnabled: Bool = false,
@@ -118,7 +128,9 @@ final class SettingsModel {
         useProbabilisticHitResolver: Bool = true,
         shadowLoggingEnabled: Bool = false,
         remindersIntegrationEnabled: Bool = false,
-        reminderDestination: ReminderDestination = .snipKey
+        reminderDestination: ReminderDestination = .snipKey,
+        timerIntegrationEnabled: Bool = false,
+        timerLiveCountdownEnabled: Bool = false
     ) {
         self.settingsId = "SnipKey-Settings"
         self.afterPasteAction = afterPasteAction
@@ -131,6 +143,8 @@ final class SettingsModel {
         self.shadowLoggingEnabled = shadowLoggingEnabled
         self.remindersIntegrationEnabled = remindersIntegrationEnabled
         self.reminderDestination = reminderDestination
+        self.timerIntegrationEnabled = timerIntegrationEnabled
+        self.timerLiveCountdownEnabled = timerLiveCountdownEnabled
     }
 }
 
@@ -161,6 +175,11 @@ enum AppGroupSettings {
         /// Active reminder destination — `ReminderDestination.rawValue` ("snipKey"/"remindersApp").
         /// The keyboard reads this synchronously once per session to route reminder creation. String.
         static let reminderDestination = "reminderDestination"
+        /// Master enable for the Timer integration. When false the `/timer` command is inert. Bool.
+        static let timerIntegrationEnabled = "timerIntegrationEnabled"
+        /// When true, `/timer` deep-links into the app to start a real AlarmKit live countdown;
+        /// when false, it fires a local notification. Bool.
+        static let timerLiveCountdownEnabled = "timerLiveCountdownEnabled"
     }
 
     static func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {

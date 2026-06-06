@@ -76,6 +76,10 @@ class KeyboardViewController: UIInputViewController {
     /// `/remind … at <time>`. Updated from the coalesced side-effect flush. See ReminderParseEngine.
     let reminderSuggestionState = ReminderSuggestionState()
 
+    /// Observable timer state — drives the "Create timer" pill when the user types `/timer <dur>`.
+    /// Updated from the coalesced side-effect flush, gated on the Timer integration. See TimerParseEngine.
+    let timerSuggestionState = TimerSuggestionState()
+
     // MARK: - Reminder destination (Integrations)
 
     /// Active reminder destination + integration enable flag. Read ONCE per session in
@@ -84,6 +88,15 @@ class KeyboardViewController: UIInputViewController {
     /// as the V2/hit-resolver toggles. See INTEGRATIONS.md.
     private var remindersIntegrationEnabled = false
     private var reminderDestination: ReminderDestination = .snipKey
+
+    /// Whether the Timer integration is enabled. Read ONCE per session in `viewDidLoad`. When false,
+    /// `/timer` is inert (no pill). See INTEGRATIONS.md.
+    private var timerIntegrationEnabled = false
+
+    /// When true, `/timer` deep-links into the app to start a real AlarmKit live countdown (only the
+    /// foreground app can host the Live Activity); when false, it fires a local notification. Cached
+    /// per session.
+    private var timerLiveCountdownEnabled = false
 
     // MARK: - Hot-path coalescing (V2)
 
@@ -162,6 +175,16 @@ class KeyboardViewController: UIInputViewController {
                     return
                 }
                 self.routeReminder(title: "Reminder", body: body, fireDate: fireDate)
+            },
+            createTimer: { [weak self] duration, label in
+                guard let self = self else { return }
+                // Same Full Access requirement as reminders (the fallback schedules a local
+                // notification, and AlarmKit scheduling needs it too).
+                guard self.hasFullAccess else {
+                    print("[Timer] Full Access required to create from the keyboard")
+                    return
+                }
+                self.routeTimer(duration: duration, label: label)
             },
             evaluateSlashCommand: { [weak self] in
                 // V1 path: read context and evaluate synchronously.
@@ -281,6 +304,10 @@ class KeyboardViewController: UIInputViewController {
         reminderDestination = ReminderDestination(appGroupRawValue: AppGroupSettings.string(
             forKey: AppGroupSettings.Key.reminderDestination,
             default: ReminderDestination.default.rawValue))
+        timerIntegrationEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.timerIntegrationEnabled, default: false)
+        timerLiveCountdownEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.timerLiveCountdownEnabled, default: false)
 
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
@@ -308,7 +335,8 @@ class KeyboardViewController: UIInputViewController {
                 keyboardActions: keyboardActionsStruct,
                 slashCommandState: slashCommandState,
                 predictiveTextState: predictiveTextState,
-                reminderSuggestionState: reminderSuggestionState
+                reminderSuggestionState: reminderSuggestionState,
+                timerSuggestionState: timerSuggestionState
             )
         )
         
@@ -563,7 +591,18 @@ class KeyboardViewController: UIInputViewController {
         let context = textDocumentProxy.documentContextBeforeInput
         runSlashEvaluation(context: context)
         runReminderEvaluation(context: context)
+        runTimerEvaluation(context: context)
         runPredictiveEvaluation(context: context)
+    }
+
+    /// NLP timer evaluation from an already-read context snapshot. Gated on the Timer integration —
+    /// when it's off (or the snippet grid is showing), `/timer` is inert and no pill appears.
+    private func runTimerEvaluation(context: String?) {
+        guard timerIntegrationEnabled, !qwertyState.showingSnippets else {
+            timerSuggestionState.clear()
+            return
+        }
+        timerSuggestionState.update(context: context)
     }
 
     /// NLP reminder evaluation from an already-read context snapshot. Cheap: `update` early-outs
@@ -606,6 +645,25 @@ class KeyboardViewController: UIInputViewController {
                 LocalNotificationScheduler.schedule(
                     ReminderRequest(fireDate: fireDate, title: title, message: body))
             }
+        }
+    }
+
+    // MARK: - Timer routing
+
+    /// Single funnel for creating a timer. Only ever called from the `/timer` pill-accept — never on
+    /// the keystroke path. iOS only lets the FOREGROUND APP start an AlarmKit Live Activity, so:
+    ///  • Live countdown ON → deep-link into SnipKey, which starts the real AlarmKit timer (live
+    ///    Lock Screen / Dynamic Island countdown).
+    ///  • Live countdown OFF (default) → fire a local-notification countdown; the user stays put.
+    private func routeTimer(duration: TimeInterval, label: String) {
+        if timerLiveCountdownEnabled {
+            let seconds = Int(duration.rounded())
+            if let url = URL(string: "snipkey://timer?seconds=\(seconds)") {
+                openURL(url)   // opens the app; it materializes the AlarmKit Live Activity
+            }
+        } else {
+            LocalNotificationScheduler.schedule(
+                ReminderRequest(fireDelay: duration, title: "Timer", message: "\(label) — time's up"))
         }
     }
 

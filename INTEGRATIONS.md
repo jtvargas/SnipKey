@@ -110,6 +110,46 @@ descriptor — the descriptor is presentation only.
 
 ---
 
+## Timers (`/timer`) integration
+
+The second integration. `Settings → Integrations → Timers` enables a `/timer` command: typing
+`/timer 1h 30m` (or `15s`, `90`, `1h 5m 10s` — any mix of h/m/s units, plurals, or a bare number that
+defaults to seconds) shows a **Create timer · 01:30:00** pill.
+
+A **Live countdown** toggle (default **OFF**) chooses what tapping the pill does:
+- **OFF (default):** fire a local SnipKey notification when the timer ends — you stay in your
+  current app, no live countdown.
+- **ON:** deep-link into SnipKey, which starts a real **AlarmKit** timer with a live countdown on
+  the **Lock Screen and Dynamic Island**. This is the *only* way to get the AlarmKit Live Activity,
+  because **iOS only lets the foreground app host it** — a keyboard extension's process can't
+  create an AlarmKit timer using the app's grant (confirmed on-device: it falls back to the
+  notification). AlarmKit permission is requested only when Live countdown is turned ON.
+
+Mirrors the `/remind` scaffolding (parser → observable state → pill → toast → router). Pieces:
+
+| File | Target(s) | Responsibility |
+|---|---|---|
+| `SnipKey/Shared/Timers/TimerLiveActivityAttributes.swift` | **App + Keyboard + Widget** | `SnipKeyTimerMetadata: AlarmMetadata` + `SnipKeyTimerAttributes = AlarmAttributes<…>` — the Live Activity attributes type, identical across all three targets. |
+| `SnipKey/Shared/Timers/AlarmKitTimerService.swift` | **App + Keyboard** | Encapsulates AlarmKit: `authorizationState()`, `requestAccess` (app-only prompt), `createTimer(duration:label:)` (off-main `AlarmManager.schedule`). |
+| `SnipKeyboard/QWERTY/TimerParseEngine.swift` | App + Keyboard | `ParsedTimer` + `TimerParser` (multi-token duration sum, bare-number=seconds) + `TimerSuggestionState`. |
+| `SnipKeyTimerWidget/` (Widget Extension) | **Widget** | `SnipKeyTimerLiveActivity` renders the countdown/paused/alert states; `SnipKeyTimerWidgetBundle` is `@main`. Required by AlarmKit for a countdown. |
+| `SnipKey/Features/Settings/Integrations/TimerIntegrationView.swift` | App | Enable Timers toggle + **Live countdown** toggle (requests AlarmKit only when turned ON); explanatory copy. |
+| `SnipKey/SnipKeyApp.swift` `handleIncomingURL` | App | Handles `snipkey://timer?seconds=N` → `AlarmKitTimerService.createTimer` (the foreground app starts the Live Activity). |
+
+Routing (`KeyboardViewController.routeTimer`), gated on the session-cached `timerLiveCountdownEnabled`:
+- **OFF (default):** `LocalNotificationScheduler.schedule(fireDelay:)` — a local-notification countdown.
+- **ON:** `openURL("snipkey://timer?seconds=N")` — opens the app, which starts the real AlarmKit
+  Live Activity. (The keyboard does **not** call AlarmKit itself; its process can't host the Live
+  Activity. Verified on-device.)
+
+The `/timer` pill only appears when the integration is enabled (`timerIntegrationEnabled`, cached per
+session). Persistence + App-Group mirroring follow the Reminders pattern; `IntegrationRegistry.enabledCount`
+includes it. **Note:** AlarmKit timers are *not* in the Clock app — they present their own system
+alert + Live Activity. AlarmKit needs **no entitlement** — only `NSAlarmKitUsageDescription` (both
+targets) + the app's `NSSupportsLiveActivities`.
+
+---
+
 ## Verifying
 
 1. **Build both targets:**

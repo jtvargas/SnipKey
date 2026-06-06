@@ -114,22 +114,31 @@
 		1B4D251F0C1290F3471DE222 /* KeyboardCalloutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C830E3C63663CCF65E72BF1 /* KeyboardCalloutView.swift */; };
 		1B89BCF6E55C957D694FFC9F /* SpaceBarCursorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */; };
 		1C42A37DBDFADA2C7CAC9C4F /* KeyboardCalloutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C830E3C63663CCF65E72BF1 /* KeyboardCalloutView.swift */; };
+		1CA8CB8415ACA94D757FB431 /* SnipKeyTimerWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7546E34C21CF9A09D49C3E4 /* SnipKeyTimerWidgetBundle.swift */; };
 		1F37BE6C7F110517BEBB4D46 /* AccentMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE452F555419A6F46984CBBC /* AccentMap.swift */; };
 		2442C0CA741CAA2D7A8250C9 /* SpaceBarCursorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */; };
 		2DBFAE70D96145748A557295 /* KeyboardLayoutItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C12EC5363837C2A8630F8D3 /* KeyboardLayoutItem.swift */; };
 		2EB6784CAE685D2E8A3EB0D8 /* EventKitReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */; };
 		2FFEF0199EB1B3E100CF3396 /* ModelContainerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */; };
+		399955DCBB7A4DEA570FA03C /* SnipKeyTimerLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92F564AA680873EAAA472744 /* SnipKeyTimerLiveActivity.swift */; };
 		3A8B76B2949D48589DC82983 /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
 		3A8B76B2949D48589DC82A94 /* PredictiveTextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */; };
+		410CD33ADD8E5396B0CB0BA6 /* TimerLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A03C8A47DE686077364B277 /* TimerLiveActivityAttributes.swift */; };
 		4314634F36B04D70854CC02D /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
 		4314634F36B04D70854CC03E /* PredictiveTextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */; };
+		4357CA1F7209133EF8A7BB31 /* TimerParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */; };
+		47E09081072FF9E2DEC87BA3 /* TimerParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */; };
 		5AA1CF567B54EAE8DFCBAF2F /* ReminderDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0863C40DC54F8B0573428C40 /* ReminderDestination.swift */; };
 		5AA259C84646E2C6725970F5 /* KeyboardLayoutFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */; };
 		5F658D6000CB59E3322A6785 /* CalloutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCB146313BAC73C4D3C608 /* CalloutController.swift */; };
+		75987F04266E6CDBEDA60A1B /* AlarmKitTimerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8CE039FE8E1AEDF8693247B /* AlarmKitTimerService.swift */; };
 		83E827CBB3A447C9194F1669 /* CalloutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCB146313BAC73C4D3C608 /* CalloutController.swift */; };
+		85140D3AC59E9D7A4793EB98 /* TimerLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A03C8A47DE686077364B277 /* TimerLiveActivityAttributes.swift */; };
 		854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
+		91979D2757A46525036EA0AF /* SnipKeyTimerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CC0A62A0F234F78A9B79CC66 /* SnipKeyTimerWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		97D243C545AE5AC733FC26FB /* ModelContainerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */; };
 		9AD80476CD0C9C51C700F601 /* LocalNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */; };
+		9DFAAFBE4D41F82F980F94A2 /* TimerIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */; };
 		A6C27CA5DF7742F084A2061B /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
 		A7B8C9D0E1F2A3B4C5D6E7F8 /* TouchOffsetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */; };
 		A7B8C9D0E1F2A3B4C5D6E7F9 /* TouchOffsetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */; };
@@ -140,6 +149,7 @@
 		B34CB5065459AFDE2C23A92F /* KeyboardCommitPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = C38FE722252F18F28A754009 /* KeyboardCommitPipeline.swift */; };
 		B583A44D6D4DBE7597870131 /* RemindersIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B761651C894AA3B2981C82 /* RemindersIntegrationView.swift */; };
 		B89C0449762FBFE1BC7FB157 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A617BC51EE90BF0174CD25F /* NotificationPresenter.swift */; };
+		BF49F362726D3DCD696FD84F /* TimerLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A03C8A47DE686077364B277 /* TimerLiveActivityAttributes.swift */; };
 		BF8B6001DF52F893601D98F0 /* PredictiveTextEngineAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */; };
 		C2B69DCF6F147603AE4534CC /* LocalNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */; };
 		C2D3E4F5A6B7C8D9E0F1A1B1 /* BigramEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */; };
@@ -154,6 +164,7 @@
 		D9F1A2B3C4D5E6F708192A3D /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
 		E1A2B3C4D5E6F7A8B9C0D1E3 /* TypingTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */; };
 		E1A2B3C4D5E6F7A8B9C0D1E4 /* TypingTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */; };
+		E2F6386D35610594233CFFC6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64BD4AE30238C4E29EE57603 /* Foundation.framework */; };
 		E61BA06D36BBCF27D8463618 /* ReminderParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */; };
 		E700E7444943F0F8E705293A /* AccentMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE452F555419A6F46984CBBC /* AccentMap.swift */; };
 		E9395E039E047952A59EE0E8 /* KeyLayerRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */; };
@@ -162,6 +173,7 @@
 		EFE5647EEF13001D16377DCC /* NativeKeyboardV2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EB0CF160026E9B1BAF2EE5 /* NativeKeyboardV2View.swift */; };
 		F2B3C4D5E6F7A8B9C0D1E2F4 /* ShadowTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B3C4D5E6F7A8B9C0D1E2F3 /* ShadowTelemetryView.swift */; };
 		F3A0883B7A607F9D9FCD5AEE /* NativeKeyboardV2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EB0CF160026E9B1BAF2EE5 /* NativeKeyboardV2View.swift */; };
+		F40E0A75898B4E29223873D7 /* AlarmKitTimerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8CE039FE8E1AEDF8693247B /* AlarmKitTimerService.swift */; };
 		F79D118F6EB6903D1EE2B441 /* KeyboardCommitPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = C38FE722252F18F28A754009 /* KeyboardCommitPipeline.swift */; };
 		F8A78ACE4CAA56EB63166041 /* PredictiveTextEngineAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */; };
 		F977E6660EB5E6D9FE1B2F3A /* ReminderDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0863C40DC54F8B0573428C40 /* ReminderDestination.swift */; };
@@ -176,6 +188,13 @@
 			remoteGlobalIDString = 066E69D32BB9831900D971E8;
 			remoteInfo = SnipKeyboard;
 		};
+		4F710F864089B87DDBF3FAEA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 066FAF022BB216160086F135 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CB1396787047A62C5A4D8793;
+			remoteInfo = SnipKeyTimerWidget;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -186,6 +205,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				066E69DB2BB9831900D971E8 /* SnipKeyboard.appex in Embed Foundation Extensions */,
+				91979D2757A46525036EA0AF /* SnipKeyTimerWidget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -268,29 +288,39 @@
 		263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReminderParseEngine.swift; sourceTree = "<group>"; };
 		3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutResolver.swift; path = V2/KeyboardLayoutResolver.swift; sourceTree = "<group>"; };
 		426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardGestureCoordinator.swift; path = V2/KeyboardGestureCoordinator.swift; sourceTree = "<group>"; };
+		5A03C8A47DE686077364B277 /* TimerLiveActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerLiveActivityAttributes.swift; sourceTree = "<group>"; };
+		64BD4AE30238C4E29EE57603 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventKitReminderService.swift; sourceTree = "<group>"; };
 		798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpaceBarCursorController.swift; path = V2/SpaceBarCursorController.swift; sourceTree = "<group>"; };
 		7C12EC5363837C2A8630F8D3 /* KeyboardLayoutItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutItem.swift; path = V2/KeyboardLayoutItem.swift; sourceTree = "<group>"; };
 		80EB0CF160026E9B1BAF2EE5 /* NativeKeyboardV2View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NativeKeyboardV2View.swift; path = V2/NativeKeyboardV2View.swift; sourceTree = "<group>"; };
 		85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SmartTouchResolver.swift; path = V2/SmartTouchResolver.swift; sourceTree = "<group>"; };
 		88B761651C894AA3B2981C82 /* RemindersIntegrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemindersIntegrationView.swift; sourceTree = "<group>"; };
+		92F564AA680873EAAA472744 /* SnipKeyTimerLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnipKeyTimerLiveActivity.swift; sourceTree = "<group>"; };
 		9A617BC51EE90BF0174CD25F /* NotificationPresenter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
+		A02733DA11BD6167245E4B8E /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TouchOffsetModel.swift; path = V2/TouchOffsetModel.swift; sourceTree = "<group>"; };
+		A8CE039FE8E1AEDF8693247B /* AlarmKitTimerService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AlarmKitTimerService.swift; sourceTree = "<group>"; };
 		ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandEngine.swift; sourceTree = "<group>"; };
 		ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictiveTextEngine.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigramEngine.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicHitResolver.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbabilisticTouchContext.swift; sourceTree = "<group>"; };
+		B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerIntegrationView.swift; sourceTree = "<group>"; };
 		BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalNotificationScheduler.swift; sourceTree = "<group>"; };
 		BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyLayerRenderer.swift; path = V2/KeyLayerRenderer.swift; sourceTree = "<group>"; };
 		C38FE722252F18F28A754009 /* KeyboardCommitPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardCommitPipeline.swift; path = V2/KeyboardCommitPipeline.swift; sourceTree = "<group>"; };
+		C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerParseEngine.swift; sourceTree = "<group>"; };
+		CC0A62A0F234F78A9B79CC66 /* SnipKeyTimerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SnipKeyTimerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutFactory.swift; path = V2/KeyboardLayoutFactory.swift; sourceTree = "<group>"; };
+		D7546E34C21CF9A09D49C3E4 /* SnipKeyTimerWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnipKeyTimerWidgetBundle.swift; sourceTree = "<group>"; };
 		D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProbabilisticHitResolver.swift; path = V2/ProbabilisticHitResolver.swift; sourceTree = "<group>"; };
 		E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TypingTelemetry.swift; path = V2/TypingTelemetry.swift; sourceTree = "<group>"; };
 		E79883A265C444A3AA9FC72A /* AppIntegration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppIntegration.swift; sourceTree = "<group>"; };
 		EE452F555419A6F46984CBBC /* AccentMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AccentMap.swift; path = V2/AccentMap.swift; sourceTree = "<group>"; };
 		EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ModelContainerProvider.swift; path = V2/ModelContainerProvider.swift; sourceTree = "<group>"; };
 		F2B3C4D5E6F7A8B9C0D1E2F3 /* ShadowTelemetryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowTelemetryView.swift; sourceTree = "<group>"; };
+		F3B21515EE3799CE0270C245 /* SnipKeyTimerWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = SnipKeyTimerWidget.entitlements; sourceTree = "<group>"; };
 		F7FCB146313BAC73C4D3C608 /* CalloutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalloutController.swift; path = V2/CalloutController.swift; sourceTree = "<group>"; };
 		F9F559D4F5BD052FAD0F47B8 /* RemindersView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemindersView.swift; sourceTree = "<group>"; };
 		FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PredictiveTextEngineAsync.swift; path = V2/PredictiveTextEngineAsync.swift; sourceTree = "<group>"; };
@@ -322,9 +352,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		21AA89977C619570661E60DB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E2F6386D35610594233CFFC6 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		04584B0BF0F8D167595CBCEA /* Timers */ = {
+			isa = PBXGroup;
+			children = (
+				5A03C8A47DE686077364B277 /* TimerLiveActivityAttributes.swift */,
+				A8CE039FE8E1AEDF8693247B /* AlarmKitTimerService.swift */,
+			);
+			name = Timers;
+			path = Timers;
+			sourceTree = "<group>";
+		};
 		0630BC0B2C6E64B300E8493B /* ViewModel */ = {
 			isa = PBXGroup;
 			children = (
@@ -369,6 +417,7 @@
 				066E69D52BB9831900D971E8 /* SnipKeyboard */,
 				066FAF0B2BB216160086F135 /* Products */,
 				06E7E2B52BD30A610058D11E /* Frameworks */,
+				1F682260B2A17579B1BA8B62 /* SnipKeyTimerWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -377,6 +426,7 @@
 			children = (
 				066FAF0A2BB216160086F135 /* SnipKey.app */,
 				066E69D42BB9831900D971E8 /* SnipKeyboard.appex */,
+				CC0A62A0F234F78A9B79CC66 /* SnipKeyTimerWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -488,6 +538,7 @@
 				E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */,
 				A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */,
 				263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */,
+				C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -556,6 +607,7 @@
 			isa = PBXGroup;
 			children = (
 				06E7E2BF2BD998860058D11E /* StoreKit.framework */,
+				7652F5AF98C16F51C8C68D2E /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -639,6 +691,18 @@
 			path = Notifications;
 			sourceTree = "<group>";
 		};
+		1F682260B2A17579B1BA8B62 /* SnipKeyTimerWidget */ = {
+			isa = PBXGroup;
+			children = (
+				92F564AA680873EAAA472744 /* SnipKeyTimerLiveActivity.swift */,
+				D7546E34C21CF9A09D49C3E4 /* SnipKeyTimerWidgetBundle.swift */,
+				A02733DA11BD6167245E4B8E /* Info.plist */,
+				F3B21515EE3799CE0270C245 /* SnipKeyTimerWidget.entitlements */,
+			);
+			name = SnipKeyTimerWidget;
+			path = SnipKeyTimerWidget;
+			sourceTree = "<group>";
+		};
 		20C125760603D6DD78066AD2 /* Notifications */ = {
 			isa = PBXGroup;
 			children = (
@@ -649,11 +713,20 @@
 			path = Notifications;
 			sourceTree = "<group>";
 		};
+		7652F5AF98C16F51C8C68D2E /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				64BD4AE30238C4E29EE57603 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		AAFB51DEBD1B8B2B69F29261 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
 				13F01CB1874AC706164E3258 /* Notifications */,
 				112459B85F2A3E0B1DE8F239 /* Reminders */,
+				04584B0BF0F8D167595CBCEA /* Timers */,
 			);
 			name = Shared;
 			path = Shared;
@@ -665,6 +738,7 @@
 				E79883A265C444A3AA9FC72A /* AppIntegration.swift */,
 				FEE8DB50F5227711F0A44F2E /* IntegrationsView.swift */,
 				88B761651C894AA3B2981C82 /* RemindersIntegrationView.swift */,
+				B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */,
 			);
 			name = Integrations;
 			path = Integrations;
@@ -707,6 +781,7 @@
 			);
 			dependencies = (
 				066E69DA2BB9831900D971E8 /* PBXTargetDependency */,
+				3462949B38F16664E303AFFA /* PBXTargetDependency */,
 			);
 			name = SnipKey;
 			packageProductDependencies = (
@@ -721,6 +796,23 @@
 			productName = SnipKey;
 			productReference = 066FAF0A2BB216160086F135 /* SnipKey.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CB1396787047A62C5A4D8793 /* SnipKeyTimerWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F4EC5132968099E49F66ACF3 /* Build configuration list for PBXNativeTarget "SnipKeyTimerWidget" */;
+			buildPhases = (
+				8A21D39EB7520A2AD9FC160F /* Sources */,
+				21AA89977C619570661E60DB /* Frameworks */,
+				395728832A0C83231277B771 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SnipKeyTimerWidget;
+			productName = SnipKeyTimerWidget;
+			productReference = CC0A62A0F234F78A9B79CC66 /* SnipKeyTimerWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -763,6 +855,7 @@
 			targets = (
 				066FAF092BB216160086F135 /* SnipKey */,
 				066E69D32BB9831900D971E8 /* SnipKeyboard */,
+				CB1396787047A62C5A4D8793 /* SnipKeyTimerWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -791,6 +884,13 @@
 				06F4F30D2BB6270F00399C78 /* IBMPlexMono-Medium.ttf in Resources */,
 				06F4F3092BB6270F00399C78 /* IBMPlexMono-Bold.ttf in Resources */,
 				066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		395728832A0C83231277B771 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -849,6 +949,9 @@
 				E61BA06D36BBCF27D8463618 /* ReminderParseEngine.swift in Sources */,
 				F977E6660EB5E6D9FE1B2F3A /* ReminderDestination.swift in Sources */,
 				2EB6784CAE685D2E8A3EB0D8 /* EventKitReminderService.swift in Sources */,
+				85140D3AC59E9D7A4793EB98 /* TimerLiveActivityAttributes.swift in Sources */,
+				F40E0A75898B4E29223873D7 /* AlarmKitTimerService.swift in Sources */,
+				4357CA1F7209133EF8A7BB31 /* TimerParseEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -944,6 +1047,20 @@
 				13187A91ACE382E7BB5417AF /* AppIntegration.swift in Sources */,
 				ADA928B4FA9D5DA9CDFACEB3 /* IntegrationsView.swift in Sources */,
 				B583A44D6D4DBE7597870131 /* RemindersIntegrationView.swift in Sources */,
+				410CD33ADD8E5396B0CB0BA6 /* TimerLiveActivityAttributes.swift in Sources */,
+				75987F04266E6CDBEDA60A1B /* AlarmKitTimerService.swift in Sources */,
+				9DFAAFBE4D41F82F980F94A2 /* TimerIntegrationView.swift in Sources */,
+				47E09081072FF9E2DEC87BA3 /* TimerParseEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A21D39EB7520A2AD9FC160F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				399955DCBB7A4DEA570FA03C /* SnipKeyTimerLiveActivity.swift in Sources */,
+				1CA8CB8415ACA94D757FB431 /* SnipKeyTimerWidgetBundle.swift in Sources */,
+				BF49F362726D3DCD696FD84F /* TimerLiveActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -954,6 +1071,12 @@
 			isa = PBXTargetDependency;
 			target = 066E69D32BB9831900D971E8 /* SnipKeyboard */;
 			targetProxy = 066E69D92BB9831900D971E8 /* PBXContainerItemProxy */;
+		};
+		3462949B38F16664E303AFFA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = SnipKeyTimerWidget;
+			target = CB1396787047A62C5A4D8793 /* SnipKeyTimerWidget */;
+			targetProxy = 4F710F864089B87DDBF3FAEA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1215,6 +1338,64 @@
 			};
 			name = Release;
 		};
+		11D729FAF389A418609A05E9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = SnipKeyTimerWidget/SnipKeyTimerWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J7K9Z79S5F;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SnipKeyTimerWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "SnipKey Timers";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 6.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey.SnipKeyTimerWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A996A22A1CE68432C53A1F95 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = SnipKeyTimerWidget/SnipKeyTimerWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J7K9Z79S5F;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SnipKeyTimerWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "SnipKey Timers";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 6.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey.SnipKeyTimerWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1241,6 +1422,15 @@
 			buildConfigurations = (
 				066FAF312BB216170086F135 /* Debug */,
 				066FAF322BB216170086F135 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F4EC5132968099E49F66ACF3 /* Build configuration list for PBXNativeTarget "SnipKeyTimerWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				11D729FAF389A418609A05E9 /* Release */,
+				A996A22A1CE68432C53A1F95 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

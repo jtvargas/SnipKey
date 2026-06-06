@@ -73,6 +73,7 @@ struct IntegrationsView: View {
             // MARK: Supported commands
             Section {
                 commandRow("/remind", "Create reminders using natural language, like “/remind tomorrow at 9am call mom”.")
+                commandRow("/timer", "Start a countdown timer, like “/timer 1h 30m” or “/timer 90”.")
             } header: {
                 Text("Commands")
             } footer: {

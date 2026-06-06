@@ -103,11 +103,31 @@ struct SnipKeyApp: App {
                 }
             }
             .preferredColorScheme(selectedAppearance.colorScheme)
+            .onOpenURL { url in handleIncomingURL(url) }
         }
         .modelContainer(container)
     }
-    
+
     private var selectedAppearance: AppAppearance {
         AppAppearance(rawValue: appAppearance) ?? .system
+    }
+
+    /// Handle `snipkey://timer?seconds=N` — the keyboard hands off here (Live countdown ON) because
+    /// only the foreground app can start an AlarmKit Live Activity. See INTEGRATIONS.md / `routeTimer`.
+    private func handleIncomingURL(_ url: URL) {
+        guard url.scheme == "snipkey", url.host == "timer",
+              let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let value = comps.queryItems?.first(where: { $0.name == "seconds" })?.value,
+              let seconds = TimeInterval(value), seconds >= 1 else { return }
+
+        // The app owns the AlarmKit grant; create immediately so the live countdown starts now.
+        if AlarmKitTimerService.isAuthorized {
+            AlarmKitTimerService.createTimer(duration: seconds, label: "Timer") { _ in }
+        } else {
+            AlarmKitTimerService.requestAccess { granted in
+                guard granted else { return }
+                AlarmKitTimerService.createTimer(duration: seconds, label: "Timer") { _ in }
+            }
+        }
     }
 }
