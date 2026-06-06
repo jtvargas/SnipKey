@@ -549,6 +549,32 @@ See **[`LOCAL_NOTIFICATIONS.md`](LOCAL_NOTIFICATIONS.md)** for the full design, 
 steps. (An earlier App Group + Darwin design — where the app scheduled — was dropped because it
 can't fire while the app is suspended.)
 
+### Integrations (reminder destinations)
+
+`Settings → Integrations → Reminders` lets the user send reminders to the **native iOS Reminders
+app** (EventKit) instead of SnipKey's local notifications. A single `ReminderDestination` enum
+(`.snipKey` default / `.remindersApp`) is persisted in `SettingsModel` and mirrored to the
+`group.snipkey` App Group; the keyboard reads it once per session and `KeyboardViewController.routeReminder`
+routes both the `/remind` pill and the 🔔 button to exactly one destination — never both.
+
+- EventKit work is encapsulated in `SnipKey/Shared/Reminders/EventKitReminderService.swift`
+  (dual-membership). The **main app** owns the permission prompt (`RemindersIntegrationView`); the
+  keyboard **attempts a direct write** using that grant and **falls back** to a SnipKey notification
+  if its process isn't authorized (TCC is per-process/per-bundle-ID — **confirm on-device** whether
+  the keyboard inherits the app's grant; if not, build the `PendingReminderQueue` contingency).
+- The Integrations list is driven by a lightweight `IntegrationRegistry` so new integrations need no
+  refactor. Nothing here touches the keystroke hot path.
+- **Timers (`/timer`)** is the second integration: typing `/timer 1h 30m` (or `90`, `15m`, `1h 5m 10s`)
+  shows a Create timer pill; tapping it schedules a **SnipKey local notification** that fires when the
+  countdown ends (you stay in your current app). Parser: `SnipKeyboard/QWERTY/TimerParseEngine.swift`;
+  it reuses `LocalNotificationScheduler` (`ReminderRequest(fireDelay:)`) and is gated on
+  `timerIntegrationEnabled`. (AlarmKit / Live Activity was evaluated and dropped — only the foreground
+  app can host an AlarmKit Live Activity, which a keyboard extension can't, so it would've required an
+  app-switch on every `/timer`.)
+
+See **[`INTEGRATIONS.md`](INTEGRATIONS.md)** for the full design, the try-direct-then-fallback
+rationale, and how to extend it.
+
 ### Key Constraints
 
 - Keyboard extensions run in a **constrained memory environment** (~48 MB limit)

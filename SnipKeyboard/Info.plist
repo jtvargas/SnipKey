@@ -4,6 +4,13 @@
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- The keyboard attempts a direct EventKit write under "try direct"; the main app owns the
+	     permission prompt. Present in the extension's Info.plist so its process is allowed to
+	     touch EventKit when the grant is shared. -->
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>SnipKey adds your reminders to Apple Reminders when you choose the Reminders app as your destination in Integrations.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>SnipKey adds your reminders to Apple Reminders when you choose the Reminders app as your destination in Integrations.</string>
 	<!-- Unlock 120Hz ProMotion for CADisplayLink-driven work in the extension.
 	     Must be validated empirically in-extension (host provides the surface). -->
 	<key>CADisableMinimumFrameDurationOnPhone</key>

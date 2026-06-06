@@ -106,7 +106,7 @@ struct SnipKeyApp: App {
         }
         .modelContainer(container)
     }
-    
+
     private var selectedAppearance: AppAppearance {
         AppAppearance(rawValue: appAppearance) ?? .system
     }

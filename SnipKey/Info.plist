@@ -4,6 +4,10 @@
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>SnipKey adds your reminders to Apple Reminders when you choose the Reminders app as your destination in Integrations.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>SnipKey adds your reminders to Apple Reminders when you choose the Reminders app as your destination in Integrations.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
