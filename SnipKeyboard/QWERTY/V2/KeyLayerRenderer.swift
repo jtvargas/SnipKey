@@ -37,6 +37,7 @@ final class KeyLayerRenderer {
 
     private weak var hostLayer: CALayer?
     private var keys: [KeyLayers] = []
+    private var pressedHighlights: [ObjectIdentifier: CAShapeLayer] = [:]
 
     /// Render scale used to rasterize CATextLayer glyphs and SF Symbol images. Supplied by
     /// the coordinator on every `render(...)` from its `traitCollection.displayScale` (the
@@ -94,7 +95,11 @@ final class KeyLayerRenderer {
             k.background.removeFromSuperlayer()
             k.glyph.removeFromSuperlayer()
         }
+        for layer in pressedHighlights.values {
+            layer.removeFromSuperlayer()
+        }
         keys.removeAll(keepingCapacity: true)
+        pressedHighlights.removeAll(keepingCapacity: true)
         highlight.removeFromSuperlayer()
 
         let scale = currentScale
@@ -103,10 +108,12 @@ final class KeyLayerRenderer {
             background.frame = frame.rect
             background.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: frame.rect.size), cornerRadius: dims.cornerRadius).cgPath
             background.fillColor = backgroundColor(for: frame.action, isDark: isDark).cgColor
+            background.zPosition = 0
             applyNativeKeyShadow(to: background, isDark: isDark)
             hostLayer.addSublayer(background)
 
             let glyphLayer = makeGlyphLayer(for: frame, scale: scale, isDark: isDark)
+            glyphLayer.zPosition = 2
             hostLayer.addSublayer(glyphLayer)
 
             keys.append(KeyLayers(background: background, glyph: glyphLayer, keyFrame: frame))
@@ -118,6 +125,7 @@ final class KeyLayerRenderer {
         highlight.fillColor = isDark
             ? UIColor(white: 0.55, alpha: 0.55).cgColor
             : UIColor(white: 0.85, alpha: 0.9).cgColor
+        highlight.zPosition = 1
         // Visibility is driven by opacity (so the highlight can fade out on release).
         // The layer is recreated each full render, so re-establish the hidden-via-opacity state.
         highlight.isHidden = false
@@ -152,6 +160,7 @@ final class KeyLayerRenderer {
                 // by replacing the layer entirely.
                 let scale = currentScale
                 let newLayer = makeGlyphLayer(for: k.keyFrame, scale: scale, isDark: currentIsDark)
+                newLayer.zPosition = 2
                 k.glyph.removeFromSuperlayer()
                 hostLayer?.insertSublayer(newLayer, above: k.background)
                 keys[index] = KeyLayers(background: k.background, glyph: newLayer, keyFrame: k.keyFrame)
@@ -161,7 +170,8 @@ final class KeyLayerRenderer {
         }
     }
 
-    /// Highlight a specific key (used by the gesture coordinator on touch-down / finger-slide).
+    /// Legacy single-key highlight path. V2 uses per-touch `setPressedKey(_:for:)` so rolling
+    /// typing cannot make one shared overlay jump between fingers.
     /// Appearance is INSTANT on press (native); on clear (frame == nil) the highlight fades
     /// its opacity out over ~120ms. A new press cancels any in-flight fade and snaps to full
     /// opacity — so promotion to another finger / a fast new press never flickers.
@@ -193,6 +203,66 @@ final class KeyLayerRenderer {
         CATransaction.commit()
     }
 
+    /// Press a key for a specific touch. Multiple touches can be active at once; each gets a
+    /// separate layer below glyphs so rolling typing no longer makes one shared overlay jump.
+    func setPressedKey(_ frame: KeyFrame, for id: ObjectIdentifier) {
+        guard let hostLayer else { return }
+
+        let layer = pressedHighlights[id] ?? CAShapeLayer()
+        pressedHighlights[id] = layer
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer.removeAllAnimations()
+        layer.frame = frame.rect
+        layer.path = UIBezierPath(
+            roundedRect: CGRect(origin: .zero, size: frame.rect.size),
+            cornerRadius: currentCornerRadius
+        ).cgPath
+        layer.fillColor = pressedColor().cgColor
+        layer.opacity = 1
+        layer.zPosition = 1
+        if layer.superlayer == nil {
+            hostLayer.addSublayer(layer)
+        }
+        CATransaction.commit()
+    }
+
+    /// Release one touch's pressed layer. The fade is short and isolated to that key, so a new
+    /// press elsewhere never dims the next key's feedback.
+    func clearPressedKey(for id: ObjectIdentifier) {
+        guard let layer = pressedHighlights.removeValue(forKey: id) else { return }
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(false)
+        let anim = CABasicAnimation(keyPath: "opacity")
+        anim.fromValue = layer.presentation()?.opacity ?? layer.opacity
+        anim.toValue = 0
+        anim.duration = 0.085
+        anim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        anim.fillMode = .forwards
+        anim.isRemovedOnCompletion = false
+        layer.add(anim, forKey: "pressedFade")
+        layer.opacity = 0
+        CATransaction.commit()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + anim.duration) { [weak layer] in
+            layer?.removeFromSuperlayer()
+        }
+    }
+
+    func clearAllPressedKeys() {
+        for id in Array(pressedHighlights.keys) {
+            clearPressedKey(for: id)
+        }
+    }
+
+    private func pressedColor() -> UIColor {
+        currentIsDark
+            ? UIColor(white: 0.62, alpha: 0.72)
+            : UIColor(white: 0.78, alpha: 1.0)
+    }
+
     /// Update an individual key's text/style (used for return-key label changes).
     /// Replaces the glyph layer because text↔symbol may switch.
     func updateReturnKeyLabel(_ label: String, prominent: Bool, isDark: Bool) {
@@ -204,6 +274,7 @@ final class KeyLayerRenderer {
             // Override the glyph factory's default by stashing the label override.
             self.returnKeyOverride = (label: label, prominent: prominent)
             let newGlyph = makeGlyphLayer(for: k.keyFrame, scale: scale, isDark: isDark)
+            newGlyph.zPosition = 2
             self.returnKeyOverride = nil
 
             if prominent {

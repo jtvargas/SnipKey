@@ -92,3 +92,129 @@ final class TypingTelemetry {
         }
     }
 }
+
+// MARK: - Responsiveness Telemetry
+
+/// DEBUG-only aggregate timing for perceived keyboard responsiveness. It records durations between
+/// the touch lifecycle and visible/host callbacks, never text, characters, or coordinates.
+@MainActor
+final class KeyboardResponsivenessTelemetry {
+
+    static let shared = KeyboardResponsivenessTelemetry()
+
+    struct Metric: Codable {
+        var count: Int = 0
+        var totalMs: Double = 0
+        var maxMs: Double = 0
+
+        mutating func add(_ ms: Double) {
+            count += 1
+            totalMs += ms
+            maxMs = max(maxMs, ms)
+        }
+    }
+
+    struct Payload: Codable {
+        let touchToHighlight: Metric
+        let touchToCallout: Metric
+        let touchToInsertReturn: Metric
+        let touchToTextDidChange: Metric
+        let sideEffectFlushDelay: Metric
+    }
+
+    var enabled = false
+
+    private var activeTouches: [ObjectIdentifier: CFTimeInterval] = [:]
+    private var mostRecentTouchDown: CFTimeInterval?
+    private var pendingSideEffectSchedule: CFTimeInterval?
+
+    private var touchToHighlight = Metric()
+    private var touchToCallout = Metric()
+    private var touchToInsertReturn = Metric()
+    private var touchToTextDidChange = Metric()
+    private var sideEffectFlushDelay = Metric()
+
+    private init() {}
+
+    func markTouchDown(_ id: ObjectIdentifier) {
+        #if DEBUG
+        guard enabled else { return }
+        let now = CACurrentMediaTime()
+        activeTouches[id] = now
+        mostRecentTouchDown = now
+        #endif
+    }
+
+    func markHighlightApplied(_ id: ObjectIdentifier) {
+        #if DEBUG
+        guard enabled, let start = activeTouches[id] else { return }
+        touchToHighlight.add(Self.ms(from: start))
+        #endif
+    }
+
+    func markCalloutShown(_ id: ObjectIdentifier) {
+        #if DEBUG
+        guard enabled, let start = activeTouches[id] else { return }
+        touchToCallout.add(Self.ms(from: start))
+        #endif
+    }
+
+    func markInsertReturned(_ id: ObjectIdentifier) {
+        #if DEBUG
+        guard enabled, let start = activeTouches[id] else { return }
+        touchToInsertReturn.add(Self.ms(from: start))
+        #endif
+    }
+
+    func markTouchEnded(_ id: ObjectIdentifier) {
+        #if DEBUG
+        activeTouches.removeValue(forKey: id)
+        #endif
+    }
+
+    func markTextDidChange() {
+        #if DEBUG
+        guard enabled, let start = mostRecentTouchDown else { return }
+        touchToTextDidChange.add(Self.ms(from: start))
+        #endif
+    }
+
+    func markSideEffectScheduled() {
+        #if DEBUG
+        guard enabled else { return }
+        pendingSideEffectSchedule = CACurrentMediaTime()
+        #endif
+    }
+
+    func markSideEffectFlushed() {
+        #if DEBUG
+        guard enabled, let start = pendingSideEffectSchedule else { return }
+        sideEffectFlushDelay.add(Self.ms(from: start))
+        pendingSideEffectSchedule = nil
+        #endif
+    }
+
+    func flush() {
+        #if DEBUG
+        guard enabled else { return }
+        guard let dir = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: AppGroupSettings.suite
+        ) else { return }
+        let payload = Payload(
+            touchToHighlight: touchToHighlight,
+            touchToCallout: touchToCallout,
+            touchToInsertReturn: touchToInsertReturn,
+            touchToTextDidChange: touchToTextDidChange,
+            sideEffectFlushDelay: sideEffectFlushDelay
+        )
+        let url = dir.appendingPathComponent("telemetry-responsiveness.json")
+        if let data = try? JSONEncoder().encode(payload) {
+            try? data.write(to: url, options: .atomic)
+        }
+        #endif
+    }
+
+    private static func ms(from start: CFTimeInterval) -> Double {
+        (CACurrentMediaTime() - start) * 1000
+    }
+}

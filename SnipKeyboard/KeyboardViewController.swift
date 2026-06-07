@@ -93,6 +93,10 @@ class KeyboardViewController: UIInputViewController {
     /// `/timer` is inert (no pill). See INTEGRATIONS.md.
     private var timerIntegrationEnabled = false
 
+    /// Cached once per keyboard session. Avoids App Group UserDefaults reads from space,
+    /// auto-cap, and text-change paths while the user is actively typing.
+    private var autoCapitalizationEnabled = true
+
     // MARK: - Hot-path coalescing (V2)
 
     /// True only during the host's synchronous `textDidChange` re-entrancy triggered by our
@@ -130,7 +134,9 @@ class KeyboardViewController: UIInputViewController {
             documentContextBeforeInput: { [weak self] in
                 self?.textDocumentProxy.documentContextBeforeInput
             },
-            screenWidth: keyboardScreenWidth(),
+            screenWidthProvider: { [weak self] in
+                self?.keyboardScreenWidth() ?? 393
+            },
             showPopup: { [weak self] character, keyFrame, isDark in
                 self?.popupView.show(character: character, keyFrame: keyFrame, isDark: isDark)
             },
@@ -201,12 +207,14 @@ class KeyboardViewController: UIInputViewController {
                 self.textDocumentProxy.adjustTextPosition(byCharacterOffset: delta)
             },
             inputTraits: { [weak self] in
-                guard let proxy = self?.textDocumentProxy else { return .defaults }
+                guard let self else { return .defaults }
+                let proxy = self.textDocumentProxy
                 return HostInputTraits(
                     keyboardType: proxy.keyboardType ?? .default,
                     autocapitalizationType: proxy.autocapitalizationType ?? .sentences,
                     smartQuotesEnabled: (proxy.smartQuotesType ?? .default) != .no,
-                    smartDashesEnabled: (proxy.smartDashesType ?? .default) != .no
+                    smartDashesEnabled: (proxy.smartDashesType ?? .default) != .no,
+                    autoCapitalizationEnabled: self.autoCapitalizationEnabled
                 )
             },
             activeInputLocaleCodes: { [weak self] in
@@ -300,6 +308,8 @@ class KeyboardViewController: UIInputViewController {
             default: ReminderDestination.default.rawValue))
         timerIntegrationEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.timerIntegrationEnabled, default: false)
+        autoCapitalizationEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true)
 
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
@@ -487,6 +497,7 @@ class KeyboardViewController: UIInputViewController {
         super.viewWillDisappear(animated)
         // Persist shadow-mode telemetry + learned per-user offsets off the hot path.
         TypingTelemetry.shared.flush()
+        KeyboardResponsivenessTelemetry.shared.flush()
         TouchOffsetModel.shared.flush()
     }
 
@@ -543,6 +554,7 @@ class KeyboardViewController: UIInputViewController {
         self.nextKeyboardButton.setTitleColor(textColor, for: [])
         
         // Update QWERTY keyboard state from text document proxy
+        KeyboardResponsivenessTelemetry.shared.markTextDidChange()
         updateQWERTYState()
         
         // Only post selection notifications when snippet view is active.
@@ -571,6 +583,7 @@ class KeyboardViewController: UIInputViewController {
     private func scheduleSideEffectFlush() {
         guard !sideEffectFlushScheduled else { return }
         sideEffectFlushScheduled = true
+        KeyboardResponsivenessTelemetry.shared.markSideEffectScheduled()
         DispatchQueue.main.async { [weak self] in
             self?.flushSideEffects()
         }
@@ -580,6 +593,7 @@ class KeyboardViewController: UIInputViewController {
     /// post-mutation) and feed it to both slash detection and predictive scheduling.
     private func flushSideEffects() {
         sideEffectFlushScheduled = false
+        KeyboardResponsivenessTelemetry.shared.markSideEffectFlushed()
         let context = textDocumentProxy.documentContextBeforeInput
         runSlashEvaluation(context: context)
         runReminderEvaluation(context: context)
@@ -791,10 +805,7 @@ class KeyboardViewController: UIInputViewController {
             // shift exactly as the commit pipeline set it. Only `.allCharacters` (which
             // reads no context) still needs re-asserting so all-caps fields stay capitalized.
             let autocapType = textDocumentProxy.autocapitalizationType ?? .none
-            let autoCapEnabled = AppGroupSettings.bool(
-                forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true
-            )
-            if autoCapEnabled && autocapType == .allCharacters {
+            if autoCapitalizationEnabled && autocapType == .allCharacters {
                 qwertyState.applyAutoCapitalization(shouldCapitalize: true)
             }
         } else {
@@ -863,7 +874,7 @@ class KeyboardViewController: UIInputViewController {
     private func computeAutoCapitalization() -> Bool {
         // User-level kill switch (SnipKey Settings → Experimental → Auto-Capitalization).
         // When off, the keyboard never auto-caps regardless of what the text field requests.
-        guard AppGroupSettings.bool(forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true) else {
+        guard autoCapitalizationEnabled else {
             return false
         }
 

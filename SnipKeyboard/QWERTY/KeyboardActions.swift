@@ -16,13 +16,15 @@ struct HostInputTraits {
     let autocapitalizationType: UITextAutocapitalizationType
     let smartQuotesEnabled: Bool
     let smartDashesEnabled: Bool
+    let autoCapitalizationEnabled: Bool
 
     /// Sensible defaults used by the `.noop` actions (previews / V1 fallback).
     static let defaults = HostInputTraits(
         keyboardType: .default,
         autocapitalizationType: .sentences,
         smartQuotesEnabled: true,
-        smartDashesEnabled: true
+        smartDashesEnabled: true,
+        autoCapitalizationEnabled: true
     )
 
     /// True if smart-punctuation and auto-cap-I transforms should run for this field.
@@ -60,8 +62,11 @@ struct KeyboardActions {
     /// Read the text before the cursor (for auto-period detection)
     let documentContextBeforeInput: () -> String?
 
-    /// Screen width from UIKit — avoids GeometryReader in the keyboard view
-    let screenWidth: CGFloat
+    /// Screen width from UIKit — avoids GeometryReader in the keyboard view.
+    /// Resolved lazily so rotation/Stage Manager size changes don't leave SwiftUI toolbar
+    /// dimensions stuck on the width captured when `KeyboardActions` was initialized.
+    let screenWidthProvider: () -> CGFloat
+    var screenWidth: CGFloat { screenWidthProvider() }
 
     /// Show character pop-up balloon above a key.
     /// Parameters: character (already cased), key's visual frame in keyboard coordinates, isDark
@@ -128,7 +133,7 @@ struct KeyboardActions {
         deleteBackward: {},
         advanceToNextInputMode: {},
         documentContextBeforeInput: { nil },
-        screenWidth: 393,
+        screenWidthProvider: { 393 },
         showPopup: { _, _, _ in },
         hidePopup: {},
         openApp: {},

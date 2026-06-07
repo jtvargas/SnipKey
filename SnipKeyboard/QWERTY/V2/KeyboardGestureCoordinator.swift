@@ -101,6 +101,10 @@ final class KeyboardGestureCoordinator: UIView {
     private struct ActivePress {
         var key: KeyFrame
         var startPoint: CGPoint
+        var sequence: UInt64
+        /// True when this press already caused its primary effect on touch-down. Movement may
+        /// cancel long-running side effects, but it must not retarget the committed key.
+        var committedOnTouchDown: Bool = false
         var didSlideOffOriginal: Bool = false
         var longPressTask: Task<Void, Never>? = nil
         var rapidDeleteTask: Task<Void, Never>? = nil
@@ -110,10 +114,11 @@ final class KeyboardGestureCoordinator: UIView {
     }
 
     private var activePresses: [ObjectIdentifier: ActivePress] = [:]
+    private var nextPressSequence: UInt64 = 0
 
     /// The touch most-recently entered into `touchesBegan` (or promoted to most-recent
-    /// when a previous most-recent lifted). Drives the shared highlight overlay and
-    /// callout view — both of which only show one key at a time.
+    /// when a previous most-recent lifted). Drives the shared callout view; pressed
+    /// highlights are owned per touch by `KeyLayerRenderer`.
     private var mostRecentTouchID: ObjectIdentifier?
 
     private let lightImpactHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -129,8 +134,8 @@ final class KeyboardGestureCoordinator: UIView {
         isMultipleTouchEnabled = true
         lightImpactHaptic.prepare()
 
-        // Debug Voronoi overlay sits above the key layers (but below the near-transparent
-        // KeyHitView subviews). Hidden unless the debug overlay + next-gen engine are on.
+        // Debug Voronoi overlay sits above the key layers. Hidden unless the debug overlay +
+        // next-gen engine are on.
         voronoiDebugLayer.isHidden = true
         voronoiDebugLayer.magnificationFilter = .nearest
         voronoiDebugLayer.zPosition = 50
@@ -159,6 +164,7 @@ final class KeyboardGestureCoordinator: UIView {
             press.longPressTask?.cancel()
             press.rapidDeleteTask?.cancel()
         }
+        rendererRef.clearAllPressedKeys()
     }
 
     // MARK: - External Configuration
@@ -174,6 +180,7 @@ final class KeyboardGestureCoordinator: UIView {
         shadowLoggingEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
         TypingTelemetry.shared.enabled = shadowLoggingEnabled
+        KeyboardResponsivenessTelemetry.shared.enabled = shadowLoggingEnabled
         // Per-user offset learning is part of the next-gen engine — on when it is.
         TouchOffsetModel.shared.enabled = useProbabilisticHitResolver
         calloutController.updateParentWidth(bounds.width)
@@ -236,18 +243,6 @@ final class KeyboardGestureCoordinator: UIView {
 
     private func rebuildLayout() {
         guard bounds.width > 0, bounds.height > 0 else { return }
-        let layout = KeyboardLayoutFactory.layout(for: currentPage, dims: dims)
-        resolvedFrames = KeyboardLayoutResolver.resolve(
-            layout: layout,
-            dims: dims,
-            keysAreaSize: bounds.size
-        )
-        // Rebuild the hit grid in lockstep with the frames so the two never diverge.
-        // `resolvedFrames` is recomputed on every rebuildLayout (before the render
-        // short-circuit), so the grid must be too.
-        currentRowCount = layout.rows.count
-        hitGrid = Self.buildHitGrid(from: resolvedFrames, rowCount: currentRowCount)
-
         let isDark = state?.appearanceMode == .dark
         let shiftState = state?.shiftState ?? .disabled
         // Show the "EN ES" locale subtitle only when the user has multiple input modes
@@ -257,7 +252,7 @@ final class KeyboardGestureCoordinator: UIView {
         let subtitle: String? = codes.count >= 2 ? codes.joined(separator: " ") : nil
 
         // Short-circuit if nothing visible has changed since the last rebuild.
-        // The cheap updaters (updateShiftState / updateReturnKeyLabel / setHighlightedKey)
+        // The cheap updaters (updateShiftState / updateReturnKeyLabel / setPressedKey)
         // already cover diffs that are allowed to bypass a full rebuild.
         let signature = RenderSignature(
             size: bounds.size,
@@ -270,6 +265,16 @@ final class KeyboardGestureCoordinator: UIView {
             return
         }
         lastRenderSignature = signature
+
+        let layout = KeyboardLayoutFactory.layout(for: currentPage, dims: dims)
+        resolvedFrames = KeyboardLayoutResolver.resolve(
+            layout: layout,
+            dims: dims,
+            keysAreaSize: bounds.size
+        )
+        // Rebuild the hit grid in lockstep with the frames so the two never diverge.
+        currentRowCount = layout.rows.count
+        hitGrid = Self.buildHitGrid(from: resolvedFrames, rowCount: currentRowCount)
 
         rendererRef.render(
             frames: resolvedFrames,
@@ -319,14 +324,15 @@ final class KeyboardGestureCoordinator: UIView {
         CATransaction.commit()
     }
 
-    /// Rebuild the tiling `KeyHitView` touch targets in lockstep with `resolvedFrames`.
-    /// Each covers its key's `hitRect`; together they tile the whole keys area with no gaps,
-    /// so a touch anywhere (including between keys) lands on a real interactive subview that
-    /// forwards to this coordinator — eliminating dead zones regardless of how the system
-    /// hit-tests the single coordinator view.
+    /// Rebuild debug-only `KeyHitView` touch targets in lockstep with `resolvedFrames`.
+    /// The production path uses this coordinator as the single touch surface, so invisible
+    /// UIViews no longer sit above the rendered key/callout layers.
     private func rebuildHitViews() {
         for v in keyHitViews { v.removeFromSuperview() }
         keyHitViews.removeAll(keepingCapacity: true)
+        guard AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false) else {
+            return
+        }
         for frame in resolvedFrames {
             let hv = KeyHitView(frame: frame.hitRect)
             hv.coordinator = self
@@ -418,6 +424,7 @@ final class KeyboardGestureCoordinator: UIView {
         for touch in touches {
             let point = touch.location(in: self)
             guard let rawKey = findKey(at: point) else { continue }
+            KeyboardResponsivenessTelemetry.shared.markTouchDown(ObjectIdentifier(touch))
             let key = smartResolved(rawKey: rawKey, at: point)
             beginPress(touch: touch, key: key, at: point)
         }
@@ -456,22 +463,27 @@ final class KeyboardGestureCoordinator: UIView {
 
     private func beginPress(touch: UITouch, key: KeyFrame, at point: CGPoint) {
         let id = ObjectIdentifier(touch)
-        var press = ActivePress(key: key, startPoint: point)
-        // Make this the most-recent press — drives shared callout/highlight.
+        nextPressSequence &+= 1
+        var press = ActivePress(key: key, startPoint: point, sequence: nextPressSequence)
+        // Make this the most-recent press — drives the shared callout.
         mostRecentTouchID = id
 
-        rendererRef.setHighlightedKey(key)
+        rendererRef.setPressedKey(key, for: id)
+        KeyboardResponsivenessTelemetry.shared.markHighlightApplied(id)
         // No per-press haptic (Phase F). Discrete event haptics (accent-menu, space-cursor)
         // are preserved further below.
 
         switch key.action {
         case .character(let c):
+            press.committedOnTouchDown = true
             let cased = (state?.shiftState ?? .disabled) != .disabled ? c.uppercased() : c.lowercased()
             calloutController.presentInput(for: key, character: cased, casedByShift: false)
+            KeyboardResponsivenessTelemetry.shared.markCalloutShown(id)
             // Commit immediately on touch-down (Phase D). Matches native iOS: the character
             // lands in the document at the instant of finger-down, not on release.
             if let state, let actions {
                 KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
+                KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
             }
             // Per-user offset learning: a new character means the PREVIOUS one survived (wasn't
             // backspaced) → confirm it, then stage this touch. Letters page only.
@@ -482,6 +494,7 @@ final class KeyboardGestureCoordinator: UIView {
             }
             press.longPressTask = scheduleLongPress(touchID: id, key: key)
         case .backspace:
+            press.committedOnTouchDown = true
             // Immediate delete on touch-down feels native. Long-press starts rapid-delete.
             commitBackspace()
             // The just-typed character is being deleted — likely an error; don't learn from it.
@@ -497,6 +510,7 @@ final class KeyboardGestureCoordinator: UIView {
                 })
             }
         case .shift:
+            press.committedOnTouchDown = true
             // Shift triggers on press for snappier feel; double-tap detection happens in state.
             state?.toggleShift()
             rendererRef.updateShiftState(state?.shiftState ?? .disabled)
@@ -518,8 +532,9 @@ final class KeyboardGestureCoordinator: UIView {
             press.rapidDeleteTask?.cancel()
             if id == mostRecentTouchID {
                 calloutController.dismiss()
-                rendererRef.setHighlightedKey(nil)
             }
+            rendererRef.clearPressedKey(for: id)
+            KeyboardResponsivenessTelemetry.shared.markTouchEnded(id)
             activePresses.removeValue(forKey: id)
             promoteNewMostRecentIfNeeded(removedID: id)
             return
@@ -550,6 +565,21 @@ final class KeyboardGestureCoordinator: UIView {
         // so accent selection is gated on the most-recent press driving it.
         if id == mostRecentTouchID, case .actions = calloutController.mode {
             calloutController.updateAccentSelection(fingerPoint: point)
+            return
+        }
+
+        if press.committedOnTouchDown {
+            // Commit-touch lock: the primary effect already happened on touch-down. Movement
+            // can cancel long-running side effects, but it must not retarget visuals or cause
+            // a second special-key action on release.
+            let cancelSlop: CGFloat = 8
+            if !press.key.hitRect.insetBy(dx: -cancelSlop, dy: -cancelSlop).contains(point) {
+                press.longPressTask?.cancel()
+                press.longPressTask = nil
+                press.rapidDeleteTask?.cancel()
+                press.rapidDeleteTask = nil
+            }
+            activePresses[id] = press
             return
         }
 
@@ -589,8 +619,8 @@ final class KeyboardGestureCoordinator: UIView {
 
         // Refresh shared visuals only if this touch is the current most-recent — keeps the
         // highlight/callout from flickering when a less-recent finger slides.
+        rendererRef.setPressedKey(newKey, for: id)
         if id == mostRecentTouchID {
-            rendererRef.setHighlightedKey(newKey)
             switch newKey.action {
             case .character(let c):
                 let cased = (state?.shiftState ?? .disabled) != .disabled ? c.uppercased() : c.lowercased()
@@ -611,6 +641,8 @@ final class KeyboardGestureCoordinator: UIView {
         guard let press = activePresses.removeValue(forKey: id) else { return }
         press.longPressTask?.cancel()
         press.rapidDeleteTask?.cancel()
+        rendererRef.clearPressedKey(for: id)
+        KeyboardResponsivenessTelemetry.shared.markTouchEnded(id)
 
         // Space-cursor mode: if this press owned it, end cursor mode and suppress space.
         var spaceCursorWasEngaged = false
@@ -656,18 +688,17 @@ final class KeyboardGestureCoordinator: UIView {
         // remains. Otherwise promote the next-most-recent press to drive the visuals.
         if id == mostRecentTouchID {
             calloutController.dismiss()
-            rendererRef.setHighlightedKey(nil)
             promoteNewMostRecentIfNeeded(removedID: id)
         }
     }
 
-    /// When a press is removed, choose a new most-recent (arbitrary remaining touch) and
-    /// refresh the shared callout/highlight to reflect it. If no presses remain, leave
-    /// the visuals cleared.
+    /// When a press is removed, choose the newest remaining touch and refresh the shared callout
+    /// to reflect it. Per-key pressed highlights remain owned by each active touch.
     private func promoteNewMostRecentIfNeeded(removedID: ObjectIdentifier) {
-        if let nextID = activePresses.keys.first, let nextPress = activePresses[nextID] {
+        if let next = activePresses.max(by: { $0.value.sequence < $1.value.sequence }) {
+            let nextID = next.key
+            let nextPress = next.value
             mostRecentTouchID = nextID
-            rendererRef.setHighlightedKey(nextPress.key)
             if case .character(let c) = nextPress.key.action {
                 let cased = (state?.shiftState ?? .disabled) != .disabled ? c.uppercased() : c.lowercased()
                 calloutController.presentInput(for: nextPress.key, character: cased, casedByShift: false)
@@ -684,10 +715,11 @@ final class KeyboardGestureCoordinator: UIView {
     /// in the keyboard-extension hit-test context. Zero visual change.
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
-        if let hit, hit !== self { return hit }           // a hit cell (or other subview) already caught it
+        if let hit, hit !== self { return hit }           // a debug hit cell or other subview caught it
         guard bounds.contains(point) else { return hit }  // outside the keys area → leave as-is
+        if keyHitViews.isEmpty { return self }
         for hv in keyHitViews where hv.frame.contains(point) { return hv }
-        return hit
+        return self
     }
 
     /// Stable hash of the current geometry {page, rounded keys-area width}. Distinguishes

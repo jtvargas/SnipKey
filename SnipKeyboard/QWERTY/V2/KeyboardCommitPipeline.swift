@@ -81,8 +81,7 @@ enum KeyboardCommitPipeline {
         // Gated by the SnipKey-level Auto-Capitalization Setting and the host field's
         // keyboard type (URL/email skip smart transforms regardless).
         let traits = actions.inputTraits()
-        let autoCapEnabled = AppGroupSettings.bool(forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true)
-        if autoCapEnabled && traits.allowsSmartTransforms {
+        if traits.autoCapitalizationEnabled && traits.allowsSmartTransforms {
             applyAutoCapitalizationOfI(actions: actions)
         }
 
