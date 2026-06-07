@@ -70,6 +70,10 @@ class KeyboardViewController: UIInputViewController {
     /// Observable predictive text state — shared with SwiftUI toolbar for suggestions display.
     let predictiveTextState = PredictiveTextState()
 
+    /// Last automatic word correction. Kept outside observable state so the immediate
+    /// backspace undo window never invalidates SwiftUI while the user keeps typing.
+    private var lastPredictiveCorrection: PredictiveCorrectionSnapshot?
+
     // MARK: - NLP Reminders
 
     /// Observable reminder state — drives the "Create reminder" pill when the user types
@@ -96,6 +100,10 @@ class KeyboardViewController: UIInputViewController {
     /// Cached once per keyboard session. Avoids App Group UserDefaults reads from space,
     /// auto-cap, and text-change paths while the user is actively typing.
     private var autoCapitalizationEnabled = true
+
+    /// Whether a user-typed space accepts the high-confidence center word suggestion.
+    /// The toolbar still shows improved candidates when this is false.
+    private var autoSuggestionSpaceEnabled = false
 
     // MARK: - Hot-path coalescing (V2)
 
@@ -196,6 +204,15 @@ class KeyboardViewController: UIInputViewController {
                 guard let self = self else { return }
                 self.runPredictiveEvaluation(context: self.textDocumentProxy.documentContextBeforeInput)
             },
+            applyPendingPredictiveCorrection: { [weak self] in
+                self?.applyPendingPredictiveCorrection() ?? false
+            },
+            revertLastPredictiveCorrection: { [weak self] in
+                self?.revertLastPredictiveCorrection() ?? false
+            },
+            clearPendingPredictiveCorrection: { [weak self] in
+                self?.lastPredictiveCorrection = nil
+            },
             scheduleSideEffects: { [weak self] in
                 self?.scheduleSideEffectFlush()
             },
@@ -208,14 +225,7 @@ class KeyboardViewController: UIInputViewController {
             },
             inputTraits: { [weak self] in
                 guard let self else { return .defaults }
-                let proxy = self.textDocumentProxy
-                return HostInputTraits(
-                    keyboardType: proxy.keyboardType ?? .default,
-                    autocapitalizationType: proxy.autocapitalizationType ?? .sentences,
-                    smartQuotesEnabled: (proxy.smartQuotesType ?? .default) != .no,
-                    smartDashesEnabled: (proxy.smartDashesType ?? .default) != .no,
-                    autoCapitalizationEnabled: self.autoCapitalizationEnabled
-                )
+                return self.currentHostInputTraits()
             },
             activeInputLocaleCodes: { [weak self] in
                 guard let self else { return [] }
@@ -310,6 +320,8 @@ class KeyboardViewController: UIInputViewController {
             forKey: AppGroupSettings.Key.timerIntegrationEnabled, default: false)
         autoCapitalizationEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true)
+        autoSuggestionSpaceEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.autoSuggestionSpaceEnabled, default: false)
 
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
@@ -691,11 +703,85 @@ class KeyboardViewController: UIInputViewController {
             predictiveTextState.dismiss()
             return
         }
-        predictiveEngineAsync.schedule(context: context) { [weak self] suggestions, partialWord in
+        predictiveEngineAsync.schedule(context: context) { [weak self] candidates, partialWord in
             guard let self else { return }
-            self.predictiveTextState.updateSuggestions(suggestions: suggestions, partialWord: partialWord)
-            self.updateTouchPrior(suggestions: suggestions, partialWord: partialWord)
+            self.predictiveTextState.updateCandidates(candidates, partialWord: partialWord)
+            self.updateTouchPrior(candidates: candidates, partialWord: partialWord)
         }
+    }
+
+    private func currentHostInputTraits() -> HostInputTraits {
+        let proxy = textDocumentProxy
+        return HostInputTraits(
+            keyboardType: proxy.keyboardType ?? .default,
+            autocapitalizationType: proxy.autocapitalizationType ?? .sentences,
+            autocorrectionType: proxy.autocorrectionType ?? .default,
+            spellCheckingType: proxy.spellCheckingType ?? .default,
+            smartQuotesEnabled: (proxy.smartQuotesType ?? .default) != .no,
+            smartDashesEnabled: (proxy.smartDashesType ?? .default) != .no,
+            autoCapitalizationEnabled: autoCapitalizationEnabled
+        )
+    }
+
+    /// Applies the center/high-confidence correction just before the user's space is inserted.
+    /// This mirrors iOS's conservative autocorrect feel while keeping the actual space a normal
+    /// user keystroke and preserving the immediate backspace undo window.
+    private func applyPendingPredictiveCorrection() -> Bool {
+        guard !qwertyState.showingSnippets,
+              autoSuggestionSpaceEnabled,
+              !slashCommandState.isActive,
+              !reminderSuggestionState.isActive,
+              !timerSuggestionState.isActive,
+              currentHostInputTraits().allowsAutomaticCorrection,
+              let candidate = predictiveTextState.autoCommitCandidate,
+              !predictiveTextState.partialWord.isEmpty
+        else { return false }
+
+        let original = predictiveTextState.partialWord
+        guard candidate.text.lowercased() != original.lowercased() else { return false }
+        guard (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(original) else {
+            predictiveTextState.dismiss()
+            predictiveEngineAsync.reset()
+            updateTouchPrior(candidates: [], partialWord: "")
+            return false
+        }
+
+        for _ in 0..<candidate.replacementLength {
+            textDocumentProxy.deleteBackward()
+        }
+        textDocumentProxy.insertText(candidate.text)
+
+        lastPredictiveCorrection = PredictiveCorrectionSnapshot(
+            original: original,
+            replacement: candidate.text
+        )
+        predictiveTextState.dismiss()
+        predictiveEngineAsync.reset()
+        updateTouchPrior(candidates: [], partialWord: "")
+        return true
+    }
+
+    /// If the user presses backspace immediately after an automatic correction, restore the
+    /// original typed word and suppress that correction pair for the rest of this session.
+    private func revertLastPredictiveCorrection() -> Bool {
+        guard let correction = lastPredictiveCorrection else { return false }
+        lastPredictiveCorrection = nil
+
+        // Document shape after auto-correct-on-space is "<replacement> ". Delete the user
+        // space plus the replacement, then put back the literal typed word.
+        textDocumentProxy.deleteBackward()
+        for _ in 0..<correction.replacement.count {
+            textDocumentProxy.deleteBackward()
+        }
+        textDocumentProxy.insertText(correction.original)
+
+        predictiveEngineAsync.rejectCorrection(
+            original: correction.original,
+            replacement: correction.replacement
+        )
+        predictiveTextState.dismiss()
+        updateTouchPrior(candidates: [], partialWord: "")
+        return true
     }
 
     /// Derive a next-character prior from the in-progress word's top completions and push it
@@ -704,7 +790,8 @@ class KeyboardViewController: UIInputViewController {
     /// completion (already on the main actor), OFF every touch path, and adds no XPC read —
     /// it rides the existing coalesced flush. The same context object is read by
     /// `SmartTouchResolver` on the touch hot path via `weightsForRow`.
-    private func updateTouchPrior(suggestions: [String], partialWord: String) {
+    private func updateTouchPrior(candidates: [PredictiveCandidate], partialWord: String) {
+        let suggestions = candidates.filter { $0.role != .typed }.map(\.text)
         let prior = Self.nextCharacterPrior(suggestions: suggestions, partialWord: partialWord)
         qwertyState.inputTracking.touchContext.updatePredictivePrior(prior, isEnglish: Self.isEnglishInputContext)
     }

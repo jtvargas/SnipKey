@@ -409,7 +409,7 @@ final class KeyboardGestureCoordinator: UIView {
         case .returnKey:
             KeyboardCommitPipeline.commitReturn(state: state, actions: actions)
         case .modeChange(let page):
-            KeyboardCommitPipeline.commitModeChange(to: page, state: state)
+            KeyboardCommitPipeline.commitModeChange(to: page, state: state, actions: actions)
         case .snippetToggle:
             state.showingSnippets = true
         case .shift:
@@ -678,7 +678,7 @@ final class KeyboardGestureCoordinator: UIView {
             case .returnKey:
                 KeyboardCommitPipeline.commitReturn(state: state, actions: actions)
             case .modeChange(let page):
-                KeyboardCommitPipeline.commitModeChange(to: page, state: state)
+                KeyboardCommitPipeline.commitModeChange(to: page, state: state, actions: actions)
             case .snippetToggle:
                 state.showingSnippets = true
             }

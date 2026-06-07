@@ -22,6 +22,8 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        actions.clearPendingPredictiveCorrection()
+
         let textToInsert: String
         switch state.shiftState {
         case .disabled: textToInsert = char.lowercased()
@@ -64,6 +66,11 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        let didApplyCorrection = actions.applyPendingPredictiveCorrection()
+        if !didApplyCorrection {
+            actions.clearPendingPredictiveCorrection()
+        }
+
         state.inputTracking.pendingSmartSpace = false
         if state.inputTracking.shouldInsertAutoPeriod() {
             // Replace the trailing space with ". " — the previous space already inserted,
@@ -102,6 +109,12 @@ enum KeyboardCommitPipeline {
         actions: KeyboardActions
     ) {
         state.inputTracking.pendingSmartSpace = false
+        if actions.revertLastPredictiveCorrection() {
+            state.inputTracking.recordAction(.other)
+            state.inputTracking.touchContext.recordNonCharacter()
+            actions.scheduleSideEffects()
+            return
+        }
         actions.deleteBackward()
         state.inputTracking.recordAction(.other)
         state.inputTracking.touchContext.recordNonCharacter()
@@ -113,6 +126,7 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        actions.clearPendingPredictiveCorrection()
         state.inputTracking.pendingSmartSpace = false
         actions.insertText("\n")
         state.inputTracking.recordAction(.other)
@@ -129,8 +143,10 @@ enum KeyboardCommitPipeline {
     /// Switch page (letters / numbers / symbols).
     static func commitModeChange(
         to page: KeyboardPage,
-        state: QWERTYKeyboardState
+        state: QWERTYKeyboardState,
+        actions: KeyboardActions? = nil
     ) {
+        actions?.clearPendingPredictiveCorrection()
         state.inputTracking.pendingSmartSpace = false
         if state.currentPage != page {
             state.currentPage = page

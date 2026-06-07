@@ -458,6 +458,7 @@ struct KeyButtonView: View {
     /// visually tapped key due to probabilistic resolution).
     /// Inserts text, records context, updates shift, and triggers slash/predictive evaluation.
     private func handleCharacterTap(_ char: String) {
+        actions.clearPendingPredictiveCorrection()
         let textToInsert = state.shiftState == .disabled ? char.lowercased() : char.uppercased()
         actions.insertText(textToInsert)
         state.inputTracking.recordAction(.character)
@@ -482,6 +483,13 @@ struct KeyButtonView: View {
             state.toggleShift()
 
         case .backspace:
+            if actions.revertLastPredictiveCorrection() {
+                state.inputTracking.recordAction(.other)
+                state.inputTracking.touchContext.recordNonCharacter()
+                actions.evaluateSlashCommand()
+                actions.evaluatePredictiveText()
+                return
+            }
             actions.deleteBackward()
             state.inputTracking.recordAction(.other)
             state.inputTracking.touchContext.recordNonCharacter()
@@ -492,6 +500,7 @@ struct KeyButtonView: View {
             handleSpaceAction()
 
         case .returnKey:
+            actions.clearPendingPredictiveCorrection()
             actions.insertText("\n")
             state.inputTracking.recordAction(.other)
             state.inputTracking.touchContext.recordNonCharacter()
@@ -499,10 +508,12 @@ struct KeyButtonView: View {
             actions.evaluatePredictiveText()
 
         case .modeChange(let page):
+            actions.clearPendingPredictiveCorrection()
             state.currentPage = page
             state.inputTracking.recordAction(.other)
 
         case .snippetToggle:
+            actions.clearPendingPredictiveCorrection()
             state.showingSnippets = true
         }
     }
@@ -510,6 +521,11 @@ struct KeyButtonView: View {
     // MARK: - Space / Auto-Period
 
     private func handleSpaceAction() {
+        let didApplyCorrection = actions.applyPendingPredictiveCorrection()
+        if !didApplyCorrection {
+            actions.clearPendingPredictiveCorrection()
+        }
+
         // Check auto-return condition BEFORE recording the space action,
         // because recordAction overwrites lastAction.
         // Native iOS behavior: pressing space after a character in numbers/symbols
