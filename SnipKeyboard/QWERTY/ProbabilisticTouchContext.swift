@@ -41,7 +41,7 @@ final class ProbabilisticTouchContext {
     private var isEnglishContext: Bool = true
 
     /// Prior's share of the blend; the bigram gets the remainder. Tunable.
-    private static let priorBlendFactor: Float = 0.6
+    private static let priorBlendFactor: Float = 0.45
 
     /// The character before `lastCharacter` — gives the 2-char context for trigram boosts.
     private var secondLastCharacter: Character?
@@ -113,7 +113,7 @@ final class ProbabilisticTouchContext {
         predictivePrior = prior
         isEnglishContext = isEnglish
         rebakeBlendedWeights()
-        updateSmoothingAndConfidence(reset: false)
+        updateSmoothingAndConfidence(reset: prior == nil)
     }
 
     /// Ease `smoothedWeights` toward the current raw source and recompute `confidence`. Runs only

@@ -2,15 +2,15 @@
 //  PredictiveTextEngineAsync.swift
 //  SnipKeyboard
 //
-//  Structured-concurrency wrapper around PredictiveTextTracker so UITextChecker work
-//  runs off the main thread. The press → insert path stays synchronous; suggestions
-//  update ~40–70ms after a typing pause.
+//  Serial background wrapper around PredictiveTextTracker so UITextChecker work
+//  runs off the main thread without racing the tracker's mutable caches. The press → insert
+//  path stays synchronous; suggestions update ~40–70ms after a typing pause.
 //
 
 import Foundation
 import UIKit
 
-/// Async, debounced, coalescing engine that evaluates predictive text off the main thread.
+/// Debounced, coalescing engine that evaluates predictive text off the main thread.
 ///
 /// Why: `UITextChecker.completions/rangeOfMisspelledWord/guesses` each cost 10–40ms.
 /// Running them synchronously on every keystroke is the dominant per-keystroke main-thread
@@ -20,30 +20,37 @@ import UIKit
 /// Threading model:
 /// - The engine is `@MainActor`-isolated so `schedule(context:completion:)` and the token
 ///   bookkeeping cannot race.
-/// - The heavy `tracker.evaluate(context:)` work runs inside a non-isolated `Task` body
-///   (Swift's structured concurrency dispatches it off the main actor).
-/// - Results are posted back to main via `await MainActor.run { … }` only when the call
-///   that scheduled them is still the latest.
+/// - The heavy `tracker.evaluate(context:)` work runs on one serial queue. This preserves
+///   `PredictiveTextTracker`'s cached state while keeping `UITextChecker` off the main actor.
+/// - Results hop back to `MainActor` only when the scheduled token is still current.
 @MainActor
 final class PredictiveTextEngineAsync {
 
     private let tracker = PredictiveTextTracker()
+    private let queue = DispatchQueue(label: "jrtv.snipkey.predictive-text", qos: .userInitiated)
 
     /// Monotonic token. Each `schedule` increments it; the background task only publishes
     /// if `currentToken` is still its own token when finished.
     private var currentToken: UInt64 = 0
 
-    /// In-flight task; cancelled when a new schedule arrives during the debounce window.
-    private var pendingTask: Task<Void, Never>?
+    /// In-flight item; cancelled when a new schedule arrives during the debounce window.
+    private var pendingWorkItem: DispatchWorkItem?
 
     /// Debounce window before evaluation runs. 40ms coalesces typical typing bursts
     /// (~10 keys/sec) without making suggestions feel laggy.
-    private static let debounce: Duration = .milliseconds(40)
+    private static let debounce: DispatchTimeInterval = .milliseconds(40)
+
+    private var cachedLexicon: UILexicon?
 
     /// Forward the system-provided supplementary lexicon (contacts / shortcuts).
     var lexicon: UILexicon? {
-        get { tracker.lexicon }
-        set { tracker.lexicon = newValue }
+        get { cachedLexicon }
+        set {
+            cachedLexicon = newValue
+            queue.async { [tracker] in
+                tracker.lexicon = newValue
+            }
+        }
     }
 
     /// Schedule a predictive-text evaluation for the given context.
@@ -54,49 +61,30 @@ final class PredictiveTextEngineAsync {
         let myToken = currentToken
         let snapshot = context
 
-        pendingTask?.cancel()
-        pendingTask = Task { [weak self, tracker = self.tracker] in
-            try? await Task.sleep(for: Self.debounce)
-            if Task.isCancelled { return }
-
-            // Heavy UITextChecker work — runs off the main actor automatically because
-            // `Task {}` inherits priority but not actor isolation when the body is non-isolated.
-            // We capture `tracker` directly so the closure is `Sendable` w.r.t. self.
-            let result = await Self.evaluateOffMain(tracker: tracker, context: snapshot)
-
-            await MainActor.run {
-                guard let self else { return }
-                guard self.currentToken == myToken else { return }
+        pendingWorkItem?.cancel()
+        var workItem: DispatchWorkItem!
+        workItem = DispatchWorkItem { [weak self, tracker] in
+            guard !workItem.isCancelled else { return }
+            let result = tracker.evaluate(context: snapshot)
+            Task { @MainActor [weak self] in
+                guard let self, self.currentToken == myToken else { return }
+                guard self.pendingWorkItem === workItem else { return }
                 if result.changed {
                     completion(result.candidates, result.partialWord)
                 }
             }
         }
-    }
 
-    /// Off-actor wrapper around `tracker.evaluate(context:)`. Marked `nonisolated` so the
-    /// compiler doesn't hop back to MainActor before calling — UITextChecker is thread-safe.
-    private nonisolated static func evaluateOffMain(
-        tracker: PredictiveTextTracker,
-        context: String?
-    ) async -> (changed: Bool, candidates: [PredictiveCandidate], partialWord: String) {
-        // Hop to a background task to ensure we're not on main even if the caller is.
-        await Task.detached(priority: .userInitiated) {
-            tracker.evaluate(context: context)
-        }.value
+        pendingWorkItem = workItem
+        queue.asyncAfter(deadline: .now() + Self.debounce, execute: workItem)
     }
 
     /// Reset the cached "last suggestions" state. Use after suggestion selection
     /// so the next keystroke is treated as a fresh sequence.
     func reset() {
-        pendingTask?.cancel()
-        pendingTask = nil
-        tracker.reset()
-    }
-
-    func rejectCorrection(original: String, replacement: String) {
-        pendingTask?.cancel()
-        pendingTask = nil
-        tracker.rejectCorrection(original: original, replacement: replacement)
+        currentToken &+= 1
+        pendingWorkItem?.cancel()
+        pendingWorkItem = nil
+        queue.async { [tracker] in tracker.reset() }
     }
 }

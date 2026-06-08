@@ -43,7 +43,7 @@ enum ProbabilisticHitResolver {
         var sigmaX: Float
         var sigmaY: Float
         /// Central anchor strip that always wins, as a fraction of the key's width/height.
-        /// e.g. 0.5 / 0.6 ⇒ inner 50%×60% of the key is immune to prior pressure.
+        /// e.g. 0.6 / 0.7 ⇒ inner 60%×70% of the key is immune to prior pressure.
         var anchorFracW: CGFloat
         var anchorFracH: CGFloat
         /// Anti-swallow guard: max allowed distance (in σ-normalized units, as a multiple of
@@ -59,11 +59,11 @@ enum ProbabilisticHitResolver {
         /// protects deliberate center taps). Conservative on purpose — per-user offset learning
         /// (TouchOffsetModel) does the heavier personalization over time.
         static let `default` = Config(
-            beta: 0.5,
+            beta: 0.35,
             sigmaX: 13,
             sigmaY: 16,
-            anchorFracW: 0.5,
-            anchorFracH: 0.6,
+            anchorFracW: 0.6,
+            anchorFracH: 0.7,
             maxCaptureDiagonals: 1.5,
             vocab: 30
         )

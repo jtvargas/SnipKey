@@ -47,11 +47,6 @@ struct HostInputTraits {
         KeyboardLayoutProfile(keyboardType: keyboardType)
     }
 
-    /// True when SnipKey may rewrite a completed word automatically. Manual suggestions can
-    /// still be shown when this is false, but space/backspace should not mutate typed text.
-    var allowsAutomaticCorrection: Bool {
-        allowsSmartTransforms && autocorrectionType != .no && spellCheckingType != .no
-    }
 }
 
 /// Wraps textDocumentProxy operations as closures, passed from
@@ -112,18 +107,6 @@ struct KeyboardActions {
     /// Called after character insertion, deletion, and other key events.
     let evaluatePredictiveText: () -> Void
 
-    /// Apply a high-confidence predictive correction before a user-typed space is committed.
-    /// Returns true when the document was mutated. The controller owns the actual replacement
-    /// because it has access to `PredictiveTextState` and `textDocumentProxy`.
-    let applyPendingPredictiveCorrection: () -> Bool
-
-    /// Revert the most recent automatic correction when the user's next action is backspace.
-    /// Returns true when it handled the backspace and the caller should skip normal deletion.
-    let revertLastPredictiveCorrection: () -> Bool
-
-    /// Clear the pending immediate-backspace undo window after any non-backspace follow-up.
-    let clearPendingPredictiveCorrection: () -> Void
-
     /// Coalesced post-commit side-effects for the V2 path. Instead of synchronously
     /// reading `documentContextBeforeInput` and running slash + predictive evaluation
     /// inside `touchesBegan` (which delays the next keypress on the serial main thread),
@@ -168,9 +151,6 @@ struct KeyboardActions {
         createTimer: { _, _ in },
         evaluateSlashCommand: {},
         evaluatePredictiveText: {},
-        applyPendingPredictiveCorrection: { false },
-        revertLastPredictiveCorrection: { false },
-        clearPendingPredictiveCorrection: {},
         scheduleSideEffects: {},
         adjustCaret: { _ in },
         inputTraits: { .defaults },

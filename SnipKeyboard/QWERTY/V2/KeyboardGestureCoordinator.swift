@@ -323,15 +323,13 @@ final class KeyboardGestureCoordinator: UIView {
         CATransaction.commit()
     }
 
-    /// Rebuild debug-only `KeyHitView` touch targets in lockstep with `resolvedFrames`.
-    /// The production path uses this coordinator as the single touch surface, so invisible
-    /// UIViews no longer sit above the rendered key/callout layers.
+    /// Rebuild the tiling `KeyHitView` touch targets in lockstep with `resolvedFrames`.
+    /// Each covers its key's `hitRect`; together they tile the whole keys area with no gaps,
+    /// so a touch anywhere, including between keys, lands on a real interactive subview that
+    /// forwards to this coordinator. The debug overlay flag only changes their visual styling.
     private func rebuildHitViews() {
         for v in keyHitViews { v.removeFromSuperview() }
         keyHitViews.removeAll(keepingCapacity: true)
-        guard KeyboardFeatureFlags.debugHitOverlayEnabled else {
-            return
-        }
         for frame in resolvedFrames {
             let hv = KeyHitView(frame: frame.hitRect)
             hv.coordinator = self
@@ -425,11 +423,22 @@ final class KeyboardGestureCoordinator: UIView {
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
+            let id = ObjectIdentifier(touch)
+            KeyboardResponsivenessTelemetry.shared.markTouchDown(id)
             let point = touch.location(in: self)
-            guard let rawKey = findKey(at: point) else { continue }
-            KeyboardResponsivenessTelemetry.shared.markTouchDown(ObjectIdentifier(touch))
+            guard ensureLayoutReadyForTouch(), let rawKey = findKey(at: point) else {
+                TypingTelemetry.shared.recordUnresolvedTouchDown(layout: currentLayoutHash)
+                continue
+            }
             let key = smartResolved(rawKey: rawKey, at: point)
-            beginPress(touch: touch, key: key, at: point)
+            TypingTelemetry.shared.recordOutcome(
+                layout: currentLayoutHash,
+                raw: rawKey,
+                resolved: key,
+                point: point,
+                confidence: state?.inputTracking.touchContext.confidence ?? 0
+            )
+            beginPress(touch: touch, key: key, rawKey: rawKey, at: point)
         }
     }
 
@@ -464,7 +473,7 @@ final class KeyboardGestureCoordinator: UIView {
 
     // MARK: - Press Lifecycle (per-touch)
 
-    private func beginPress(touch: UITouch, key: KeyFrame, at point: CGPoint) {
+    private func beginPress(touch: UITouch, key: KeyFrame, rawKey: KeyFrame, at point: CGPoint) {
         let id = ObjectIdentifier(touch)
         nextPressSequence &+= 1
         var press = ActivePress(key: key, startPoint: point, sequence: nextPressSequence)
@@ -492,8 +501,12 @@ final class KeyboardGestureCoordinator: UIView {
             // backspaced) → confirm it, then stage this touch. Letters page only.
             if useProbabilisticHitResolver, currentPage == .letters {
                 TouchOffsetModel.shared.confirmPending()
-                TouchOffsetModel.shared.record(keyFrame: key, point: point,
-                                               keyboardWidth: bounds.width, rowCount: currentRowCount)
+                if shouldLearnTouchOffset(rawKey: rawKey, resolvedKey: key, point: point) {
+                    TouchOffsetModel.shared.record(keyFrame: key, point: point,
+                                                   keyboardWidth: bounds.width, rowCount: currentRowCount)
+                } else {
+                    TouchOffsetModel.shared.discardPending()
+                }
             }
             press.longPressTask = scheduleLongPress(touchID: id, key: key)
         case .insertText(_, let output):
@@ -667,7 +680,11 @@ final class KeyboardGestureCoordinator: UIView {
             if committed, let selected = calloutController.commitActions(), let state = state, let actions = actions {
                 actions.insertCharacter(selected)
                 state.inputTracking.recordAction(.character)
-                if let scalar = selected.first { state.inputTracking.touchContext.recordCharacter(scalar) }
+                if selected.count == 1, let scalar = selected.first, scalar.isLetter {
+                    state.inputTracking.touchContext.recordCharacter(scalar)
+                } else {
+                    state.inputTracking.touchContext.recordNonCharacter()
+                }
                 state.handleShiftAfterCharacter()
                 actions.scheduleSideEffects()
                 accentInserted = true
@@ -745,6 +762,27 @@ final class KeyboardGestureCoordinator: UIView {
         TouchOffsetModel.shared.offset(for: frame, keyboardWidth: bounds.width, rowCount: currentRowCount)
     }
 
+    /// Make the first real touch after mount/profile/page changes self-heal if UIKit delivers it
+    /// before `layoutSubviews` has produced frames. This should be rare, but a dropped first press
+    /// feels exactly like a missed native-keyboard key.
+    private func ensureLayoutReadyForTouch() -> Bool {
+        if !resolvedFrames.isEmpty, hitGrid != nil { return true }
+        rebuildLayout()
+        return !resolvedFrames.isEmpty
+    }
+
+    private func shouldLearnTouchOffset(rawKey: KeyFrame, resolvedKey: KeyFrame, point: CGPoint) -> Bool {
+        guard rawKey.isCharacterKey, resolvedKey.isCharacterKey else { return false }
+        guard rawKey.rowIndex == resolvedKey.rowIndex else { return false }
+        if rawKey.action == resolvedKey.action { return true }
+        let cfg = probabilisticConfig
+        let anchor = rawKey.rect.insetBy(
+            dx: rawKey.rect.width * (1 - cfg.anchorFracW) / 2,
+            dy: rawKey.rect.height * (1 - cfg.anchorFracH) / 2
+        )
+        return anchor.contains(point)
+    }
+
     /// Apply bigram-weighted smart-touch correction to the raw `findKey` result.
     /// Non-character keys, and presses while smart touch is disabled, pass through unchanged.
     private func smartResolved(rawKey: KeyFrame, at point: CGPoint) -> KeyFrame {
@@ -769,7 +807,7 @@ final class KeyboardGestureCoordinator: UIView {
             return ProbabilisticHitResolver.resolve(
                 rawKey: rawKey,
                 point: point,
-                frames: resolvedFrames,
+                frames: resolvedFrames.filter { $0.rowIndex == rawKey.rowIndex },
                 weightFor: { str in touchContext.weight(for: str.first ?? " ") },
                 offsetFor: { [weak self] in self?.siteOffset(for: $0) ?? .zero },
                 config: cfg

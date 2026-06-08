@@ -159,7 +159,6 @@ struct KeyboardToolbarView: View {
     }
 
     private func insertSnippet(_ snippet: SnippetItem) {
-        actions.clearPendingPredictiveCorrection()
         // 1. Delete the slash command text (e.g., "/addr" = 5 chars including the slash)
         let charsToDelete = slashState.query.count + 1 // +1 for the "/" character
         for _ in 0..<charsToDelete {
@@ -206,7 +205,6 @@ struct KeyboardToolbarView: View {
         // Mark the trailing space as a "smart space" so the next punctuation attaches to
         // the word (native iOS behavior). Consumed/cleared in the commit pipeline.
         state.inputTracking.pendingSmartSpace = true
-        actions.clearPendingPredictiveCorrection()
 
         // Reset and re-evaluate
         predictiveState.dismiss()
@@ -217,7 +215,6 @@ struct KeyboardToolbarView: View {
 
     private func handleCreateReminder() {
         guard let parsed = reminderState.parsed else { return }
-        actions.clearPendingPredictiveCorrection()
 
         // 1. Delete the typed `/remind … at <time>` command (reuses the snippet delete pattern).
         for _ in 0..<parsed.triggerText.count {
@@ -237,7 +234,6 @@ struct KeyboardToolbarView: View {
 
     private func handleCreateTimer() {
         guard let parsed = timerState.parsed else { return }
-        actions.clearPendingPredictiveCorrection()
 
         // 1. Delete the typed `/timer <duration>` command.
         for _ in 0..<parsed.triggerText.count {
@@ -563,7 +559,12 @@ struct PredictiveSuggestionsView: View {
     }
 
     private func fontName(for candidate: PredictiveCandidate) -> String {
-        candidate.autoCommitEligible ? "IBMPlexMono-SemiBold" : "IBMPlexMono-Medium"
+        switch candidate.role {
+        case .correction, .textReplacement:
+            "IBMPlexMono-SemiBold"
+        case .typed, .completion:
+            "IBMPlexMono-Medium"
+        }
     }
 }
 

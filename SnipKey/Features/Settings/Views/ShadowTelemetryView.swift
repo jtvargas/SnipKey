@@ -34,6 +34,9 @@ struct ShadowTelemetryView: View {
         let disagreements: Int
         let disagreementRate: Double
         let events: [Event]
+        let outcomeTotal: Int?
+        let unresolvedTouchDowns: Int?
+        let rawResolvedDisagreements: Int?
     }
 
     private struct CellStat: Identifiable {
@@ -92,6 +95,10 @@ struct ShadowTelemetryView: View {
             row("Touches sampled", "\(p.total)")
             row("Disagreements", "\(p.disagreements)")
             row("Disagreement rate", String(format: "%.2f%%", p.disagreementRate * 100))
+            row("Touch outcomes", "\(p.outcomeTotal ?? 0)")
+            row("Unresolved touch-downs", "\(p.unresolvedTouchDowns ?? 0)",
+                tint: (p.unresolvedTouchDowns ?? 0) == 0 ? .green : .orange)
+            row("Raw→resolved changes", "\(p.rawResolvedDisagreements ?? 0)")
             row("Rollout gate (< 3%)", p.disagreementRate < 0.03 ? "PASS" : "review",
                 tint: p.disagreementRate < 0.03 ? .green : .orange)
         }
