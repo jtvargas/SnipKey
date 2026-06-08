@@ -392,6 +392,8 @@ final class KeyLayerRenderer {
         switch action {
         case .character(let c):
             return .text(currentShiftUppercase ? c.uppercased() : c.lowercased())
+        case .insertText(let label, _):
+            return .text(label)
         case .shift:
             // Match native: outline arrow when disabled, filled when enabled, capslock.fill when locked.
             switch currentShiftState {
@@ -426,6 +428,9 @@ final class KeyLayerRenderer {
         if case .character(let c) = action {
             return uppercase ? c.uppercased() : c.lowercased()
         }
+        if case .insertText(let label, _) = action {
+            return label
+        }
         return ""
     }
 
@@ -434,6 +439,9 @@ final class KeyLayerRenderer {
             let ch = c.first
             if ch?.isLetter == true || ch?.isNumber == true { return round(keyHeight * 0.50) }
             return round(keyHeight * 0.43)
+        }
+        if case .insertText(let label, _) = action {
+            return label.count > 1 ? round(keyHeight * 0.34) : round(keyHeight * 0.43)
         }
         if case .returnKey = action { return round(keyHeight * 0.36) }
         if case .modeChange = action { return round(keyHeight * 0.36) }
@@ -486,7 +494,7 @@ final class KeyLayerRenderer {
 
     private func backgroundColor(for action: KeyAction, isDark: Bool) -> UIColor {
         switch action {
-        case .character, .space:
+        case .character, .insertText, .space:
             return isDark
                 ? UIColor(white: 0.40, alpha: 0.55)
                 : UIColor(white: 1.0, alpha: 0.94)

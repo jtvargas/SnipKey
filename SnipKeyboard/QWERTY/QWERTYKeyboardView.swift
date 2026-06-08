@@ -21,7 +21,7 @@ struct QWERTYKeyboardView: View {
             KeyboardToolbarView(dimensions: dimensions)
 
             VStack(spacing: dimensions.rowGap) {
-                let rows = QWERTYKeyboardLayout.rows(for: state.currentPage)
+                let rows = QWERTYKeyboardLayout.rows(for: state.currentPage, profile: state.layoutProfile)
                 ForEach(Array(rows.enumerated()), id: \.element) { index, row in
                     KeyRowView(
                         actions: row,

@@ -12,6 +12,7 @@ import AlertToast
 import UniformTypeIdentifiers
 import TipKit
 import UserNotifications
+import Pow
 
 
 
@@ -85,7 +86,7 @@ struct HomeView2: View {
                                 HStack{
                                     InfoButtonView()
                                     IcloudSaveIndocatorView()
-                                    TipsDevButtonView()
+//                                    TipsDevButtonView()
                                     RemindersButtonView()
                                 }
 
@@ -557,6 +558,7 @@ struct SupportTipButton: View {
             Image(systemName: "gift.fill")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(Color.yellow)
+                .conditionalEffect(.repeat(.wiggle(rate: .fast), every: .seconds(1)), condition: true)
         }
     }
 }

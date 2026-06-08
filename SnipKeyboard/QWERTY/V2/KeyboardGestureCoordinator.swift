@@ -88,6 +88,7 @@ final class KeyboardGestureCoordinator: UIView {
     private struct RenderSignature: Equatable {
         let size: CGSize
         let page: KeyboardPage
+        let profile: KeyboardLayoutProfile
         let isDark: Bool
         let dims: KeyboardDimensions
         let spaceSubtitle: String?
@@ -257,6 +258,7 @@ final class KeyboardGestureCoordinator: UIView {
         let signature = RenderSignature(
             size: bounds.size,
             page: currentPage,
+            profile: state?.layoutProfile ?? .standard,
             isDark: isDark,
             dims: dims,
             spaceSubtitle: subtitle
@@ -266,7 +268,11 @@ final class KeyboardGestureCoordinator: UIView {
         }
         lastRenderSignature = signature
 
-        let layout = KeyboardLayoutFactory.layout(for: currentPage, dims: dims)
+        let layout = KeyboardLayoutFactory.layout(
+            for: currentPage,
+            profile: state?.layoutProfile ?? .standard,
+            dims: dims
+        )
         resolvedFrames = KeyboardLayoutResolver.resolve(
             layout: layout,
             dims: dims,
@@ -367,6 +373,8 @@ final class KeyboardGestureCoordinator: UIView {
             // Use the cased character so VoiceOver reads e.g. "uppercase A".
             let cased = (state?.shiftState ?? .disabled) != .disabled ? c.uppercased() : c.lowercased()
             return cased
+        case .insertText(let label, _):
+            return label
         case .shift:
             switch state?.shiftState ?? .disabled {
             case .disabled: return "shift"
@@ -402,6 +410,8 @@ final class KeyboardGestureCoordinator: UIView {
         switch frame.action {
         case .character(let c):
             KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
+        case .insertText(_, let output):
+            KeyboardCommitPipeline.commitText(output, state: state, actions: actions)
         case .backspace:
             KeyboardCommitPipeline.commitBackspace(state: state, actions: actions)
         case .space:
@@ -493,6 +503,13 @@ final class KeyboardGestureCoordinator: UIView {
                                                keyboardWidth: bounds.width, rowCount: currentRowCount)
             }
             press.longPressTask = scheduleLongPress(touchID: id, key: key)
+        case .insertText(_, let output):
+            press.committedOnTouchDown = true
+            calloutController.dismiss()
+            if let state, let actions {
+                KeyboardCommitPipeline.commitText(output, state: state, actions: actions)
+                KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
+            }
         case .backspace:
             press.committedOnTouchDown = true
             // Immediate delete on touch-down feels native. Long-press starts rapid-delete.
@@ -667,7 +684,7 @@ final class KeyboardGestureCoordinator: UIView {
         // Touch-up commit for keys that don't insert on touch-down.
         if committed && !accentInserted, let state = state, let actions = actions {
             switch press.key.action {
-            case .character, .backspace, .shift:
+            case .character, .insertText, .backspace, .shift:
                 // Already committed on touch-down (or shift toggled). Nothing more to do.
                 break
             case .space:
@@ -722,9 +739,12 @@ final class KeyboardGestureCoordinator: UIView {
         return self
     }
 
-    /// Stable hash of the current geometry {page, rounded keys-area width}. Distinguishes
+    /// Stable hash of the current geometry {page, profile, rounded keys-area width}. Distinguishes
     /// portrait/landscape/host-height layouts so learned offsets and telemetry don't mix.
-    private var currentLayoutHash: Int { currentPage.hashValue &* 31 &+ Int(bounds.width.rounded()) }
+    private var currentLayoutHash: Int {
+        let profile = state?.layoutProfile ?? .standard
+        return (currentPage.hashValue &* 31 &+ profile.hashValue) &* 31 &+ Int(bounds.width.rounded())
+    }
 
     /// Combined per-key site offset (currently the learned per-user model; population baseline
     /// is 0). Used by both the live resolver and the debug overlay so they never diverge.

@@ -263,7 +263,7 @@ struct KeyButtonView: View {
                     )
 
             default:
-                // Standard keys: shift, space, return, modeChange
+                // Standard keys: shift, space, return, modeChange, text shortcuts
                 // Use UIKit touch for space (high frequency), Button for the rest
                 if action == .space {
                     keyVisual
@@ -297,6 +297,11 @@ struct KeyButtonView: View {
         switch action {
         case .character(let char):
             CharacterKeyLabel(char: char, fontSize: characterFontSize)
+
+        case .insertText(let label, _):
+            Text(label)
+                .font(.system(size: label.count > 1 ? 14 : 18, weight: .regular))
+                .foregroundStyle(keyForegroundColor)
 
         case .shift:
             shiftIcon
@@ -359,7 +364,7 @@ struct KeyButtonView: View {
         switch action {
         case .returnKey where state.returnKeyIsProminent:
             return .blue
-        case .character, .space:
+        case .character, .insertText, .space:
             return isDarkMode ? Color(white: 0.35).opacity(0.55) : Color(UIColor.systemGray6).opacity(0.6)
         default:
             return isDarkMode ? Color(white: 0.25).opacity(0.6) : Color(UIColor.systemGray4).opacity(0.7)
@@ -369,7 +374,7 @@ struct KeyButtonView: View {
     /// Letter and space keys: no shadow. Special keys: subtle bottom edge.
     private var keyShadowColor: Color {
         switch action {
-        case .character, .space:
+        case .character, .insertText, .space:
             return .clear
         default:
             return .black.opacity(0.06)
@@ -378,7 +383,7 @@ struct KeyButtonView: View {
 
     private var keyShadowY: CGFloat {
         switch action {
-        case .character, .space:
+        case .character, .insertText, .space:
             return 0
         default:
             return 0.5
@@ -478,6 +483,9 @@ struct KeyButtonView: View {
             // This path is only reached if a character key uses a SwiftUI Button
             // instead of KeyTouchArea (currently none do).
             handleCharacterTap(char)
+
+        case .insertText(_, let output):
+            KeyboardCommitPipeline.commitText(output, state: state, actions: actions)
 
         case .shift:
             state.toggleShift()

@@ -60,6 +60,36 @@ enum KeyboardCommitPipeline {
         actions.scheduleSideEffects()
     }
 
+    /// Commit a literal shortcut key such as `.com`, `@`, `#`, `.`, or `/`.
+    /// These keys are layout affordances, not shift-cased character keys.
+    static func commitText(
+        _ text: String,
+        state: QWERTYKeyboardState,
+        actions: KeyboardActions
+    ) {
+        guard !text.isEmpty else { return }
+        actions.clearPendingPredictiveCorrection()
+
+        if state.inputTracking.pendingSmartSpace {
+            state.inputTracking.pendingSmartSpace = false
+            let eatSet: Set<Character> = [".", ",", "!", "?", ";", ":", "'", ")", "]", "}", "\""]
+            if let first = text.first, eatSet.contains(first) {
+                actions.deleteBackward()
+            }
+        }
+
+        actions.insertText(text)
+        if text.count == 1, let scalar = text.first {
+            state.inputTracking.recordAction(.character)
+            state.inputTracking.touchContext.recordCharacter(scalar)
+        } else {
+            state.inputTracking.recordAction(.other)
+            state.inputTracking.touchContext.recordNonCharacter()
+        }
+
+        actions.scheduleSideEffects()
+    }
+
     /// Commit space. Inserts auto-period (". ") if the previous keystrokes were
     /// character + space + space. Otherwise inserts a normal space.
     static func commitSpace(

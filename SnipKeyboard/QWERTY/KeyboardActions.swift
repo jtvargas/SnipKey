@@ -36,11 +36,15 @@ struct HostInputTraits {
     /// break literal URLs).
     var allowsSmartTransforms: Bool {
         switch keyboardType {
-        case .URL, .emailAddress, .numberPad, .phonePad, .decimalPad, .asciiCapableNumberPad:
+        case .asciiCapable, .URL, .emailAddress, .numberPad, .phonePad, .decimalPad, .asciiCapableNumberPad:
             return false
         default:
             return true
         }
+    }
+
+    var layoutProfile: KeyboardLayoutProfile {
+        KeyboardLayoutProfile(keyboardType: keyboardType)
     }
 
     /// True when SnipKey may rewrite a completed word automatically. Manual suggestions can

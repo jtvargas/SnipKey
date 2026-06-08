@@ -11,6 +11,7 @@ import Foundation
 
 enum KeyAction: Hashable {
     case character(String)          // A letter, digit, or symbol
+    case insertText(label: String, output: String)
     case shift                      // Shift / caps lock
     case backspace                  // Delete backward
     case space                      // Space bar
@@ -35,6 +36,12 @@ struct QWERTYKeyboardLayout {
         // Row 3: [123] [Snippets] [Space] [Return]
         [.modeChange(.numbers), .snippetToggle, .space, .returnKey]
     ]
+
+    static func lettersRows(for profile: KeyboardLayoutProfile) -> [[KeyAction]] {
+        var rows = lettersRows
+        rows[3] = bottomRow(for: profile, modeTarget: .numbers)
+        return rows
+    }
 
     // MARK: Numbers Page (123)
 
@@ -64,11 +71,66 @@ struct QWERTYKeyboardLayout {
 
     // MARK: - Page Lookup
 
-    static func rows(for page: KeyboardPage) -> [[KeyAction]] {
+    static func rows(for page: KeyboardPage, profile: KeyboardLayoutProfile = .standard) -> [[KeyAction]] {
         switch page {
-        case .letters:  return lettersRows
-        case .numbers:  return numbersRows
-        case .symbols:  return symbolsRows
+        case .letters:
+            return lettersRows(for: profile)
+        case .numbers:
+            return numbersRows
+        case .symbols:
+            return symbolsRows(for: profile)
+        }
+    }
+
+    static func symbolsRows(for profile: KeyboardLayoutProfile) -> [[KeyAction]] {
+        guard profile == .asciiCapable else { return symbolsRows }
+        return [
+            "[]{}#%^*+=".map { .character(String($0)) },
+            ["_", "\\", "|", "~", "<", ">", "`", "^", "{", "}"].map { .character($0) },
+            [.modeChange(.numbers)] + ".,?!'".map { .character(String($0)) } + [.backspace],
+            [.modeChange(.letters), .snippetToggle, .space, .returnKey]
+        ]
+    }
+
+    static func bottomRow(for profile: KeyboardLayoutProfile, modeTarget: KeyboardPage) -> [KeyAction] {
+        switch profile {
+        case .emailAddress:
+            return [
+                .modeChange(modeTarget),
+                .snippetToggle,
+                .insertText(label: "@", output: "@"),
+                .space,
+                .insertText(label: ".", output: "."),
+                .returnKey
+            ]
+        case .url:
+            return [
+                .modeChange(modeTarget),
+                .snippetToggle,
+                .insertText(label: "/", output: "/"),
+                .insertText(label: ".", output: "."),
+                .insertText(label: ".com", output: ".com"),
+                .returnKey
+            ]
+        case .webSearch:
+            return [
+                .modeChange(modeTarget),
+                .snippetToggle,
+                .space,
+                .insertText(label: ".", output: "."),
+                .returnKey
+            ]
+        case .twitter:
+            return [
+                .modeChange(modeTarget),
+                .snippetToggle,
+                .insertText(label: "@", output: "@"),
+                .space,
+                .insertText(label: "#", output: "#"),
+                .returnKey
+            ]
+        case .standard, .asciiCapable:
+            return [.modeChange(modeTarget), .snippetToggle, .space, .returnKey]
         }
     }
 
@@ -77,7 +139,7 @@ struct QWERTYKeyboardLayout {
     /// Whether a key should use the "special" (darker) background style
     static func isSpecialKey(_ action: KeyAction) -> Bool {
         switch action {
-        case .character, .space, .returnKey:
+        case .character, .insertText, .space, .returnKey:
             return false
         case .shift, .backspace, .modeChange, .snippetToggle:
             return true

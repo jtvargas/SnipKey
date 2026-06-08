@@ -910,6 +910,12 @@ class KeyboardViewController: UIInputViewController {
         if qwertyState.needsInputModeSwitchKey != newNeedsSwitch {
             qwertyState.needsInputModeSwitchKey = newNeedsSwitch
         }
+
+        let newProfile = KeyboardLayoutProfile(keyboardType: proxy.keyboardType ?? .default)
+        if qwertyState.layoutProfile != newProfile {
+            qwertyState.layoutProfile = newProfile
+            qwertyState.currentPage = .letters
+        }
         
         // Return key label — only mutate if changed
         updateReturnKeyLabel()
@@ -978,7 +984,13 @@ class KeyboardViewController: UIInputViewController {
         case .continue:
             newLabel = "Continue"; newProminent = true
         default:
-            newLabel = "return"; newProminent = false
+            if let fallback = qwertyState.layoutProfile.fallbackReturnKey {
+                newLabel = fallback.label
+                newProminent = fallback.prominent
+            } else {
+                newLabel = "return"
+                newProminent = false
+            }
         }
         
         if qwertyState.returnKeyLabel != newLabel {
