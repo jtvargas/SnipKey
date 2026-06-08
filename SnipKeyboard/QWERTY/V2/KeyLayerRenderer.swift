@@ -39,6 +39,13 @@ final class KeyLayerRenderer {
     private var keys: [KeyLayers] = []
     private var pressedHighlights: [ObjectIdentifier: CAShapeLayer] = [:]
 
+    /// Hot-path caches for the per-touch pressed overlay. The fill color depends only on the
+    /// current appearance, and the rounded-rect path only on key size + corner radius — both are
+    /// constant between full renders. Caching them avoids a `UIBezierPath`/`UIColor`/`cgColor`
+    /// allocation on every touch-down during fast typing. Invalidated in `render(...)`.
+    private var cachedPressedColor: CGColor?
+    private var pressedPathCache: [CGSize: CGPath] = [:]
+
     /// Render scale used to rasterize CATextLayer glyphs and SF Symbol images. Supplied by
     /// the coordinator on every `render(...)` from its `traitCollection.displayScale` (the
     /// real display scale — correct even in an extension and on external displays). Reused by
@@ -89,6 +96,11 @@ final class KeyLayerRenderer {
         currentShiftUppercase = shiftState != .disabled
         self.spaceBarSubtitle = spaceBarSubtitle
         if scale > 0 { currentScale = scale }
+
+        // Appearance/geometry may have changed — drop the pressed-overlay color/path caches so
+        // the next press rebuilds them once with the current palette and corner radius.
+        cachedPressedColor = nil
+        pressedPathCache.removeAll(keepingCapacity: true)
 
         // Discard old key layers entirely — frame count and order may have changed.
         for k in keys {
@@ -215,11 +227,8 @@ final class KeyLayerRenderer {
         CATransaction.setDisableActions(true)
         layer.removeAllAnimations()
         layer.frame = frame.rect
-        layer.path = UIBezierPath(
-            roundedRect: CGRect(origin: .zero, size: frame.rect.size),
-            cornerRadius: currentCornerRadius
-        ).cgPath
-        layer.fillColor = pressedColor().cgColor
+        layer.path = pressedPath(for: frame.rect.size)
+        layer.fillColor = pressedColorCGColor()
         layer.opacity = 1
         layer.zPosition = 1
         if layer.superlayer == nil {
@@ -235,6 +244,11 @@ final class KeyLayerRenderer {
 
         CATransaction.begin()
         CATransaction.setDisableActions(false)
+        // Remove the layer when the fade finishes via the transaction completion block, so fast
+        // typing doesn't stack a delayed `asyncAfter` closure on the main thread per release.
+        CATransaction.setCompletionBlock { [weak layer] in
+            layer?.removeFromSuperlayer()
+        }
         let anim = CABasicAnimation(keyPath: "opacity")
         anim.fromValue = layer.presentation()?.opacity ?? layer.opacity
         anim.toValue = 0
@@ -245,10 +259,6 @@ final class KeyLayerRenderer {
         layer.add(anim, forKey: "pressedFade")
         layer.opacity = 0
         CATransaction.commit()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + anim.duration) { [weak layer] in
-            layer?.removeFromSuperlayer()
-        }
     }
 
     func clearAllPressedKeys() {
@@ -261,6 +271,26 @@ final class KeyLayerRenderer {
         currentIsDark
             ? UIColor(white: 0.62, alpha: 0.72)
             : UIColor(white: 0.78, alpha: 1.0)
+    }
+
+    /// Appearance-constant pressed fill, resolved to a `CGColor` once per render (palette change).
+    private func pressedColorCGColor() -> CGColor {
+        if let cached = cachedPressedColor { return cached }
+        let color = pressedColor().cgColor
+        cachedPressedColor = color
+        return color
+    }
+
+    /// Rounded-rect path for a pressed overlay of the given key size, cached per size. Most keys
+    /// share a size, so after the first few presses this is a dictionary hit, not an allocation.
+    private func pressedPath(for size: CGSize) -> CGPath {
+        if let cached = pressedPathCache[size] { return cached }
+        let path = UIBezierPath(
+            roundedRect: CGRect(origin: .zero, size: size),
+            cornerRadius: currentCornerRadius
+        ).cgPath
+        pressedPathCache[size] = path
+        return path
     }
 
     /// Update an individual key's text/style (used for return-key label changes).

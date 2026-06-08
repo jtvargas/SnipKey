@@ -105,6 +105,18 @@ class KeyboardViewController: UIInputViewController {
     /// The toolbar still shows improved candidates when this is false.
     private var autoSuggestionSpaceEnabled = false
 
+    /// Cached host field input traits (keyboard type, autocorrect/spell/smart-punctuation flags).
+    /// These are properties of the focused text field — constant while typing in one field — but
+    /// each backing `textDocumentProxy` read is a cross-process XPC call. Reading all six on every
+    /// keystroke's synchronous commit path wasted XPC/main-thread budget, so we cache them and
+    /// refresh off the hot path (`viewDidLoad` + the coalesced `flushSideEffects`).
+    private var cachedHostInputTraits: HostInputTraits = .defaults
+
+    /// Cached keyboard screen width. Resolved off the hot path (`viewDidLoad` / rotation) so the
+    /// SwiftUI toolbar's `dims` computed properties don't walk the window/scene graph on every
+    /// body re-evaluation. Still rotation/Stage-Manager correct via `viewWillTransition`.
+    private var cachedScreenWidth: CGFloat = 393
+
     // MARK: - Hot-path coalescing (V2)
 
     /// True only during the host's synchronous `textDidChange` re-entrancy triggered by our
@@ -143,7 +155,7 @@ class KeyboardViewController: UIInputViewController {
                 self?.textDocumentProxy.documentContextBeforeInput
             },
             screenWidthProvider: { [weak self] in
-                self?.keyboardScreenWidth() ?? 393
+                self?.cachedScreenWidth ?? 393
             },
             showPopup: { [weak self] character, keyFrame, isDark in
                 self?.popupView.show(character: character, keyFrame: keyFrame, isDark: isDark)
@@ -322,6 +334,11 @@ class KeyboardViewController: UIInputViewController {
             forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true)
         autoSuggestionSpaceEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.autoSuggestionSpaceEnabled, default: false)
+
+        // Prime the hot-path caches once. Both are refreshed off the keystroke path afterwards
+        // (traits in `flushSideEffects`, width in `viewWillTransition`).
+        cachedScreenWidth = keyboardScreenWidth()
+        refreshHostInputTraits()
 
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
@@ -538,6 +555,9 @@ class KeyboardViewController: UIInputViewController {
         self.nextKeyboardButton.isHidden = !self.needsInputModeSwitchKey
         // Update height constraint on layout changes (rotation, different device)
         let newWidth = keyboardScreenWidth()
+        // Refresh the hot-path width cache here (off the keystroke path) so SwiftUI `dims` reads
+        // stay rotation/Stage-Manager correct without walking the window/scene graph per body eval.
+        cachedScreenWidth = newWidth
         heightConstraint?.constant = KeyboardDimensions.totalHeight(forScreenWidth: newWidth)
         // Only update QWERTY state when screen width actually changed (rotation)
         // This avoids doubling observable mutations since textDidChange also calls updateQWERTYState
@@ -606,6 +626,10 @@ class KeyboardViewController: UIInputViewController {
     private func flushSideEffects() {
         sideEffectFlushScheduled = false
         KeyboardResponsivenessTelemetry.shared.markSideEffectFlushed()
+        // Refresh cached field traits here (coalesced, off the synchronous touch-down path) so the
+        // next keystroke's commit reads them with zero XPC. Traits are field-constant, so being at
+        // most one keystroke stale is harmless and field switches are picked up on the next change.
+        refreshHostInputTraits()
         let context = textDocumentProxy.documentContextBeforeInput
         runSlashEvaluation(context: context)
         runReminderEvaluation(context: context)
@@ -710,9 +734,16 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
+    /// Cached field traits read by the keystroke hot path. See `refreshHostInputTraits`.
     private func currentHostInputTraits() -> HostInputTraits {
+        cachedHostInputTraits
+    }
+
+    /// Read the host field's input traits from `textDocumentProxy` (six XPC reads) and cache them.
+    /// Called off the hot path only — `viewDidLoad` and the coalesced `flushSideEffects`.
+    private func refreshHostInputTraits() {
         let proxy = textDocumentProxy
-        return HostInputTraits(
+        cachedHostInputTraits = HostInputTraits(
             keyboardType: proxy.keyboardType ?? .default,
             autocapitalizationType: proxy.autocapitalizationType ?? .sentences,
             autocorrectionType: proxy.autocorrectionType ?? .default,
