@@ -11,17 +11,17 @@ import Pow
 struct KeyboardStatusView: View {
     var isShortcutsActive: Bool = false
     var onKeyboardStatusPress: () -> Void
-    
+
     @State private var showingDetails = false
-    
+
     var statusColor: Color {
         isShortcutsActive ? .customSuccess : .customError
     }
-    
+
     var statusIcon: String {
         isShortcutsActive ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
     }
-    
+
     var body: some View {
         Button {
             showingDetails = true
@@ -30,11 +30,11 @@ struct KeyboardStatusView: View {
                 Image(systemName: statusIcon)
                     .foregroundColor(statusColor)
                     .symbolEffect(.pulse)
-                
+
 //                Text(isShortcutsActive ? "Keyboard Ready" : "Setup Required")
 //                    .font(.custom("IBMPlexMono-Bold", size: 14))
 //                    .foregroundColor(.label)
-                
+
 //                Image(systemName: "chevron.right")
 //                    .font(.system(size: 12, weight: .semibold))
 //                    .foregroundColor(.secondaryLabel)
@@ -69,18 +69,18 @@ struct KeyboardStatusView: View {
 struct KeyboardDetailsSheet: View {
     var isShortcutsActive: Bool
     var onKeyboardStatusPress: () -> Void
-    
+
     @Environment(\.dismiss) var dismiss
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
                 Text("Keyboard Status")
                     .font(.custom("IBMPlexMono-Bold", size: 18))
-                
+
                 Spacer()
-                
+
                 Button {
                     dismiss()
                 } label: {
@@ -90,9 +90,9 @@ struct KeyboardDetailsSheet: View {
                 }
             }
             .padding()
-            
+
             Divider()
-            
+
             // Content
             VStack(spacing: 24) {
                 // Status Icon & Text
@@ -101,39 +101,59 @@ struct KeyboardDetailsSheet: View {
                         .font(.system(size: 50))
                         .foregroundColor(isShortcutsActive ? .customSuccess : .customError)
                         .symbolEffect(.pulse)
-                    
+
                     VStack(spacing: 4) {
                         Text(isShortcutsActive ? "Ready to Use" : "Setup Required")
                             .font(.custom("IBMPlexMono-Bold", size: 20))
-                        
+
                         Text(isShortcutsActive ? "Keyboard is configured" : "Tap below to configure")
                             .font(.custom("IBMPlexMono-Regular", size: 13))
                             .foregroundColor(.secondaryLabel)
                     }
                 }
                 .padding(.top, 20)
-                
+
                 // Status Card
                 VStack(spacing: 12) {
                     HStack {
                         Image(systemName: "keyboard")
                             .foregroundColor(.blue)
-                        
+
                         Text("Shortcuts")
                             .font(.custom("IBMPlexMono-Bold", size: 14))
-                        
+
                         Spacer()
-                        
+
                         Image(systemName: isShortcutsActive ? "checkmark.circle.fill" : "x.circle.fill")
                             .foregroundColor(isShortcutsActive ? .customSuccess : .customError)
                     }
-                    
+
                     Divider()
-                    
+
+                    HStack {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                            .foregroundColor(.blue)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Commands")
+                                .font(.custom("IBMPlexMono-Bold", size: 14))
+                            Text("Just type '/'")
+                                .font(.custom("IBMPlexMono-Regular", size: 11))
+                                .foregroundColor(.secondaryLabel)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: isShortcutsActive ? "checkmark.circle.fill" : "x.circle.fill")
+                            .foregroundColor(isShortcutsActive ? .customSuccess : .customError)
+                    }
+
+                    Divider()
+
                     HStack(alignment: .top) {
                         Image(systemName: "info.circle")
                             .foregroundColor(.orange)
-                        
+
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Full Access")
                                 .font(.custom("IBMPlexMono-Bold", size: 14))
@@ -141,16 +161,16 @@ struct KeyboardDetailsSheet: View {
                                 .font(.custom("IBMPlexMono-Regular", size: 11))
                                 .foregroundColor(.secondaryLabel)
                         }
-                        
+
                         Spacer()
                     }
                 }
                 .padding(16)
                 .background(Color.secondarySystemBackground)
                 .cornerRadius(12)
-                
+
                 Spacer()
-                
+
                 // Action Button
                 if !isShortcutsActive {
                     Button {
@@ -180,18 +200,18 @@ struct StatusRow: View {
     let icon: String
     let title: String
     let isActive: Bool
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .foregroundColor(.blue)
                 .font(.system(size: 20))
-            
+
             Text(title)
                 .font(.custom("IBMPlexMono-Bold", size: 14))
-            
+
             Spacer()
-            
+
             Image(systemName: isActive ? "checkmark.circle.fill" : "x.circle.fill")
                 .foregroundColor(isActive ? .customSuccess : .customError)
                 .font(.system(size: 20))
@@ -207,7 +227,7 @@ struct StatusRow: View {
             onKeyboardStatusPress: { }
         )
         .padding()
-        
+
         KeyboardStatusView(
             isShortcutsActive: true,
             onKeyboardStatusPress: { }
