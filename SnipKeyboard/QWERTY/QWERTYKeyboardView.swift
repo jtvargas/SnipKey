@@ -111,21 +111,21 @@ struct KeyboardToolbarView: View {
                 }
             }
 
-            // Reminder button — schedules a local notification (fires in 2 min; 10s DEBUG).
-            // Matches the suggestion pills' hit area + press feedback. See LOCAL_NOTIFICATIONS.md.
-            Button {
-                actions.requestReminder()
-            } label: {
-                Image(systemName: "bell.badge")
-                    .font(.custom("IBMPlexMono-Medium", size: 16))
-                    .foregroundStyle(Color(.secondaryLabel))
-                    .frame(minWidth: 44, maxHeight: .infinity)   // 44pt-wide, fills toolbar height
-                    .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable
-                    .contentShape(Rectangle())                    // whole frame is the tap target
-                    .debugHitOverlay()
-            }
-            .buttonStyle(SuggestionPillButtonStyle())             // instant pressed highlight, like pills
-            .accessibilityLabel("Remind me in 2 minutes")
+//            // Reminder button — schedules a local notification (fires in 2 min; 10s DEBUG).
+//            // Matches the suggestion pills' hit area + press feedback. See LOCAL_NOTIFICATIONS.md.
+//            Button {
+//                actions.requestReminder()
+//            } label: {
+//                Image(systemName: "bell.badge")
+//                    .font(.custom("IBMPlexMono-Medium", size: 16))
+//                    .foregroundStyle(Color(.secondaryLabel))
+//                    .frame(minWidth: 44, maxHeight: .infinity)   // 44pt-wide, fills toolbar height
+//                    .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable
+//                    .contentShape(Rectangle())                    // whole frame is the tap target
+//                    .debugHitOverlay()
+//            }
+//            .buttonStyle(SuggestionPillButtonStyle())             // instant pressed highlight, like pills
+//            .accessibilityLabel("Remind me in 2 minutes")
         }
         .frame(height: dimensions.toolbarHeight - dimensions.toolbarItemBottomGap)
         .frame(height: dimensions.toolbarHeight, alignment: .top)
@@ -506,7 +506,7 @@ extension View {
     /// keyboard to apply, matching the keys overlay. No layout/behavior change when off.
     @ViewBuilder
     func debugHitOverlay() -> some View {
-        if AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false) {
+        if KeyboardFeatureFlags.debugHitOverlayEnabled {
             self
                 .background(Color(.systemRed).opacity(0.08))
                 .overlay(Rectangle().stroke(Color(.systemRed).opacity(0.9), lineWidth: 1))

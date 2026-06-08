@@ -79,6 +79,7 @@ enum TipDevJar: String, CaseIterable, Identifiable, Codable {
 
 struct TipDevView: View {
     @Environment(\.requestReview) var requestReview
+    @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject private var revenueCat: RevenueCatManager
     
@@ -86,9 +87,16 @@ struct TipDevView: View {
     @State private var showConfetti: Bool = false
     @State private var showThankYou: Bool = false
     @State private var purchasedTip: TipDevJar? = nil
+    /// True when the most recent successful purchase was the monthly supporter subscription,
+    /// so the thank-you overlay shows a supporter-specific message instead of a tip message.
+    @State private var purchasedSupporter: Bool = false
     
     // Grid tips (excluding contributor)
     private let gridTips: [TipDevJar] = [.candy, .juice, .taco, .ramen, .burger, .caviar]
+
+    /// The developer's App Store page — surfaced under the review CTA so users can discover the
+    /// other apps I ship. Opened via the SwiftUI `openURL` environment.
+    private let developerAppsURL = URL(string: "https://apps.apple.com/us/developer/jonathan-taveras/id1270478820")!
     
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -102,23 +110,37 @@ struct TipDevView: View {
             Color.systemBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 20) {
-                // Header
-                headerSection
-                
-                // Message
-                messageSection
-                
-                // Tips Grid
-                tipsGridSection
-                
-                // Review Button
-                reviewButton
-                
-                Spacer()
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    headerSection
+
+                    // Message
+                    messageSection
+
+                    // Tips Grid
+                    tipsGridSection
+
+                    // Monthly subscription to fund ongoing development
+                    monthlySupporterSection
+
+                    // Review Button
+                    reviewButton
+
+                    // Discover the developer's other App Store apps
+                    otherAppsSection
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
+            // Keep the original non-scrolling look on normal devices; only scroll (no bounce)
+            // when the content is taller than the sheet, e.g. on small phones.
+            .scrollBounceBehavior(.basedOnSize)
+            .task {
+                // Reflect an existing supporter subscription when the sheet opens.
+                await revenueCat.refreshCustomerInfo()
+            }
             
             // Thank You Overlay
             if showThankYou {
@@ -205,6 +227,84 @@ struct TipDevView: View {
         }
     }
     
+    // MARK: - Monthly Supporter Section
+    /// Prominent solid-yellow CTA (the screen's accent) inviting users to fund monthly development.
+    /// Shows a non-tappable "active" card instead once the user has the `snip_support` subscription.
+    @ViewBuilder
+    private var monthlySupporterSection: some View {
+        if revenueCat.isMonthlySupporter {
+            monthlySupporterActiveCard
+        } else {
+            monthlySupporterButton
+        }
+    }
+
+    private var monthlySupporterButton: some View {
+        Button(action: {
+            handleSupporterPurchase()
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 18))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Monthly Supporter")
+                        .font(.custom("IBMPlexMono-Bold", size: 15))
+                    Text("Help fund ongoing development")
+                        .font(.custom("IBMPlexMono-Regular", size: 11))
+                        .foregroundColor(.black.opacity(0.7))
+                }
+
+                Spacer()
+
+                if let supporter = revenueCat.supporterPackage {
+                    Text("\(supporter.localizedPriceString)/mo")
+                        .font(.custom("IBMPlexMono-Bold", size: 14))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(Color.yellow)
+            .foregroundColor(.black)
+            .cornerRadius(12)
+        }
+        .pressable()
+        // Disabled until the Support offering loads, or while a purchase is in flight.
+        .disabled(revenueCat.supporterPackage == nil || !isButtonEnabled)
+        .opacity((revenueCat.supporterPackage == nil || !isButtonEnabled) ? 0.6 : 1)
+    }
+
+    private var monthlySupporterActiveCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 18))
+                .foregroundColor(.yellow)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("You're a Monthly Supporter 💛")
+                    .font(.custom("IBMPlexMono-Bold", size: 15))
+                    .foregroundColor(.label)
+                Text("Thank you for funding development")
+                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                    .foregroundColor(.secondaryLabel)
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.yellow.opacity(0.15))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.yellow.opacity(0.5), lineWidth: 1.5)
+        )
+    }
+
     // MARK: - Review Button
     private var reviewButton: some View {
         Button(action: {
@@ -222,6 +322,53 @@ struct TipDevView: View {
             .foregroundColor(.systemBackground)
             .cornerRadius(12)
         }
+        .pressable()
+    }
+
+    // MARK: - Other Apps Section
+    /// A muted caption + outlined CTA (matched to `reviewButton`'s shape) that opens the
+    /// developer's App Store page. Outlined rather than solid so it reads as secondary to
+    /// "Leave a Review" while staying part of the same yellow-accented design language.
+    private var otherAppsSection: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("I have a few more apps if you're curious:")
+                    .font(.custom("IBMPlexMono-SemiBold", size: 12))
+                    .foregroundColor(.secondaryLabel)
+                Spacer()
+            }
+
+            otherAppsButton
+        }
+    }
+
+    private var otherAppsButton: some View {
+        Button(action: {
+            openURL(developerAppsURL)
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.grid.2x2.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.yellow)
+                Text("Check Out My Other Apps")
+                    .font(.custom("IBMPlexMono-SemiBold", size: 14))
+                    .foregroundColor(.label)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondaryLabel)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.secondarySystemBackground.opacity(0.5))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.yellow.opacity(0.5), lineWidth: 1.5)
+            )
+        }
+        .pressable()
     }
     
     // MARK: - Thank You Overlay
@@ -253,13 +400,18 @@ struct TipDevView: View {
                         .font(.custom("IBMPlexMono-Bold", size: 24))
                         .foregroundColor(.label)
                     
-                    if let tip = purchasedTip {
+                    if purchasedSupporter {
+                        Text("Your monthly support funds ongoing development 💛")
+                            .font(.custom("IBMPlexMono-Medium", size: 13))
+                            .foregroundColor(.secondaryLabel)
+                            .multilineTextAlignment(.center)
+                    } else if let tip = purchasedTip {
                         Text("Your \(tip.emoji) \(tip.name) tip means the world!")
                             .font(.custom("IBMPlexMono-Medium", size: 13))
                             .foregroundColor(.secondaryLabel)
                             .multilineTextAlignment(.center)
                     }
-                    
+
                     Text("You're helping keep SnipKey alive!")
                         .font(.custom("IBMPlexMono-Regular", size: 12))
                         .foregroundColor(.secondaryLabel)
@@ -320,13 +472,14 @@ struct TipDevView: View {
         
         revenueCat.purchase(package: package) { success in
             if success {
+                purchasedSupporter = false
                 purchasedTip = tipJar
-                
+
                 // Show confetti first
                 withAnimation {
                     showConfetti.toggle()
                 }
-                
+
                 // Then show thank you overlay after a short delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
@@ -334,8 +487,38 @@ struct TipDevView: View {
                     }
                 }
             }
-            
+
             // Re-enable buttons after a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                isButtonEnabled = true
+            }
+        }
+    }
+
+    // MARK: - Handle Supporter Subscription
+    /// Purchase the monthly supporter subscription. Mirrors `handlePurchase` (shared confetti +
+    /// thank-you overlay + button gating) but uses the supporter-specific success message.
+    private func handleSupporterPurchase() {
+        guard isButtonEnabled, let package = revenueCat.supporterPackage else { return }
+
+        isButtonEnabled = false
+
+        revenueCat.purchase(package: package) { success in
+            if success {
+                purchasedTip = nil
+                purchasedSupporter = true
+
+                withAnimation {
+                    showConfetti.toggle()
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        showThankYou = true
+                    }
+                }
+            }
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 isButtonEnabled = true
             }

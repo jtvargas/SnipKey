@@ -34,19 +34,16 @@ final class KeyboardGestureCoordinator: UIView {
     /// the user is typing — flipping it requires leaving the keyboard. So we read it once
     /// per keyboard session in `configure(...)` instead of on every character touch-down,
     /// keeping the smart-touch hot path free of repeated settings lookups.
-    private var probabilisticTouchEnabled = AppGroupSettings.bool(
-        forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
+    private var probabilisticTouchEnabled = KeyboardFeatureFlags.probabilisticTouchEnabled
 
     /// Staged-enablement flag for the 2D power-diagram resolver (V2 next-gen engine).
     /// Cached once per session like `probabilisticTouchEnabled`. When off, the legacy 1D
     /// `SmartTouchResolver` path runs unchanged. See V2_KEYBOARD_NEXTGEN_PLAN.md.
-    private var useProbabilisticHitResolver = AppGroupSettings.bool(
-        forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: true)
+    private var useProbabilisticHitResolver = KeyboardFeatureFlags.useProbabilisticHitResolver
 
     /// Shadow-mode telemetry: when on, the non-acting resolver is also computed per eligible
     /// touch-down and the comparison logged (privacy-safe). Cached per session.
-    private var shadowLoggingEnabled = AppGroupSettings.bool(
-        forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
+    private var shadowLoggingEnabled = KeyboardFeatureFlags.shadowLoggingEnabled
 
     /// Tunables for the power-diagram resolver. β stays 0 until calibrated on the touch
     /// corpus; the flag gates activation independently so the path can be exercised first.
@@ -174,12 +171,9 @@ final class KeyboardGestureCoordinator: UIView {
         self.actions = actions
         self.dims = dims
         // Refresh cached settings once per keyboard session (this is the cold-start seam).
-        probabilisticTouchEnabled = AppGroupSettings.bool(
-            forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
-        useProbabilisticHitResolver = AppGroupSettings.bool(
-            forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: true)
-        shadowLoggingEnabled = AppGroupSettings.bool(
-            forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
+        probabilisticTouchEnabled = KeyboardFeatureFlags.probabilisticTouchEnabled
+        useProbabilisticHitResolver = KeyboardFeatureFlags.useProbabilisticHitResolver
+        shadowLoggingEnabled = KeyboardFeatureFlags.shadowLoggingEnabled
         TypingTelemetry.shared.enabled = shadowLoggingEnabled
         KeyboardResponsivenessTelemetry.shared.enabled = shadowLoggingEnabled
         // Per-user offset learning is part of the next-gen engine — on when it is.
@@ -304,8 +298,7 @@ final class KeyboardGestureCoordinator: UIView {
     /// Paint the next-gen engine's decision cells when both the debug hit-overlay setting and
     /// the engine are enabled. Off the hot path (layout changes only). Hidden otherwise.
     private func updateVoronoiDebugOverlay() {
-        let on = useProbabilisticHitResolver
-            && AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false)
+        let on = useProbabilisticHitResolver && KeyboardFeatureFlags.debugHitOverlayEnabled
         guard on, let state, bounds.width > 1, bounds.height > 1, !resolvedFrames.isEmpty else {
             voronoiDebugLayer.isHidden = true
             voronoiDebugLayer.contents = nil
@@ -336,7 +329,7 @@ final class KeyboardGestureCoordinator: UIView {
     private func rebuildHitViews() {
         for v in keyHitViews { v.removeFromSuperview() }
         keyHitViews.removeAll(keepingCapacity: true)
-        guard AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false) else {
+        guard KeyboardFeatureFlags.debugHitOverlayEnabled else {
             return
         }
         for frame in resolvedFrames {
@@ -1009,7 +1002,7 @@ final class KeyHitView: UIView {
         // DEBUG overlay (off by default): visualize the tiling touch cells (each = one key's
         // hitRect) so the per-key "Voronoi" coverage of the gaps can be inspected. Toggled
         // from the app: SnipKey Settings → Experimental → "Show Hit-Test Overlay".
-        if AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false) {
+        if KeyboardFeatureFlags.debugHitOverlayEnabled {
             layer.borderColor = UIColor.systemRed.withAlphaComponent(0.9).cgColor
             layer.borderWidth = 1
             backgroundColor = UIColor.systemRed.withAlphaComponent(0.08)
