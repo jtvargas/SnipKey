@@ -141,7 +141,7 @@ struct KeyButtonView: View {
     /// at first access in this process and reused for the keyboard's lifetime — avoids
     /// reading App Group UserDefaults on every keystroke.
     fileprivate static let probabilisticTouchEnabled: Bool =
-        AppGroupSettings.bool(forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
+        KeyboardFeatureFlags.probabilisticTouchEnabled
 
     let action: KeyAction
     let dimensions: KeyboardDimensions

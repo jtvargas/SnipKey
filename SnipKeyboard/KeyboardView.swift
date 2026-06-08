@@ -613,7 +613,7 @@ struct KeyboardViewExt: View {
                 Group {
                     if qwertyState.showingSnippets {
                         KeyboardView()
-                    } else if AppGroupSettings.bool(forKey: AppGroupSettings.Key.useNativeKeyboardV2, default: true) {
+                    } else if KeyboardFeatureFlags.useNativeKeyboardV2 {
                         // V2 (experimental) — single-root gesture, finger-slide, accents, space cursor.
                         NativeKeyboardV2View_SwiftUI(adjustCaret: keyboardActions.adjustCaret)
                     } else {

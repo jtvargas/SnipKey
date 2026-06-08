@@ -68,44 +68,31 @@ struct SnippetViewDetail: View {
                 .listRowBackground(Color.tertiarySystemBackground)
             } else {
                 Form {
-                    Section(header: Text("title")) {
-                        HStack {
-                            Spacer()
-                            VStack {
-                                Text("\(snippet.title ?? "")")
+                    // Compact header: title (1–2 lines) + a small type pill. Kept tight so the
+                    // content section below gets the majority of the screen (App Store feedback).
+                    Section {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(snippet.title ?? "")
+                                .font(.custom("IBMPlexMono-SemiBold", size: 17))
+                                .lineLimit(2)
+                                .truncationMode(.tail)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            HStack(spacing: 6) {
+                                Image(systemName: (snippet.type ?? SnipType.txt).snipTypeImage)
+                                    .font(.system(size: 11))
+                                Text((snippet.type ?? SnipType.txt).displayText)
+                                    .font(.custom("IBMPlexMono-Medium", size: 12))
                             }
-                            Spacer()
-                            
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.secondarySystemBackground, in: Capsule())
+                            .foregroundStyle(.secondary)
                         }
-                    }
-                    .frame(alignment: .center)
-                    .listRowBackground(Color.tertiarySystemBackground)
-                    
-                  
-                    
-                    
-                    Section(header: Text("Type")) {
-                        HStack {
-                            Spacer()
-                            VStack {
-                                SnippetImage(type: snippet.type ?? SnipType.txt)
-                                    .font(.system(size: 44))
-                                    .frame(width: 82, height: 82)
-                                    .background(
-                                        Color.secondarySystemBackground,
-                                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    )
-                                    .foregroundStyle(.white)
-                                Text("\(snippet.type ?? SnipType.txt)")
-                            }
-                            Spacer()
-                            
-                        }
+                        .padding(.vertical, 2)
                     }
                     .listRowBackground(Color.tertiarySystemBackground)
-                    
-                   
-                    
+
                     Section(
                         header: HStack {
                             Group{
@@ -211,10 +198,13 @@ struct SnippetViewDetail: View {
                             Text("**Created:** \(snippet.creationDate?.formatted(date: .abbreviated, time: .omitted) ?? Date.now.formatted(date: .abbreviated, time: .omitted))")
                                 .font(.custom("IBMPlexMono-Medium", size: 12))
                         }
-                        
-                        
+
+
                     }
                 }
+                // Trim the grouped-form top inset so the compact title starts higher and the
+                // content section is visible sooner (App Store feedback on wasted top space).
+                .contentMargins(.top, 8, for: .scrollContent)
             }
         }
         .font(.custom("IBMPlexMono-Medium", size: 15))

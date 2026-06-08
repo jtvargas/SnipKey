@@ -195,3 +195,54 @@ enum AppGroupSettings {
         UserDefaults(suiteName: suite)?.set(value, forKey: key)
     }
 }
+
+// MARK: - Keyboard Feature Flags
+
+/// Compile-time gating for the experimental keyboard flags. In DEBUG these read the live App Group
+/// value (so the Settings → Experimental toggles still drive behavior). In RELEASE they return a
+/// locked constant, so shipping builds always run the intended configuration regardless of any
+/// stale App Group value a previous TestFlight/DEBUG build may have written:
+///   • V2 keyboard + Next-Gen + Smart Touch engines → always ON
+///   • debug hit-test overlay + shadow-mode logging → always OFF
+/// The corresponding Settings toggles are hidden in RELEASE (see SettingsView, `#if DEBUG`).
+enum KeyboardFeatureFlags {
+    static var useNativeKeyboardV2: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.useNativeKeyboardV2, default: true)
+        #else
+        true
+        #endif
+    }
+
+    static var useProbabilisticHitResolver: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.useProbabilisticHitResolver, default: true)
+        #else
+        true
+        #endif
+    }
+
+    static var probabilisticTouchEnabled: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
+        #else
+        true
+        #endif
+    }
+
+    static var debugHitOverlayEnabled: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.debugHitOverlayEnabled, default: false)
+        #else
+        false
+        #endif
+    }
+
+    static var shadowLoggingEnabled: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
+        #else
+        false
+        #endif
+    }
+}

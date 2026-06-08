@@ -31,9 +31,13 @@ struct SnippetContentViewDisplay: View {
         ScrollView {
             Text("\(snippet.content ?? "")".toDetectedAttributedString())
                 .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 8)
                 .tint(Color.label)
-        }.frame(height: 180)
+        }
+        // Flexible, taller viewport: short/medium snippets show far more without scrolling now
+        // that the title/type header is compact; very long ones still scroll within a large area.
+        .frame(minHeight: 280, maxHeight: 460)
     }
     
     private var urlContent: some View {

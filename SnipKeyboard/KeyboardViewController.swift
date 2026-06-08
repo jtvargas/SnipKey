@@ -380,7 +380,7 @@ class KeyboardViewController: UIInputViewController {
         // now renders only the toolbar; this view draws and handles touches for all the keys.
         // This removes SwiftUI's hit-testing from the keys touch path — the native model —
         // so taps in the gaps between keys always reach the gesture coordinator.
-        if AppGroupSettings.bool(forKey: AppGroupSettings.Key.useNativeKeyboardV2, default: true) {
+        if KeyboardFeatureFlags.useNativeKeyboardV2 {
             let keysView = NativeKeyboardV2View(state: qwertyState, actions: keyboardActionsStruct)
             keysView.setCaretAdjustment(keyboardActionsStruct.adjustCaret)
             keysView.translatesAutoresizingMaskIntoConstraints = false

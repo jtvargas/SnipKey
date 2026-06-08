@@ -11,13 +11,25 @@ import SwiftUI
 
 class RevenueCatManager: ObservableObject {
     static let shared = RevenueCatManager()
-    
+
+    /// Product identifier + offering for the monthly "Support the developer" subscription.
+    /// Lives in a dedicated named offering, separate from `offerings.current` (which feeds tips).
+    static let supporterProductID = "snip_support"
+    static let supporterOfferingID = "Support"
+
     @Published var packages: [Package] = []
     @Published var currentOffering: Offering?
     @Published var customerInfo: CustomerInfo?
     @Published var isSubscribedToPro: Bool = false
     @Published var tips: [Package] = []
-    
+
+    /// The monthly supporter subscription package, resolved from the `Support` offering.
+    @Published var supporterPackage: Package?
+
+    /// True while the user has an active `snip_support` subscription. Derived from
+    /// `customerInfo.activeSubscriptions` so it needs no entitlement identifier.
+    @Published var isMonthlySupporter: Bool = false
+
     private init() {
         setupRevenueCat()
     }
@@ -39,11 +51,22 @@ class RevenueCatManager: ObservableObject {
                     self.currentOffering = offerings.current
                     self.packages = offerings.current?.availablePackages ?? []
                     self.fetchTipProducts()
+                    self.fetchSupporterPackage(from: offerings)
                 }
             } else if let error = error {
                 print("Error fetching offerings: \(error.localizedDescription)")
             }
         }
+    }
+
+    /// Resolve the monthly supporter package from the dedicated `Support` offering. It is NOT part
+    /// of `offerings.current`, so it must be read by name. Prefer the exact `snip_support` product,
+    /// then fall back to the offering's monthly / first package so a dashboard tweak won't break it.
+    private func fetchSupporterPackage(from offerings: Offerings) {
+        let support = offerings.offering(identifier: Self.supporterOfferingID)
+        self.supporterPackage = support?.availablePackages.first {
+            $0.storeProduct.productIdentifier == Self.supporterProductID
+        } ?? support?.monthly ?? support?.availablePackages.first
     }
     
     func fetchTipProducts() {
@@ -57,6 +80,7 @@ class RevenueCatManager: ObservableObject {
             if let customerInfo = customerInfo, !userCancelled, error == nil {
                 DispatchQueue.main.async {
                     self.customerInfo = customerInfo
+                    self.isMonthlySupporter = customerInfo.activeSubscriptions.contains(Self.supporterProductID)
                     completion?(true)
                 }
                 print("Purchase successful!")
@@ -99,7 +123,20 @@ class RevenueCatManager: ObservableObject {
 //            }
             self.isSubscribedToPro = false
         }
-        
+
+    }
+
+    /// Refresh `customerInfo` and the derived `isMonthlySupporter` flag. Cheap to call on view
+    /// appearance — RevenueCat serves a cached `CustomerInfo` and only hits the network when stale.
+    @MainActor
+    func refreshCustomerInfo() async {
+        do {
+            let info = try await Purchases.shared.customerInfo()
+            self.customerInfo = info
+            self.isMonthlySupporter = info.activeSubscriptions.contains(Self.supporterProductID)
+        } catch {
+            print("Error refreshing customer info: \(error.localizedDescription)")
+        }
     }
 }
 

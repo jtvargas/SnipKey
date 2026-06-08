@@ -180,6 +180,9 @@ struct SettingsView: View {
                     }
                     .tint(.orange)
 
+                    // DEBUG-only: Native Keyboard V2 + Smart Touch Targeting. Release builds always
+                    // run V2 with smart touch ON (locked via KeyboardFeatureFlags), so no toggles.
+                    #if DEBUG
                     Toggle(isOn: $currentSettings.useNativeKeyboardV2) {
                         HStack(spacing: 12) {
                             Image(systemName: "sparkles")
@@ -225,6 +228,7 @@ struct SettingsView: View {
                     .onChange(of: currentSettings.probabilisticTouchEnabled) { _, newValue in
                         AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
                     }
+                    #endif
 
                     Toggle(isOn: $currentSettings.autoCapitalizationEnabled) {
                         HStack(spacing: 12) {
@@ -272,6 +276,10 @@ struct SettingsView: View {
                         AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.autoSuggestionSpaceEnabled)
                     }
 
+                    // DEBUG-only diagnostics: hit-test overlay, next-gen touch engine, shadow logging,
+                    // and the shadow telemetry report. Release locks the engines ON and these OFF
+                    // (via KeyboardFeatureFlags), so none of these appear in shipping builds.
+                    #if DEBUG
                     Toggle(isOn: $currentSettings.debugHitOverlayEnabled) {
                         HStack(spacing: 12) {
                             Image(systemName: "square.grid.3x3")
@@ -361,6 +369,7 @@ struct SettingsView: View {
                             }
                         }
                     }
+                    #endif
                 } header: {
                     Text("Experimental")
                 } footer: {
