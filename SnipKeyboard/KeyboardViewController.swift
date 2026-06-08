@@ -70,6 +70,10 @@ class KeyboardViewController: UIInputViewController {
     /// Observable predictive text state — shared with SwiftUI toolbar for suggestions display.
     let predictiveTextState = PredictiveTextState()
 
+    /// Last automatic word correction. Kept outside observable state so the immediate
+    /// backspace undo window never invalidates SwiftUI while the user keeps typing.
+    private var lastPredictiveCorrection: PredictiveCorrectionSnapshot?
+
     // MARK: - NLP Reminders
 
     /// Observable reminder state — drives the "Create reminder" pill when the user types
@@ -92,6 +96,26 @@ class KeyboardViewController: UIInputViewController {
     /// Whether the Timer integration is enabled. Read ONCE per session in `viewDidLoad`. When false,
     /// `/timer` is inert (no pill). See INTEGRATIONS.md.
     private var timerIntegrationEnabled = false
+
+    /// Cached once per keyboard session. Avoids App Group UserDefaults reads from space,
+    /// auto-cap, and text-change paths while the user is actively typing.
+    private var autoCapitalizationEnabled = true
+
+    /// Whether a user-typed space accepts the high-confidence center word suggestion.
+    /// The toolbar still shows improved candidates when this is false.
+    private var autoSuggestionSpaceEnabled = false
+
+    /// Cached host field input traits (keyboard type, autocorrect/spell/smart-punctuation flags).
+    /// These are properties of the focused text field — constant while typing in one field — but
+    /// each backing `textDocumentProxy` read is a cross-process XPC call. Reading all six on every
+    /// keystroke's synchronous commit path wasted XPC/main-thread budget, so we cache them and
+    /// refresh off the hot path (`viewDidLoad` + the coalesced `flushSideEffects`).
+    private var cachedHostInputTraits: HostInputTraits = .defaults
+
+    /// Cached keyboard screen width. Resolved off the hot path (`viewDidLoad` / rotation) so the
+    /// SwiftUI toolbar's `dims` computed properties don't walk the window/scene graph on every
+    /// body re-evaluation. Still rotation/Stage-Manager correct via `viewWillTransition`.
+    private var cachedScreenWidth: CGFloat = 393
 
     // MARK: - Hot-path coalescing (V2)
 
@@ -130,7 +154,9 @@ class KeyboardViewController: UIInputViewController {
             documentContextBeforeInput: { [weak self] in
                 self?.textDocumentProxy.documentContextBeforeInput
             },
-            screenWidth: keyboardScreenWidth(),
+            screenWidthProvider: { [weak self] in
+                self?.cachedScreenWidth ?? 393
+            },
             showPopup: { [weak self] character, keyFrame, isDark in
                 self?.popupView.show(character: character, keyFrame: keyFrame, isDark: isDark)
             },
@@ -190,6 +216,15 @@ class KeyboardViewController: UIInputViewController {
                 guard let self = self else { return }
                 self.runPredictiveEvaluation(context: self.textDocumentProxy.documentContextBeforeInput)
             },
+            applyPendingPredictiveCorrection: { [weak self] in
+                self?.applyPendingPredictiveCorrection() ?? false
+            },
+            revertLastPredictiveCorrection: { [weak self] in
+                self?.revertLastPredictiveCorrection() ?? false
+            },
+            clearPendingPredictiveCorrection: { [weak self] in
+                self?.lastPredictiveCorrection = nil
+            },
             scheduleSideEffects: { [weak self] in
                 self?.scheduleSideEffectFlush()
             },
@@ -201,13 +236,8 @@ class KeyboardViewController: UIInputViewController {
                 self.textDocumentProxy.adjustTextPosition(byCharacterOffset: delta)
             },
             inputTraits: { [weak self] in
-                guard let proxy = self?.textDocumentProxy else { return .defaults }
-                return HostInputTraits(
-                    keyboardType: proxy.keyboardType ?? .default,
-                    autocapitalizationType: proxy.autocapitalizationType ?? .sentences,
-                    smartQuotesEnabled: (proxy.smartQuotesType ?? .default) != .no,
-                    smartDashesEnabled: (proxy.smartDashesType ?? .default) != .no
-                )
+                guard let self else { return .defaults }
+                return self.currentHostInputTraits()
             },
             activeInputLocaleCodes: { [weak self] in
                 guard let self else { return [] }
@@ -300,6 +330,15 @@ class KeyboardViewController: UIInputViewController {
             default: ReminderDestination.default.rawValue))
         timerIntegrationEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.timerIntegrationEnabled, default: false)
+        autoCapitalizationEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true)
+        autoSuggestionSpaceEnabled = AppGroupSettings.bool(
+            forKey: AppGroupSettings.Key.autoSuggestionSpaceEnabled, default: false)
+
+        // Prime the hot-path caches once. Both are refreshed off the keystroke path afterwards
+        // (traits in `flushSideEffects`, width in `viewWillTransition`).
+        cachedScreenWidth = keyboardScreenWidth()
+        refreshHostInputTraits()
 
         // Perform custom UI setup here
         self.nextKeyboardButton = UIButton(type: .system)
@@ -487,6 +526,7 @@ class KeyboardViewController: UIInputViewController {
         super.viewWillDisappear(animated)
         // Persist shadow-mode telemetry + learned per-user offsets off the hot path.
         TypingTelemetry.shared.flush()
+        KeyboardResponsivenessTelemetry.shared.flush()
         TouchOffsetModel.shared.flush()
     }
 
@@ -515,6 +555,9 @@ class KeyboardViewController: UIInputViewController {
         self.nextKeyboardButton.isHidden = !self.needsInputModeSwitchKey
         // Update height constraint on layout changes (rotation, different device)
         let newWidth = keyboardScreenWidth()
+        // Refresh the hot-path width cache here (off the keystroke path) so SwiftUI `dims` reads
+        // stay rotation/Stage-Manager correct without walking the window/scene graph per body eval.
+        cachedScreenWidth = newWidth
         heightConstraint?.constant = KeyboardDimensions.totalHeight(forScreenWidth: newWidth)
         // Only update QWERTY state when screen width actually changed (rotation)
         // This avoids doubling observable mutations since textDidChange also calls updateQWERTYState
@@ -543,6 +586,7 @@ class KeyboardViewController: UIInputViewController {
         self.nextKeyboardButton.setTitleColor(textColor, for: [])
         
         // Update QWERTY keyboard state from text document proxy
+        KeyboardResponsivenessTelemetry.shared.markTextDidChange()
         updateQWERTYState()
         
         // Only post selection notifications when snippet view is active.
@@ -571,6 +615,7 @@ class KeyboardViewController: UIInputViewController {
     private func scheduleSideEffectFlush() {
         guard !sideEffectFlushScheduled else { return }
         sideEffectFlushScheduled = true
+        KeyboardResponsivenessTelemetry.shared.markSideEffectScheduled()
         DispatchQueue.main.async { [weak self] in
             self?.flushSideEffects()
         }
@@ -580,6 +625,11 @@ class KeyboardViewController: UIInputViewController {
     /// post-mutation) and feed it to both slash detection and predictive scheduling.
     private func flushSideEffects() {
         sideEffectFlushScheduled = false
+        KeyboardResponsivenessTelemetry.shared.markSideEffectFlushed()
+        // Refresh cached field traits here (coalesced, off the synchronous touch-down path) so the
+        // next keystroke's commit reads them with zero XPC. Traits are field-constant, so being at
+        // most one keystroke stale is harmless and field switches are picked up on the next change.
+        refreshHostInputTraits()
         let context = textDocumentProxy.documentContextBeforeInput
         runSlashEvaluation(context: context)
         runReminderEvaluation(context: context)
@@ -677,11 +727,92 @@ class KeyboardViewController: UIInputViewController {
             predictiveTextState.dismiss()
             return
         }
-        predictiveEngineAsync.schedule(context: context) { [weak self] suggestions, partialWord in
+        predictiveEngineAsync.schedule(context: context) { [weak self] candidates, partialWord in
             guard let self else { return }
-            self.predictiveTextState.updateSuggestions(suggestions: suggestions, partialWord: partialWord)
-            self.updateTouchPrior(suggestions: suggestions, partialWord: partialWord)
+            self.predictiveTextState.updateCandidates(candidates, partialWord: partialWord)
+            self.updateTouchPrior(candidates: candidates, partialWord: partialWord)
         }
+    }
+
+    /// Cached field traits read by the keystroke hot path. See `refreshHostInputTraits`.
+    private func currentHostInputTraits() -> HostInputTraits {
+        cachedHostInputTraits
+    }
+
+    /// Read the host field's input traits from `textDocumentProxy` (six XPC reads) and cache them.
+    /// Called off the hot path only — `viewDidLoad` and the coalesced `flushSideEffects`.
+    private func refreshHostInputTraits() {
+        let proxy = textDocumentProxy
+        cachedHostInputTraits = HostInputTraits(
+            keyboardType: proxy.keyboardType ?? .default,
+            autocapitalizationType: proxy.autocapitalizationType ?? .sentences,
+            autocorrectionType: proxy.autocorrectionType ?? .default,
+            spellCheckingType: proxy.spellCheckingType ?? .default,
+            smartQuotesEnabled: (proxy.smartQuotesType ?? .default) != .no,
+            smartDashesEnabled: (proxy.smartDashesType ?? .default) != .no,
+            autoCapitalizationEnabled: autoCapitalizationEnabled
+        )
+    }
+
+    /// Applies the center/high-confidence correction just before the user's space is inserted.
+    /// This mirrors iOS's conservative autocorrect feel while keeping the actual space a normal
+    /// user keystroke and preserving the immediate backspace undo window.
+    private func applyPendingPredictiveCorrection() -> Bool {
+        guard !qwertyState.showingSnippets,
+              autoSuggestionSpaceEnabled,
+              !slashCommandState.isActive,
+              !reminderSuggestionState.isActive,
+              !timerSuggestionState.isActive,
+              currentHostInputTraits().allowsAutomaticCorrection,
+              let candidate = predictiveTextState.autoCommitCandidate,
+              !predictiveTextState.partialWord.isEmpty
+        else { return false }
+
+        let original = predictiveTextState.partialWord
+        guard candidate.text.lowercased() != original.lowercased() else { return false }
+        guard (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(original) else {
+            predictiveTextState.dismiss()
+            predictiveEngineAsync.reset()
+            updateTouchPrior(candidates: [], partialWord: "")
+            return false
+        }
+
+        for _ in 0..<candidate.replacementLength {
+            textDocumentProxy.deleteBackward()
+        }
+        textDocumentProxy.insertText(candidate.text)
+
+        lastPredictiveCorrection = PredictiveCorrectionSnapshot(
+            original: original,
+            replacement: candidate.text
+        )
+        predictiveTextState.dismiss()
+        predictiveEngineAsync.reset()
+        updateTouchPrior(candidates: [], partialWord: "")
+        return true
+    }
+
+    /// If the user presses backspace immediately after an automatic correction, restore the
+    /// original typed word and suppress that correction pair for the rest of this session.
+    private func revertLastPredictiveCorrection() -> Bool {
+        guard let correction = lastPredictiveCorrection else { return false }
+        lastPredictiveCorrection = nil
+
+        // Document shape after auto-correct-on-space is "<replacement> ". Delete the user
+        // space plus the replacement, then put back the literal typed word.
+        textDocumentProxy.deleteBackward()
+        for _ in 0..<correction.replacement.count {
+            textDocumentProxy.deleteBackward()
+        }
+        textDocumentProxy.insertText(correction.original)
+
+        predictiveEngineAsync.rejectCorrection(
+            original: correction.original,
+            replacement: correction.replacement
+        )
+        predictiveTextState.dismiss()
+        updateTouchPrior(candidates: [], partialWord: "")
+        return true
     }
 
     /// Derive a next-character prior from the in-progress word's top completions and push it
@@ -690,7 +821,8 @@ class KeyboardViewController: UIInputViewController {
     /// completion (already on the main actor), OFF every touch path, and adds no XPC read —
     /// it rides the existing coalesced flush. The same context object is read by
     /// `SmartTouchResolver` on the touch hot path via `weightsForRow`.
-    private func updateTouchPrior(suggestions: [String], partialWord: String) {
+    private func updateTouchPrior(candidates: [PredictiveCandidate], partialWord: String) {
+        let suggestions = candidates.filter { $0.role != .typed }.map(\.text)
         let prior = Self.nextCharacterPrior(suggestions: suggestions, partialWord: partialWord)
         qwertyState.inputTracking.touchContext.updatePredictivePrior(prior, isEnglish: Self.isEnglishInputContext)
     }
@@ -778,6 +910,12 @@ class KeyboardViewController: UIInputViewController {
         if qwertyState.needsInputModeSwitchKey != newNeedsSwitch {
             qwertyState.needsInputModeSwitchKey = newNeedsSwitch
         }
+
+        let newProfile = KeyboardLayoutProfile(keyboardType: proxy.keyboardType ?? .default)
+        if qwertyState.layoutProfile != newProfile {
+            qwertyState.layoutProfile = newProfile
+            qwertyState.currentPage = .letters
+        }
         
         // Return key label — only mutate if changed
         updateReturnKeyLabel()
@@ -791,10 +929,7 @@ class KeyboardViewController: UIInputViewController {
             // shift exactly as the commit pipeline set it. Only `.allCharacters` (which
             // reads no context) still needs re-asserting so all-caps fields stay capitalized.
             let autocapType = textDocumentProxy.autocapitalizationType ?? .none
-            let autoCapEnabled = AppGroupSettings.bool(
-                forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true
-            )
-            if autoCapEnabled && autocapType == .allCharacters {
+            if autoCapitalizationEnabled && autocapType == .allCharacters {
                 qwertyState.applyAutoCapitalization(shouldCapitalize: true)
             }
         } else {
@@ -849,7 +984,13 @@ class KeyboardViewController: UIInputViewController {
         case .continue:
             newLabel = "Continue"; newProminent = true
         default:
-            newLabel = "return"; newProminent = false
+            if let fallback = qwertyState.layoutProfile.fallbackReturnKey {
+                newLabel = fallback.label
+                newProminent = fallback.prominent
+            } else {
+                newLabel = "return"
+                newProminent = false
+            }
         }
         
         if qwertyState.returnKeyLabel != newLabel {
@@ -863,7 +1004,7 @@ class KeyboardViewController: UIInputViewController {
     private func computeAutoCapitalization() -> Bool {
         // User-level kill switch (SnipKey Settings → Experimental → Auto-Capitalization).
         // When off, the keyboard never auto-caps regardless of what the text field requests.
-        guard AppGroupSettings.bool(forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true) else {
+        guard autoCapitalizationEnabled else {
             return false
         }
 

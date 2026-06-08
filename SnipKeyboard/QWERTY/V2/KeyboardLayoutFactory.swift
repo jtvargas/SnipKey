@@ -10,11 +10,11 @@ import UIKit
 
 enum KeyboardLayoutFactory {
 
-    static func layout(for page: KeyboardPage, dims: KeyboardDimensions) -> KeyboardLayout {
+    static func layout(for page: KeyboardPage, profile: KeyboardLayoutProfile = .standard, dims: KeyboardDimensions) -> KeyboardLayout {
         switch page {
-        case .letters: return lettersLayout(dims: dims)
-        case .numbers: return numbersLayout(dims: dims)
-        case .symbols: return symbolsLayout(dims: dims)
+        case .letters: return lettersLayout(profile: profile, dims: dims)
+        case .numbers: return numbersLayout(profile: profile, dims: dims)
+        case .symbols: return symbolsLayout(profile: profile, dims: dims)
         }
     }
 
@@ -31,6 +31,10 @@ enum KeyboardLayoutFactory {
 
     private static func letterItem(_ s: String, width: CGFloat) -> KeyboardLayoutItem {
         KeyboardLayoutItem(action: .character(s), width: .points(width))
+    }
+
+    private static func shortcutItem(_ label: String, output: String? = nil, width: CGFloat) -> KeyboardLayoutItem {
+        KeyboardLayoutItem(action: .insertText(label: label, output: output ?? label), width: .points(width))
     }
 
     private static func thirdRowSideControlWidth(dims: KeyboardDimensions) -> CGFloat {
@@ -63,7 +67,7 @@ enum KeyboardLayoutFactory {
 
     // MARK: - Letters
 
-    private static func lettersLayout(dims: KeyboardDimensions) -> KeyboardLayout {
+    private static func lettersLayout(profile: KeyboardLayoutProfile, dims: KeyboardDimensions) -> KeyboardLayout {
         let lw = dims.letterKeyWidth
 
         // Row 0: 10 letters as `.input` (fills row, naturally giving each `letterKeyWidth`).
@@ -87,13 +91,13 @@ enum KeyboardLayoutFactory {
             dims: dims
         )
 
-        let bottomRow = standardBottomRow(modeTarget: .numbers, dims: dims)
+        let bottomRow = bottomRow(profile: profile, modeTarget: .numbers, dims: dims)
         return KeyboardLayout(rows: [topRow, middleRow, row2, bottomRow])
     }
 
     // MARK: - Numbers
 
-    private static func numbersLayout(dims: KeyboardDimensions) -> KeyboardLayout {
+    private static func numbersLayout(profile: KeyboardLayoutProfile, dims: KeyboardDimensions) -> KeyboardLayout {
         let lw = dims.letterKeyWidth
 
         let topRow = KeyboardRow(items: "1234567890".map { letterItem(String($0), width: lw) })
@@ -110,17 +114,19 @@ enum KeyboardLayoutFactory {
             dims: dims
         )
 
-        let bottomRow = standardBottomRow(modeTarget: .letters, dims: dims)
+        let bottomRow = bottomRow(profile: .standard, modeTarget: .letters, dims: dims)
         return KeyboardLayout(rows: [topRow, middleRow, row2, bottomRow])
     }
 
     // MARK: - Symbols
 
-    private static func symbolsLayout(dims: KeyboardDimensions) -> KeyboardLayout {
+    private static func symbolsLayout(profile: KeyboardLayoutProfile, dims: KeyboardDimensions) -> KeyboardLayout {
         let lw = dims.letterKeyWidth
 
         let topRow = KeyboardRow(items: "[]{}#%^*+=".map { letterItem(String($0), width: lw) })
-        let middleChars: [String] = ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"]
+        let middleChars: [String] = profile == .asciiCapable
+            ? ["_", "\\", "|", "~", "<", ">", "`", "^", "{", "}"]
+            : ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"]
         let middleRow = KeyboardRow(items: middleChars.map { letterItem($0, width: lw) })
 
         // Row 2: native punctuation row with fixed mode/delete controls and wider punctuation keys.
@@ -133,7 +139,7 @@ enum KeyboardLayoutFactory {
             dims: dims
         )
 
-        let bottomRow = standardBottomRow(modeTarget: .letters, dims: dims)
+        let bottomRow = bottomRow(profile: .standard, modeTarget: .letters, dims: dims)
         return KeyboardLayout(rows: [topRow, middleRow, row2, bottomRow])
     }
 
@@ -141,6 +147,60 @@ enum KeyboardLayoutFactory {
 
     /// Bottom row used on every page: [modeChange] [snippetToggle] [space] [returnKey].
     /// Fixed-width special keys + greedy space.
+    private static func bottomRow(profile: KeyboardLayoutProfile, modeTarget: KeyboardPage, dims: KeyboardDimensions) -> KeyboardRow {
+        let specialWidth: CGFloat = dims.bottomSpecialKeyWidth
+        let returnWidth: CGFloat = dims.returnKeyWidth
+        let shortcutWidth: CGFloat = round(dims.screenWidth * 0.11)
+        let domainWidth: CGFloat = round(dims.screenWidth * 0.18)
+
+        let items: [KeyboardLayoutItem]
+        switch profile {
+        case .emailAddress:
+            items = [
+                KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                shortcutItem("@", width: shortcutWidth),
+                KeyboardLayoutItem(action: .space, width: .available),
+                shortcutItem(".", width: shortcutWidth),
+                KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
+            ]
+        case .url:
+            items = [
+                KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                shortcutItem("/", width: shortcutWidth),
+                shortcutItem(".", width: shortcutWidth),
+                shortcutItem(".com", width: domainWidth),
+                KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
+            ]
+        case .webSearch:
+            items = [
+                KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .space, width: .available),
+                shortcutItem(".", width: shortcutWidth),
+                KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
+            ]
+        case .twitter:
+            items = [
+                KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                shortcutItem("@", width: shortcutWidth),
+                KeyboardLayoutItem(action: .space, width: .available),
+                shortcutItem("#", width: shortcutWidth),
+                KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
+            ]
+        case .standard, .asciiCapable:
+            items = [
+                KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .space, width: .available),
+                KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
+            ]
+        }
+        return KeyboardRow(items: items)
+    }
+
     private static func standardBottomRow(modeTarget: KeyboardPage, dims: KeyboardDimensions) -> KeyboardRow {
         let specialWidth: CGFloat = dims.bottomSpecialKeyWidth
         let returnWidth: CGFloat = dims.returnKeyWidth

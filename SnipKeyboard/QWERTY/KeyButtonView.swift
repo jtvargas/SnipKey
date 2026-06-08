@@ -263,7 +263,7 @@ struct KeyButtonView: View {
                     )
 
             default:
-                // Standard keys: shift, space, return, modeChange
+                // Standard keys: shift, space, return, modeChange, text shortcuts
                 // Use UIKit touch for space (high frequency), Button for the rest
                 if action == .space {
                     keyVisual
@@ -297,6 +297,11 @@ struct KeyButtonView: View {
         switch action {
         case .character(let char):
             CharacterKeyLabel(char: char, fontSize: characterFontSize)
+
+        case .insertText(let label, _):
+            Text(label)
+                .font(.system(size: label.count > 1 ? 14 : 18, weight: .regular))
+                .foregroundStyle(keyForegroundColor)
 
         case .shift:
             shiftIcon
@@ -359,7 +364,7 @@ struct KeyButtonView: View {
         switch action {
         case .returnKey where state.returnKeyIsProminent:
             return .blue
-        case .character, .space:
+        case .character, .insertText, .space:
             return isDarkMode ? Color(white: 0.35).opacity(0.55) : Color(UIColor.systemGray6).opacity(0.6)
         default:
             return isDarkMode ? Color(white: 0.25).opacity(0.6) : Color(UIColor.systemGray4).opacity(0.7)
@@ -369,7 +374,7 @@ struct KeyButtonView: View {
     /// Letter and space keys: no shadow. Special keys: subtle bottom edge.
     private var keyShadowColor: Color {
         switch action {
-        case .character, .space:
+        case .character, .insertText, .space:
             return .clear
         default:
             return .black.opacity(0.06)
@@ -378,7 +383,7 @@ struct KeyButtonView: View {
 
     private var keyShadowY: CGFloat {
         switch action {
-        case .character, .space:
+        case .character, .insertText, .space:
             return 0
         default:
             return 0.5
@@ -458,6 +463,7 @@ struct KeyButtonView: View {
     /// visually tapped key due to probabilistic resolution).
     /// Inserts text, records context, updates shift, and triggers slash/predictive evaluation.
     private func handleCharacterTap(_ char: String) {
+        actions.clearPendingPredictiveCorrection()
         let textToInsert = state.shiftState == .disabled ? char.lowercased() : char.uppercased()
         actions.insertText(textToInsert)
         state.inputTracking.recordAction(.character)
@@ -478,10 +484,20 @@ struct KeyButtonView: View {
             // instead of KeyTouchArea (currently none do).
             handleCharacterTap(char)
 
+        case .insertText(_, let output):
+            KeyboardCommitPipeline.commitText(output, state: state, actions: actions)
+
         case .shift:
             state.toggleShift()
 
         case .backspace:
+            if actions.revertLastPredictiveCorrection() {
+                state.inputTracking.recordAction(.other)
+                state.inputTracking.touchContext.recordNonCharacter()
+                actions.evaluateSlashCommand()
+                actions.evaluatePredictiveText()
+                return
+            }
             actions.deleteBackward()
             state.inputTracking.recordAction(.other)
             state.inputTracking.touchContext.recordNonCharacter()
@@ -492,6 +508,7 @@ struct KeyButtonView: View {
             handleSpaceAction()
 
         case .returnKey:
+            actions.clearPendingPredictiveCorrection()
             actions.insertText("\n")
             state.inputTracking.recordAction(.other)
             state.inputTracking.touchContext.recordNonCharacter()
@@ -499,10 +516,12 @@ struct KeyButtonView: View {
             actions.evaluatePredictiveText()
 
         case .modeChange(let page):
+            actions.clearPendingPredictiveCorrection()
             state.currentPage = page
             state.inputTracking.recordAction(.other)
 
         case .snippetToggle:
+            actions.clearPendingPredictiveCorrection()
             state.showingSnippets = true
         }
     }
@@ -510,6 +529,11 @@ struct KeyButtonView: View {
     // MARK: - Space / Auto-Period
 
     private func handleSpaceAction() {
+        let didApplyCorrection = actions.applyPendingPredictiveCorrection()
+        if !didApplyCorrection {
+            actions.clearPendingPredictiveCorrection()
+        }
+
         // Check auto-return condition BEFORE recording the space action,
         // because recordAction overwrites lastAction.
         // Native iOS behavior: pressing space after a character in numbers/symbols

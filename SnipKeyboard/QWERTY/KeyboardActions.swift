@@ -14,15 +14,21 @@ import UIKit
 struct HostInputTraits {
     let keyboardType: UIKeyboardType
     let autocapitalizationType: UITextAutocapitalizationType
+    let autocorrectionType: UITextAutocorrectionType
+    let spellCheckingType: UITextSpellCheckingType
     let smartQuotesEnabled: Bool
     let smartDashesEnabled: Bool
+    let autoCapitalizationEnabled: Bool
 
     /// Sensible defaults used by the `.noop` actions (previews / V1 fallback).
     static let defaults = HostInputTraits(
         keyboardType: .default,
         autocapitalizationType: .sentences,
+        autocorrectionType: .default,
+        spellCheckingType: .default,
         smartQuotesEnabled: true,
-        smartDashesEnabled: true
+        smartDashesEnabled: true,
+        autoCapitalizationEnabled: true
     )
 
     /// True if smart-punctuation and auto-cap-I transforms should run for this field.
@@ -30,11 +36,21 @@ struct HostInputTraits {
     /// break literal URLs).
     var allowsSmartTransforms: Bool {
         switch keyboardType {
-        case .URL, .emailAddress, .numberPad, .phonePad, .decimalPad, .asciiCapableNumberPad:
+        case .asciiCapable, .URL, .emailAddress, .numberPad, .phonePad, .decimalPad, .asciiCapableNumberPad:
             return false
         default:
             return true
         }
+    }
+
+    var layoutProfile: KeyboardLayoutProfile {
+        KeyboardLayoutProfile(keyboardType: keyboardType)
+    }
+
+    /// True when SnipKey may rewrite a completed word automatically. Manual suggestions can
+    /// still be shown when this is false, but space/backspace should not mutate typed text.
+    var allowsAutomaticCorrection: Bool {
+        allowsSmartTransforms && autocorrectionType != .no && spellCheckingType != .no
     }
 }
 
@@ -60,8 +76,11 @@ struct KeyboardActions {
     /// Read the text before the cursor (for auto-period detection)
     let documentContextBeforeInput: () -> String?
 
-    /// Screen width from UIKit — avoids GeometryReader in the keyboard view
-    let screenWidth: CGFloat
+    /// Screen width from UIKit — avoids GeometryReader in the keyboard view.
+    /// Resolved lazily so rotation/Stage Manager size changes don't leave SwiftUI toolbar
+    /// dimensions stuck on the width captured when `KeyboardActions` was initialized.
+    let screenWidthProvider: () -> CGFloat
+    var screenWidth: CGFloat { screenWidthProvider() }
 
     /// Show character pop-up balloon above a key.
     /// Parameters: character (already cased), key's visual frame in keyboard coordinates, isDark
@@ -92,6 +111,18 @@ struct KeyboardActions {
     /// Evaluate the current text context for predictive text suggestions.
     /// Called after character insertion, deletion, and other key events.
     let evaluatePredictiveText: () -> Void
+
+    /// Apply a high-confidence predictive correction before a user-typed space is committed.
+    /// Returns true when the document was mutated. The controller owns the actual replacement
+    /// because it has access to `PredictiveTextState` and `textDocumentProxy`.
+    let applyPendingPredictiveCorrection: () -> Bool
+
+    /// Revert the most recent automatic correction when the user's next action is backspace.
+    /// Returns true when it handled the backspace and the caller should skip normal deletion.
+    let revertLastPredictiveCorrection: () -> Bool
+
+    /// Clear the pending immediate-backspace undo window after any non-backspace follow-up.
+    let clearPendingPredictiveCorrection: () -> Void
 
     /// Coalesced post-commit side-effects for the V2 path. Instead of synchronously
     /// reading `documentContextBeforeInput` and running slash + predictive evaluation
@@ -128,7 +159,7 @@ struct KeyboardActions {
         deleteBackward: {},
         advanceToNextInputMode: {},
         documentContextBeforeInput: { nil },
-        screenWidth: 393,
+        screenWidthProvider: { 393 },
         showPopup: { _, _, _ in },
         hidePopup: {},
         openApp: {},
@@ -137,6 +168,9 @@ struct KeyboardActions {
         createTimer: { _, _ in },
         evaluateSlashCommand: {},
         evaluatePredictiveText: {},
+        applyPendingPredictiveCorrection: { false },
+        revertLastPredictiveCorrection: { false },
+        clearPendingPredictiveCorrection: {},
         scheduleSideEffects: {},
         adjustCaret: { _ in },
         inputTraits: { .defaults },

@@ -37,6 +37,14 @@ final class KeyLayerRenderer {
 
     private weak var hostLayer: CALayer?
     private var keys: [KeyLayers] = []
+    private var pressedHighlights: [ObjectIdentifier: CAShapeLayer] = [:]
+
+    /// Hot-path caches for the per-touch pressed overlay. The fill color depends only on the
+    /// current appearance, and the rounded-rect path only on key size + corner radius — both are
+    /// constant between full renders. Caching them avoids a `UIBezierPath`/`UIColor`/`cgColor`
+    /// allocation on every touch-down during fast typing. Invalidated in `render(...)`.
+    private var cachedPressedColor: CGColor?
+    private var pressedPathCache: [CGSize: CGPath] = [:]
 
     /// Render scale used to rasterize CATextLayer glyphs and SF Symbol images. Supplied by
     /// the coordinator on every `render(...)` from its `traitCollection.displayScale` (the
@@ -89,12 +97,21 @@ final class KeyLayerRenderer {
         self.spaceBarSubtitle = spaceBarSubtitle
         if scale > 0 { currentScale = scale }
 
+        // Appearance/geometry may have changed — drop the pressed-overlay color/path caches so
+        // the next press rebuilds them once with the current palette and corner radius.
+        cachedPressedColor = nil
+        pressedPathCache.removeAll(keepingCapacity: true)
+
         // Discard old key layers entirely — frame count and order may have changed.
         for k in keys {
             k.background.removeFromSuperlayer()
             k.glyph.removeFromSuperlayer()
         }
+        for layer in pressedHighlights.values {
+            layer.removeFromSuperlayer()
+        }
         keys.removeAll(keepingCapacity: true)
+        pressedHighlights.removeAll(keepingCapacity: true)
         highlight.removeFromSuperlayer()
 
         let scale = currentScale
@@ -103,10 +120,12 @@ final class KeyLayerRenderer {
             background.frame = frame.rect
             background.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: frame.rect.size), cornerRadius: dims.cornerRadius).cgPath
             background.fillColor = backgroundColor(for: frame.action, isDark: isDark).cgColor
+            background.zPosition = 0
             applyNativeKeyShadow(to: background, isDark: isDark)
             hostLayer.addSublayer(background)
 
             let glyphLayer = makeGlyphLayer(for: frame, scale: scale, isDark: isDark)
+            glyphLayer.zPosition = 2
             hostLayer.addSublayer(glyphLayer)
 
             keys.append(KeyLayers(background: background, glyph: glyphLayer, keyFrame: frame))
@@ -118,6 +137,7 @@ final class KeyLayerRenderer {
         highlight.fillColor = isDark
             ? UIColor(white: 0.55, alpha: 0.55).cgColor
             : UIColor(white: 0.85, alpha: 0.9).cgColor
+        highlight.zPosition = 1
         // Visibility is driven by opacity (so the highlight can fade out on release).
         // The layer is recreated each full render, so re-establish the hidden-via-opacity state.
         highlight.isHidden = false
@@ -152,6 +172,7 @@ final class KeyLayerRenderer {
                 // by replacing the layer entirely.
                 let scale = currentScale
                 let newLayer = makeGlyphLayer(for: k.keyFrame, scale: scale, isDark: currentIsDark)
+                newLayer.zPosition = 2
                 k.glyph.removeFromSuperlayer()
                 hostLayer?.insertSublayer(newLayer, above: k.background)
                 keys[index] = KeyLayers(background: k.background, glyph: newLayer, keyFrame: k.keyFrame)
@@ -161,7 +182,8 @@ final class KeyLayerRenderer {
         }
     }
 
-    /// Highlight a specific key (used by the gesture coordinator on touch-down / finger-slide).
+    /// Legacy single-key highlight path. V2 uses per-touch `setPressedKey(_:for:)` so rolling
+    /// typing cannot make one shared overlay jump between fingers.
     /// Appearance is INSTANT on press (native); on clear (frame == nil) the highlight fades
     /// its opacity out over ~120ms. A new press cancels any in-flight fade and snaps to full
     /// opacity — so promotion to another finger / a fast new press never flickers.
@@ -193,6 +215,84 @@ final class KeyLayerRenderer {
         CATransaction.commit()
     }
 
+    /// Press a key for a specific touch. Multiple touches can be active at once; each gets a
+    /// separate layer below glyphs so rolling typing no longer makes one shared overlay jump.
+    func setPressedKey(_ frame: KeyFrame, for id: ObjectIdentifier) {
+        guard let hostLayer else { return }
+
+        let layer = pressedHighlights[id] ?? CAShapeLayer()
+        pressedHighlights[id] = layer
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer.removeAllAnimations()
+        layer.frame = frame.rect
+        layer.path = pressedPath(for: frame.rect.size)
+        layer.fillColor = pressedColorCGColor()
+        layer.opacity = 1
+        layer.zPosition = 1
+        if layer.superlayer == nil {
+            hostLayer.addSublayer(layer)
+        }
+        CATransaction.commit()
+    }
+
+    /// Release one touch's pressed layer. The fade is short and isolated to that key, so a new
+    /// press elsewhere never dims the next key's feedback.
+    func clearPressedKey(for id: ObjectIdentifier) {
+        guard let layer = pressedHighlights.removeValue(forKey: id) else { return }
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(false)
+        // Remove the layer when the fade finishes via the transaction completion block, so fast
+        // typing doesn't stack a delayed `asyncAfter` closure on the main thread per release.
+        CATransaction.setCompletionBlock { [weak layer] in
+            layer?.removeFromSuperlayer()
+        }
+        let anim = CABasicAnimation(keyPath: "opacity")
+        anim.fromValue = layer.presentation()?.opacity ?? layer.opacity
+        anim.toValue = 0
+        anim.duration = 0.085
+        anim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        anim.fillMode = .forwards
+        anim.isRemovedOnCompletion = false
+        layer.add(anim, forKey: "pressedFade")
+        layer.opacity = 0
+        CATransaction.commit()
+    }
+
+    func clearAllPressedKeys() {
+        for id in Array(pressedHighlights.keys) {
+            clearPressedKey(for: id)
+        }
+    }
+
+    private func pressedColor() -> UIColor {
+        currentIsDark
+            ? UIColor(white: 0.62, alpha: 0.72)
+            : UIColor(white: 0.78, alpha: 1.0)
+    }
+
+    /// Appearance-constant pressed fill, resolved to a `CGColor` once per render (palette change).
+    private func pressedColorCGColor() -> CGColor {
+        if let cached = cachedPressedColor { return cached }
+        let color = pressedColor().cgColor
+        cachedPressedColor = color
+        return color
+    }
+
+    /// Rounded-rect path for a pressed overlay of the given key size, cached per size. Most keys
+    /// share a size, so after the first few presses this is a dictionary hit, not an allocation.
+    private func pressedPath(for size: CGSize) -> CGPath {
+        if let cached = pressedPathCache[size] { return cached }
+        let path = UIBezierPath(
+            roundedRect: CGRect(origin: .zero, size: size),
+            cornerRadius: currentCornerRadius
+        ).cgPath
+        pressedPathCache[size] = path
+        return path
+    }
+
     /// Update an individual key's text/style (used for return-key label changes).
     /// Replaces the glyph layer because text↔symbol may switch.
     func updateReturnKeyLabel(_ label: String, prominent: Bool, isDark: Bool) {
@@ -204,6 +304,7 @@ final class KeyLayerRenderer {
             // Override the glyph factory's default by stashing the label override.
             self.returnKeyOverride = (label: label, prominent: prominent)
             let newGlyph = makeGlyphLayer(for: k.keyFrame, scale: scale, isDark: isDark)
+            newGlyph.zPosition = 2
             self.returnKeyOverride = nil
 
             if prominent {
@@ -291,6 +392,8 @@ final class KeyLayerRenderer {
         switch action {
         case .character(let c):
             return .text(currentShiftUppercase ? c.uppercased() : c.lowercased())
+        case .insertText(let label, _):
+            return .text(label)
         case .shift:
             // Match native: outline arrow when disabled, filled when enabled, capslock.fill when locked.
             switch currentShiftState {
@@ -325,6 +428,9 @@ final class KeyLayerRenderer {
         if case .character(let c) = action {
             return uppercase ? c.uppercased() : c.lowercased()
         }
+        if case .insertText(let label, _) = action {
+            return label
+        }
         return ""
     }
 
@@ -333,6 +439,9 @@ final class KeyLayerRenderer {
             let ch = c.first
             if ch?.isLetter == true || ch?.isNumber == true { return round(keyHeight * 0.50) }
             return round(keyHeight * 0.43)
+        }
+        if case .insertText(let label, _) = action {
+            return label.count > 1 ? round(keyHeight * 0.34) : round(keyHeight * 0.43)
         }
         if case .returnKey = action { return round(keyHeight * 0.36) }
         if case .modeChange = action { return round(keyHeight * 0.36) }
@@ -385,7 +494,7 @@ final class KeyLayerRenderer {
 
     private func backgroundColor(for action: KeyAction, isDark: Bool) -> UIColor {
         switch action {
-        case .character, .space:
+        case .character, .insertText, .space:
             return isDark
                 ? UIColor(white: 0.40, alpha: 0.55)
                 : UIColor(white: 1.0, alpha: 0.94)

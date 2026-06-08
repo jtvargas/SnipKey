@@ -21,7 +21,7 @@ struct QWERTYKeyboardView: View {
             KeyboardToolbarView(dimensions: dimensions)
 
             VStack(spacing: dimensions.rowGap) {
-                let rows = QWERTYKeyboardLayout.rows(for: state.currentPage)
+                let rows = QWERTYKeyboardLayout.rows(for: state.currentPage, profile: state.layoutProfile)
                 ForEach(Array(rows.enumerated()), id: \.element) { index, row in
                     KeyRowView(
                         actions: row,
@@ -98,9 +98,9 @@ struct KeyboardToolbarView: View {
                 }
                 if predictiveState.isActive {
                     PredictiveSuggestionsView(
-                        suggestions: predictiveState.suggestions,
-                        onSelect: { suggestion in
-                            handlePredictiveSelection(suggestion)
+                        candidates: predictiveState.candidates,
+                        onSelect: { candidate in
+                            handlePredictiveSelection(candidate)
                         },
                         onDismissForSession: {
                             predictiveState.dismissForSession()
@@ -159,6 +159,7 @@ struct KeyboardToolbarView: View {
     }
 
     private func insertSnippet(_ snippet: SnippetItem) {
+        actions.clearPendingPredictiveCorrection()
         // 1. Delete the slash command text (e.g., "/addr" = 5 chars including the slash)
         let charsToDelete = slashState.query.count + 1 // +1 for the "/" character
         for _ in 0..<charsToDelete {
@@ -183,18 +184,29 @@ struct KeyboardToolbarView: View {
 
     // MARK: - Predictive Text Selection
 
-    private func handlePredictiveSelection(_ suggestion: String) {
+    private func handlePredictiveSelection(_ candidate: PredictiveCandidate) {
+        if candidate.role == .typed {
+            predictiveState.dismiss()
+            return
+        }
+        guard (actions.documentContextBeforeInput() ?? "").hasSuffix(predictiveState.partialWord) else {
+            predictiveState.dismiss()
+            actions.evaluatePredictiveText()
+            return
+        }
+
         // Delete the partial word characters
-        let charsToDelete = predictiveState.partialWord.count
+        let charsToDelete = candidate.replacementLength
         for _ in 0..<charsToDelete {
             actions.deleteBackward()
         }
 
         // Insert the full suggestion + trailing space
-        actions.insertText(suggestion + " ")
+        actions.insertText(candidate.text + " ")
         // Mark the trailing space as a "smart space" so the next punctuation attaches to
         // the word (native iOS behavior). Consumed/cleared in the commit pipeline.
         state.inputTracking.pendingSmartSpace = true
+        actions.clearPendingPredictiveCorrection()
 
         // Reset and re-evaluate
         predictiveState.dismiss()
@@ -205,6 +217,7 @@ struct KeyboardToolbarView: View {
 
     private func handleCreateReminder() {
         guard let parsed = reminderState.parsed else { return }
+        actions.clearPendingPredictiveCorrection()
 
         // 1. Delete the typed `/remind … at <time>` command (reuses the snippet delete pattern).
         for _ in 0..<parsed.triggerText.count {
@@ -224,6 +237,7 @@ struct KeyboardToolbarView: View {
 
     private func handleCreateTimer() {
         guard let parsed = timerState.parsed else { return }
+        actions.clearPendingPredictiveCorrection()
 
         // 1. Delete the typed `/timer <duration>` command.
         for _ in 0..<parsed.triggerText.count {
@@ -503,15 +517,15 @@ extension View {
 }
 
 struct PredictiveSuggestionsView: View {
-    let suggestions: [String]
-    let onSelect: (String) -> Void
+    let candidates: [PredictiveCandidate]
+    let onSelect: (PredictiveCandidate) -> Void
     /// Called when the user long-presses the middle pill — matches native iOS, which
     /// long-presses the user's literal typed word to dismiss predictions for the session.
     var onDismissForSession: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
+            ForEach(Array(candidates.enumerated()), id: \.element.id) { index, candidate in
                 if index > 0 {
                     // Thin vertical divider between pills (native iOS style)
                     Rectangle()
@@ -520,12 +534,12 @@ struct PredictiveSuggestionsView: View {
                         .padding(.vertical, 8)
                 }
 
-                let isMiddle = (suggestions.count >= 2 && index == suggestions.count / 2)
+                let isMiddle = (candidates.count >= 2 && index == candidates.count / 2)
                 Button {
-                    onSelect(suggestion)
+                    onSelect(candidate)
                 } label: {
-                    Text(suggestion)
-                        .font(.custom("IBMPlexMono-Medium", size: 16))
+                    Text(label(for: candidate))
+                        .font(.custom(fontName(for: candidate), size: 16))
                         .foregroundStyle(Color(.label))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -542,6 +556,14 @@ struct PredictiveSuggestionsView: View {
                 )
             }
         }
+    }
+
+    private func label(for candidate: PredictiveCandidate) -> String {
+        candidate.role == .typed ? "\"\(candidate.text)\"" : candidate.text
+    }
+
+    private func fontName(for candidate: PredictiveCandidate) -> String {
+        candidate.autoCommitEligible ? "IBMPlexMono-SemiBold" : "IBMPlexMono-Medium"
     }
 }
 

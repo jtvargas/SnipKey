@@ -22,6 +22,8 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        actions.clearPendingPredictiveCorrection()
+
         let textToInsert: String
         switch state.shiftState {
         case .disabled: textToInsert = char.lowercased()
@@ -58,12 +60,47 @@ enum KeyboardCommitPipeline {
         actions.scheduleSideEffects()
     }
 
+    /// Commit a literal shortcut key such as `.com`, `@`, `#`, `.`, or `/`.
+    /// These keys are layout affordances, not shift-cased character keys.
+    static func commitText(
+        _ text: String,
+        state: QWERTYKeyboardState,
+        actions: KeyboardActions
+    ) {
+        guard !text.isEmpty else { return }
+        actions.clearPendingPredictiveCorrection()
+
+        if state.inputTracking.pendingSmartSpace {
+            state.inputTracking.pendingSmartSpace = false
+            let eatSet: Set<Character> = [".", ",", "!", "?", ";", ":", "'", ")", "]", "}", "\""]
+            if let first = text.first, eatSet.contains(first) {
+                actions.deleteBackward()
+            }
+        }
+
+        actions.insertText(text)
+        if text.count == 1, let scalar = text.first {
+            state.inputTracking.recordAction(.character)
+            state.inputTracking.touchContext.recordCharacter(scalar)
+        } else {
+            state.inputTracking.recordAction(.other)
+            state.inputTracking.touchContext.recordNonCharacter()
+        }
+
+        actions.scheduleSideEffects()
+    }
+
     /// Commit space. Inserts auto-period (". ") if the previous keystrokes were
     /// character + space + space. Otherwise inserts a normal space.
     static func commitSpace(
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        let didApplyCorrection = actions.applyPendingPredictiveCorrection()
+        if !didApplyCorrection {
+            actions.clearPendingPredictiveCorrection()
+        }
+
         state.inputTracking.pendingSmartSpace = false
         if state.inputTracking.shouldInsertAutoPeriod() {
             // Replace the trailing space with ". " — the previous space already inserted,
@@ -81,8 +118,7 @@ enum KeyboardCommitPipeline {
         // Gated by the SnipKey-level Auto-Capitalization Setting and the host field's
         // keyboard type (URL/email skip smart transforms regardless).
         let traits = actions.inputTraits()
-        let autoCapEnabled = AppGroupSettings.bool(forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true)
-        if autoCapEnabled && traits.allowsSmartTransforms {
+        if traits.autoCapitalizationEnabled && traits.allowsSmartTransforms {
             applyAutoCapitalizationOfI(actions: actions)
         }
 
@@ -103,6 +139,12 @@ enum KeyboardCommitPipeline {
         actions: KeyboardActions
     ) {
         state.inputTracking.pendingSmartSpace = false
+        if actions.revertLastPredictiveCorrection() {
+            state.inputTracking.recordAction(.other)
+            state.inputTracking.touchContext.recordNonCharacter()
+            actions.scheduleSideEffects()
+            return
+        }
         actions.deleteBackward()
         state.inputTracking.recordAction(.other)
         state.inputTracking.touchContext.recordNonCharacter()
@@ -114,6 +156,7 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+        actions.clearPendingPredictiveCorrection()
         state.inputTracking.pendingSmartSpace = false
         actions.insertText("\n")
         state.inputTracking.recordAction(.other)
@@ -130,8 +173,10 @@ enum KeyboardCommitPipeline {
     /// Switch page (letters / numbers / symbols).
     static func commitModeChange(
         to page: KeyboardPage,
-        state: QWERTYKeyboardState
+        state: QWERTYKeyboardState,
+        actions: KeyboardActions? = nil
     ) {
+        actions?.clearPendingPredictiveCorrection()
         state.inputTracking.pendingSmartSpace = false
         if state.currentPage != page {
             state.currentPage = page

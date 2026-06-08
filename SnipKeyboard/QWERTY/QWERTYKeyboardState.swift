@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UIKit
 
 // MARK: - Enums
 
@@ -25,6 +26,43 @@ enum ShiftState: Hashable {
 enum KeyboardAppearanceMode: Equatable {
     case light
     case dark
+}
+
+enum KeyboardLayoutProfile: Hashable {
+    case standard
+    case asciiCapable
+    case emailAddress
+    case url
+    case webSearch
+    case twitter
+
+    init(keyboardType: UIKeyboardType) {
+        switch keyboardType {
+        case .asciiCapable:
+            self = .asciiCapable
+        case .emailAddress:
+            self = .emailAddress
+        case .URL:
+            self = .url
+        case .webSearch:
+            self = .webSearch
+        case .twitter:
+            self = .twitter
+        default:
+            self = .standard
+        }
+    }
+
+    var fallbackReturnKey: (label: String, prominent: Bool)? {
+        switch self {
+        case .url:
+            return ("Go", true)
+        case .webSearch:
+            return ("Search", true)
+        default:
+            return nil
+        }
+    }
 }
 
 // MARK: - Input Tracking (NOT @Observable — no view re-renders)
@@ -93,6 +131,9 @@ class QWERTYKeyboardState {
     // MARK: QWERTY State
     /// Current keyboard page (letters, numbers, symbols)
     var currentPage: KeyboardPage = .letters
+
+    /// Host-input layout profile derived from `textDocumentProxy.keyboardType`.
+    var layoutProfile: KeyboardLayoutProfile = .standard
 
     /// Current shift state (views read this for key label casing and shift icon)
     var shiftState: ShiftState = .disabled

@@ -171,7 +171,7 @@ final class KeyboardCalloutView: UIView {
         }
     }
 
-    /// Hide the callout. Fades opacity out over ~110ms for a deliberate single press
+    /// Hide the callout. Fades opacity out briefly for a deliberate single press
     /// (native feel); snaps instantly during a fast-typing burst (`fade: false`), since a
     /// fade on the single shared layer would read as the next character dimming.
     func hide(fade: Bool = true) {
@@ -184,7 +184,7 @@ final class KeyboardCalloutView: UIView {
             let anim = CABasicAnimation(keyPath: "opacity")
             anim.fromValue = layer.presentation()?.opacity ?? layer.opacity
             anim.toValue = 0
-            anim.duration = 0.11
+            anim.duration = 0.07
             anim.timingFunction = CAMediaTimingFunction(name: .easeIn)
             anim.fillMode = .forwards
             anim.isRemovedOnCompletion = false

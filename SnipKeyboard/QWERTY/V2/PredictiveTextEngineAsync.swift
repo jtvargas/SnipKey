@@ -49,7 +49,7 @@ final class PredictiveTextEngineAsync {
     /// Schedule a predictive-text evaluation for the given context.
     /// Fires `completion` on the main actor with the new suggestions when this scheduled call
     /// is still the latest and the result has changed.
-    func schedule(context: String?, completion: @escaping @MainActor (_ suggestions: [String], _ partialWord: String) -> Void) {
+    func schedule(context: String?, completion: @escaping @MainActor (_ candidates: [PredictiveCandidate], _ partialWord: String) -> Void) {
         currentToken &+= 1
         let myToken = currentToken
         let snapshot = context
@@ -68,7 +68,7 @@ final class PredictiveTextEngineAsync {
                 guard let self else { return }
                 guard self.currentToken == myToken else { return }
                 if result.changed {
-                    completion(result.suggestions, result.partialWord)
+                    completion(result.candidates, result.partialWord)
                 }
             }
         }
@@ -79,7 +79,7 @@ final class PredictiveTextEngineAsync {
     private nonisolated static func evaluateOffMain(
         tracker: PredictiveTextTracker,
         context: String?
-    ) async -> (changed: Bool, suggestions: [String], partialWord: String) {
+    ) async -> (changed: Bool, candidates: [PredictiveCandidate], partialWord: String) {
         // Hop to a background task to ensure we're not on main even if the caller is.
         await Task.detached(priority: .userInitiated) {
             tracker.evaluate(context: context)
@@ -92,5 +92,11 @@ final class PredictiveTextEngineAsync {
         pendingTask?.cancel()
         pendingTask = nil
         tracker.reset()
+    }
+
+    func rejectCorrection(original: String, replacement: String) {
+        pendingTask?.cancel()
+        pendingTask = nil
+        tracker.rejectCorrection(original: original, replacement: replacement)
     }
 }

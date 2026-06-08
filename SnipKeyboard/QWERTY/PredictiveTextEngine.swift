@@ -9,13 +9,47 @@ import Foundation
 import SwiftUI
 import UIKit
 
+// MARK: - Predictive Candidates
+
+enum PredictiveCandidateRole: String, Equatable, Sendable {
+    case typed
+    case correction
+    case completion
+    case textReplacement
+}
+
+enum PredictiveCandidateSource: String, Equatable, Sendable {
+    case typed
+    case textCheckerCompletion
+    case textCheckerGuess
+    case lexicon
+}
+
+struct PredictiveCandidate: Identifiable, Equatable, Sendable {
+    let text: String
+    let role: PredictiveCandidateRole
+    let source: PredictiveCandidateSource
+    let confidence: Float
+    let replacementLength: Int
+    let autoCommitEligible: Bool
+
+    var id: String {
+        "\(role.rawValue):\(text.lowercased())"
+    }
+}
+
+struct PredictiveCorrectionSnapshot: Equatable, Sendable {
+    let original: String
+    let replacement: String
+}
+
 // MARK: - Predictive Text Tracker (NOT @Observable — no view re-renders)
 
 /// Extracts the current partial word from text context and generates
 /// word completions using UITextChecker + UILexicon.
 /// Runs on every relevant keystroke but mutates only plain properties —
 /// zero SwiftUI re-renders. Only promotes to @Observable state when
-/// the suggestions actually change.
+/// the candidates actually change.
 final class PredictiveTextTracker {
     private let textChecker = UITextChecker()
 
@@ -24,18 +58,22 @@ final class PredictiveTextTracker {
     /// Set once from viewDidLoad via requestSupplementaryLexicon.
     var lexicon: UILexicon?
 
-    /// Last known suggestions — used to avoid redundant @Observable mutations
-    private var lastSuggestions: [String] = []
+    /// Last known candidates — used to avoid redundant @Observable mutations
+    private var lastCandidates: [PredictiveCandidate] = []
     /// Last known partial word
     private var lastPartialWord: String = ""
 
-    /// Evaluate the current text context and generate suggestions.
-    /// Returns (changed, suggestions, partialWord) — only signals change
-    /// when suggestions actually differ from last evaluation.
-    func evaluate(context: String?) -> (changed: Bool, suggestions: [String], partialWord: String) {
+    /// Correction pairs the user rejected during this keyboard session via immediate
+    /// backspace. Kept here so future evaluations stop offering the same auto-commit.
+    private var rejectedCorrections: Set<String> = []
+
+    /// Evaluate the current text context and generate candidates.
+    /// Returns (changed, candidates, partialWord) — only signals change
+    /// when candidates actually differ from last evaluation.
+    func evaluate(context: String?) -> (changed: Bool, candidates: [PredictiveCandidate], partialWord: String) {
         guard let context = context, !context.isEmpty else {
-            let changed = !lastSuggestions.isEmpty || !lastPartialWord.isEmpty
-            lastSuggestions = []
+            let changed = !lastCandidates.isEmpty || !lastPartialWord.isEmpty
+            lastCandidates = []
             lastPartialWord = ""
             return (changed, [], "")
         }
@@ -45,27 +83,32 @@ final class PredictiveTextTracker {
 
         // Need at least 2 characters to generate useful suggestions
         guard partialWord.count >= 2 else {
-            let changed = !lastSuggestions.isEmpty || lastPartialWord != partialWord
-            lastSuggestions = []
+            let changed = !lastCandidates.isEmpty || lastPartialWord != partialWord
+            lastCandidates = []
             lastPartialWord = partialWord
             return (changed, [], partialWord)
         }
 
-        // Generate suggestions
-        let suggestions = generateSuggestions(for: partialWord, in: context)
+        // Generate candidates
+        let candidates = generateCandidates(for: partialWord, in: context)
 
         // Check if anything changed
-        let changed = suggestions != lastSuggestions || partialWord != lastPartialWord
-        lastSuggestions = suggestions
+        let changed = candidates != lastCandidates || partialWord != lastPartialWord
+        lastCandidates = candidates
         lastPartialWord = partialWord
 
-        return (changed, suggestions, partialWord)
+        return (changed, candidates, partialWord)
     }
 
     /// Reset all cached state (e.g., after suggestion insertion)
     func reset() {
-        lastSuggestions = []
+        lastCandidates = []
         lastPartialWord = ""
+    }
+
+    func rejectCorrection(original: String, replacement: String) {
+        rejectedCorrections.insert(Self.rejectionKey(original: original, replacement: replacement))
+        reset()
     }
 
     // MARK: - Word Extraction
@@ -87,11 +130,12 @@ final class PredictiveTextTracker {
 
     // MARK: - Suggestion Generation
 
-    /// Generate up to 3 suggestions combining UITextChecker completions,
+    /// Generate up to 3 candidates combining UITextChecker completions,
     /// spell corrections, and UILexicon entries.
-    private func generateSuggestions(for partialWord: String, in context: String) -> [String] {
-        var allSuggestions: [String] = []
+    private func generateCandidates(for partialWord: String, in context: String) -> [PredictiveCandidate] {
+        var rawCandidates: [PredictiveCandidate] = []
         let language = preferredLanguage()
+        let lowerPartial = partialWord.lowercased()
 
         // 1. UITextChecker completions for the partial word
         let nsContext = context as NSString
@@ -106,7 +150,19 @@ final class PredictiveTextTracker {
             language: language
         ) ?? []
 
-        allSuggestions.append(contentsOf: completions)
+        for (index, completion) in completions.prefix(6).enumerated() {
+            let confidence = max(0.62, 0.80 - Float(index) * 0.05)
+            rawCandidates.append(
+                PredictiveCandidate(
+                    text: matchCasing(of: completion, to: partialWord),
+                    role: .completion,
+                    source: .textCheckerCompletion,
+                    confidence: confidence,
+                    replacementLength: partialWord.count,
+                    autoCommitEligible: false
+                )
+            )
+        }
 
         // 2. Spell check — if the partial word is misspelled, add guesses
         let misspelledRange = textChecker.rangeOfMisspelledWord(
@@ -123,36 +179,201 @@ final class PredictiveTextTracker {
                 in: partialWord,
                 language: language
             ) ?? []
-            allSuggestions.append(contentsOf: guesses)
+            for (index, guess) in guesses.prefix(4).enumerated() {
+                let distance = Self.editDistance(lowerPartial, guess.lowercased(), maxDistance: 3)
+                let confidence = correctionConfidence(distance: distance, rank: index, partialWord: partialWord)
+                let corrected = matchCasing(of: guess, to: partialWord)
+                rawCandidates.append(
+                    PredictiveCandidate(
+                        text: corrected,
+                        role: .correction,
+                        source: .textCheckerGuess,
+                        confidence: confidence,
+                        replacementLength: partialWord.count,
+                        autoCommitEligible: confidence >= Self.autoCommitThreshold
+                            && !isRejected(original: partialWord, replacement: corrected)
+                    )
+                )
+            }
         }
 
-        // 3. UILexicon entries — match against user contacts/shortcuts
+        // 3. UILexicon entries — match against user contacts/shortcuts/text replacements
         if let lexicon = lexicon {
             for entry in lexicon.entries {
                 let input = entry.userInput.lowercased()
-                let lowerPartial = partialWord.lowercased()
-                if input.hasPrefix(lowerPartial) && input != lowerPartial {
-                    allSuggestions.append(entry.documentText)
+                let docText = matchCasing(of: entry.documentText, to: partialWord)
+                if input == lowerPartial && docText.lowercased() != lowerPartial {
+                    rawCandidates.append(
+                        PredictiveCandidate(
+                            text: docText,
+                            role: .textReplacement,
+                            source: .lexicon,
+                            confidence: 0.98,
+                            replacementLength: partialWord.count,
+                            autoCommitEligible: !isRejected(original: partialWord, replacement: docText)
+                        )
+                    )
+                } else if input.hasPrefix(lowerPartial) && input != lowerPartial {
+                    rawCandidates.append(
+                        PredictiveCandidate(
+                            text: docText,
+                            role: .completion,
+                            source: .lexicon,
+                            confidence: 0.76,
+                            replacementLength: partialWord.count,
+                            autoCommitEligible: false
+                        )
+                    )
                 }
             }
         }
 
-        // Deduplicate (case-insensitive), remove exact matches, cap at 3
-        var seen = Set<String>()
-        let lowerPartial = partialWord.lowercased()
-        var unique: [String] = []
+        let ranked = deduplicatedRankedCandidates(rawCandidates, typedWord: partialWord)
+        guard !ranked.isEmpty else { return [] }
 
-        for suggestion in allSuggestions {
-            let lowerSuggestion = suggestion.lowercased()
-            // Skip if it's exactly what the user already typed
-            if lowerSuggestion == lowerPartial { continue }
-            if seen.contains(lowerSuggestion) { continue }
-            seen.insert(lowerSuggestion)
-            unique.append(suggestion)
-            if unique.count >= 3 { break }
+        let typedCandidate = PredictiveCandidate(
+            text: partialWord,
+            role: .typed,
+            source: .typed,
+            confidence: 1,
+            replacementLength: partialWord.count,
+            autoCommitEligible: false
+        )
+
+        if let primary = ranked.first, primary.autoCommitEligible {
+            return Array(([typedCandidate, primary] + ranked.dropFirst()).prefix(3))
         }
 
-        return unique
+        return Array(ranked.prefix(3))
+    }
+
+    private func deduplicatedRankedCandidates(
+        _ candidates: [PredictiveCandidate],
+        typedWord: String
+    ) -> [PredictiveCandidate] {
+        let lowerTyped = typedWord.lowercased()
+        var bestByText: [String: PredictiveCandidate] = [:]
+
+        for candidate in candidates {
+            let key = candidate.text.lowercased()
+            if key == lowerTyped || key.isEmpty { continue }
+            if let existing = bestByText[key] {
+                bestByText[key] = betterCandidate(existing, candidate)
+            } else {
+                bestByText[key] = candidate
+            }
+        }
+
+        return bestByText.values.sorted { lhs, rhs in
+            let leftScore = rankingScore(lhs, typedWord: typedWord)
+            let rightScore = rankingScore(rhs, typedWord: typedWord)
+            if leftScore != rightScore { return leftScore > rightScore }
+            return lhs.text < rhs.text
+        }
+    }
+
+    private func betterCandidate(_ lhs: PredictiveCandidate, _ rhs: PredictiveCandidate) -> PredictiveCandidate {
+        if lhs.autoCommitEligible != rhs.autoCommitEligible {
+            return lhs.autoCommitEligible ? lhs : rhs
+        }
+        if lhs.confidence != rhs.confidence {
+            return lhs.confidence > rhs.confidence ? lhs : rhs
+        }
+        return rolePriority(lhs.role) >= rolePriority(rhs.role) ? lhs : rhs
+    }
+
+    private func rankingScore(_ candidate: PredictiveCandidate, typedWord: String) -> Float {
+        var score = candidate.confidence * 100
+        score += Float(rolePriority(candidate.role)) * 8
+        if candidate.text.lowercased().hasPrefix(typedWord.lowercased()) {
+            score += 12
+        }
+        if candidate.autoCommitEligible {
+            score += 18
+        }
+        return score
+    }
+
+    private func rolePriority(_ role: PredictiveCandidateRole) -> Int {
+        switch role {
+        case .textReplacement: return 4
+        case .correction: return 3
+        case .completion: return 2
+        case .typed: return 1
+        }
+    }
+
+    private func correctionConfidence(distance: Int, rank: Int, partialWord: String) -> Float {
+        guard distance <= 3 else { return 0.50 }
+        var confidence: Float
+        switch distance {
+        case 0: confidence = 0.60
+        case 1: confidence = 0.92
+        case 2: confidence = partialWord.count >= 4 ? 0.86 : 0.82
+        default: confidence = partialWord.count >= 5 ? 0.80 : 0.64
+        }
+        confidence -= Float(rank) * 0.06
+        return max(0, min(confidence, 0.98))
+    }
+
+    private func matchCasing(of candidate: String, to typedWord: String) -> String {
+        guard let first = typedWord.first else { return candidate }
+        if typedWord.allSatisfy({ $0.isUppercase || !$0.isLetter }) {
+            return candidate.uppercased()
+        }
+        if first.isUppercase {
+            return candidate.prefix(1).uppercased() + String(candidate.dropFirst())
+        }
+        return candidate.lowercased()
+    }
+
+    private func isRejected(original: String, replacement: String) -> Bool {
+        rejectedCorrections.contains(Self.rejectionKey(original: original, replacement: replacement))
+    }
+
+    private static func rejectionKey(original: String, replacement: String) -> String {
+        "\(original.lowercased())>\(replacement.lowercased())"
+    }
+
+    private static let autoCommitThreshold: Float = 0.84
+
+    static func editDistance(_ lhs: String, _ rhs: String, maxDistance: Int = Int.max) -> Int {
+        if lhs == rhs { return 0 }
+        let a = Array(lhs)
+        let b = Array(rhs)
+        if abs(a.count - b.count) > maxDistance { return maxDistance + 1 }
+        if a.isEmpty { return b.count }
+        if b.isEmpty { return a.count }
+
+        var previousPrevious: [Int]?
+        var previous = Array(0...b.count)
+        var current = Array(repeating: 0, count: b.count + 1)
+
+        for i in 1...a.count {
+            current[0] = i
+            var rowMin = current[0]
+            for j in 1...b.count {
+                let cost = a[i - 1] == b[j - 1] ? 0 : 1
+                current[j] = min(
+                    previous[j] + 1,
+                    current[j - 1] + 1,
+                    previous[j - 1] + cost
+                )
+                if i > 1,
+                   j > 1,
+                   a[i - 1] == b[j - 2],
+                   a[i - 2] == b[j - 1],
+                   let previousPrevious {
+                    current[j] = min(current[j], previousPrevious[j - 2] + 1)
+                }
+                rowMin = min(rowMin, current[j])
+            }
+            if rowMin > maxDistance { return maxDistance + 1 }
+            previousPrevious = previous
+            swap(&previous, &current)
+        }
+
+        return previous[b.count]
     }
 
     // MARK: - Language
@@ -183,8 +404,8 @@ final class PredictiveTextTracker {
 @MainActor
 @Observable
 class PredictiveTextState {
-    /// Current word suggestions to display in the toolbar (max 3)
-    var suggestions: [String] = []
+    /// Current word candidates to display in the toolbar (max 3)
+    var candidates: [PredictiveCandidate] = []
 
     /// The partial word being completed (used to know how many chars to delete on selection)
     var partialWord: String = ""
@@ -194,7 +415,13 @@ class PredictiveTextState {
     var dismissedForSession: Bool = false
 
     /// Whether suggestions are available and should be shown
-    var isActive: Bool { !suggestions.isEmpty }
+    var isActive: Bool { !candidates.isEmpty }
+
+    var suggestions: [String] { candidates.map(\.text) }
+
+    var autoCommitCandidate: PredictiveCandidate? {
+        candidates.first { $0.autoCommitEligible }
+    }
 
     /// Non-isolated initializer so the `@Entry` macro can call it from a non-isolated context.
     /// All stored properties use literal defaults that don't touch main-actor state.
@@ -202,14 +429,28 @@ class PredictiveTextState {
 
     /// Update suggestions from tracker evaluation.
     /// All setters use equality guards to prevent unnecessary re-renders.
-    func updateSuggestions(suggestions: [String], partialWord: String) {
+    func updateCandidates(_ candidates: [PredictiveCandidate], partialWord: String) {
         guard !dismissedForSession else { return }
-        if self.suggestions != suggestions {
-            self.suggestions = suggestions
+        if self.candidates != candidates {
+            self.candidates = candidates
         }
         if self.partialWord != partialWord {
             self.partialWord = partialWord
         }
+    }
+
+    func updateSuggestions(suggestions: [String], partialWord: String) {
+        let candidates = suggestions.map {
+            PredictiveCandidate(
+                text: $0,
+                role: .completion,
+                source: .textCheckerCompletion,
+                confidence: 0.7,
+                replacementLength: partialWord.count,
+                autoCommitEligible: false
+            )
+        }
+        updateCandidates(candidates, partialWord: partialWord)
     }
 
     /// Dismiss the bar for the remainder of this keyboard session.
@@ -221,8 +462,8 @@ class PredictiveTextState {
 
     /// Clear all suggestions
     func dismiss() {
-        if !suggestions.isEmpty {
-            suggestions = []
+        if !candidates.isEmpty {
+            candidates = []
         }
         if !partialWord.isEmpty {
             partialWord = ""

@@ -159,10 +159,19 @@ struct KeyRowView: View {
             }
             return characterKeyWidthInMixedRow
 
+        case .insertText(let label, _):
+            if label.count > 1 {
+                return round(dimensions.screenWidth * 0.18)
+            }
+            return round(dimensions.screenWidth * 0.11)
+
         case .shift, .backspace:
             return dimensions.shiftKeyWidth
 
         case .space:
+            if isBottomRow {
+                return bottomRowSpaceWidth
+            }
             return dimensions.spaceKeyWidth
 
         case .returnKey:
@@ -213,5 +222,31 @@ struct KeyRowView: View {
         let availableWidth = dimensions.screenWidth - totalSideEdges - specialWidth - totalGaps
 
         return availableWidth / CGFloat(charCount)
+    }
+
+    private var bottomRowSpaceWidth: CGFloat {
+        let fixedWidth = actions.reduce(CGFloat(0)) { total, action in
+            switch action {
+            case .space:
+                return total
+            case .modeChange, .snippetToggle:
+                return total + dimensions.bottomSpecialKeyWidth
+            case .returnKey:
+                return total + dimensions.returnKeyWidth
+            case .insertText(let label, _):
+                let width = label.count > 1
+                    ? round(dimensions.screenWidth * 0.18)
+                    : round(dimensions.screenWidth * 0.11)
+                return total + width
+            case .character:
+                return total + dimensions.bottomSpecialKeyWidth
+            case .shift, .backspace:
+                return total + dimensions.shiftKeyWidth
+            }
+        }
+        let totalGaps = dimensions.keyGap * CGFloat(max(actions.count - 1, 0))
+        let totalSideEdges = dimensions.sideEdge * 2
+        let availableWidth = dimensions.screenWidth - totalSideEdges - fixedWidth - totalGaps
+        return max(availableWidth, 52)
     }
 }

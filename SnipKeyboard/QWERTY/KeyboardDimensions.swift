@@ -179,6 +179,11 @@ struct KeyboardDimensions: Equatable {
             let availableWidth = screenWidth - totalSideEdges - specialWidth - totalGaps
             return availableWidth / CGFloat(charCount)
 
+        case .insertText(let label, _):
+            if label.count > 1 {
+                return round(screenWidth * 0.18)
+            }
+            return round(screenWidth * 0.11)
         case .shift, .backspace:
             return shiftKeyWidth
         case .space:

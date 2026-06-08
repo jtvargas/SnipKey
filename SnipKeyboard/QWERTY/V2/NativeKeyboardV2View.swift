@@ -22,6 +22,7 @@ final class NativeKeyboardV2View: UIView {
     /// `withObservationTracking` fires for property reads that didn't materially change.
     private var lastObservedShift: ShiftState = .disabled
     private var lastObservedPage: KeyboardPage = .letters
+    private var lastObservedProfile: KeyboardLayoutProfile = .standard
     private var lastObservedAppearance: KeyboardAppearanceMode = .light
     private var lastObservedReturnLabel: String = "return"
     private var lastObservedReturnProminent: Bool = false
@@ -84,6 +85,7 @@ final class NativeKeyboardV2View: UIView {
     private func beginObservingState() {
         withObservationTracking {
             _ = state.currentPage
+            _ = state.layoutProfile
             _ = state.shiftState
             _ = state.appearanceMode
             _ = state.returnKeyLabel
@@ -101,6 +103,10 @@ final class NativeKeyboardV2View: UIView {
     func syncFromState() {
         if state.currentPage != lastObservedPage {
             lastObservedPage = state.currentPage
+            coordinator.setPage(state.currentPage)
+        }
+        if state.layoutProfile != lastObservedProfile {
+            lastObservedProfile = state.layoutProfile
             coordinator.setPage(state.currentPage)
         }
         if state.appearanceMode != lastObservedAppearance {

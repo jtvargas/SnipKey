@@ -11,10 +11,9 @@ import QuartzCore
 
 final class CalloutController {
 
-    /// If a new input callout is presented within this window of the last dismiss, skip the
-    /// spring "pop" and show it instantly — this is fast successive typing, where re-springing
-    /// every key looks bouncy and unlike native iOS.
-    private static let burstWindow: CFTimeInterval = 0.15
+    /// If another dismiss happens inside this window, clear the callout instantly. Normal typing
+    /// presents input callouts without a spring so feedback tracks the key press directly.
+    private static let burstWindow: CFTimeInterval = 0.10
 
     /// Timestamp of the last `dismiss()` (mach time). Drives the burst-suppression above.
     private var lastDismissTime: CFTimeInterval = 0
@@ -68,9 +67,7 @@ final class CalloutController {
         }
         mode = .input(key)
         let rectInCalloutSpace = convertRect(key.rect)
-        // Spring only on the first key of a burst; instant pop if we just dismissed (fast typing).
-        let animated = (CACurrentMediaTime() - lastDismissTime) > Self.burstWindow
-        view.show(.input(character: display, keyFrame: rectInCalloutSpace), isDark: isDark, in: parentBoundsWidth, animated: animated)
+        view.show(.input(character: display, keyFrame: rectInCalloutSpace), isDark: isDark, in: parentBoundsWidth, animated: false)
     }
 
     /// Begin showing the long-press accent menu.
