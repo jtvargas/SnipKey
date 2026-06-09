@@ -56,6 +56,39 @@ extension Color {
         self.init(red: red, green: green, blue: blue)
     }
     
+    // MARK: - Cached Hex Lookup
+
+    /// Cache of parsed hex strings → Color, keyed by sanitized hex (lowercased, no "#").
+    /// Tag colors come from a small finite palette, so this avoids re-running the
+    /// Scanner parse on every render (especially in the keyboard's snippet grid).
+    @MainActor private static var hexColorCache: [String: Color] = {
+        var cache: [String: Color] = [:]
+        // Seed with the known tag palette so render-time lookups are pure dict hits.
+        for tagColor in TagColor.allCases {
+            let key = sanitizedHexKey(tagColor.hexValue)
+            if let color = Color(hex: tagColor.hexValue) {
+                cache[key] = color
+            }
+        }
+        return cache
+    }()
+
+    private static func sanitizedHexKey(_ hex: String) -> String {
+        hex.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "#", with: "")
+            .lowercased()
+    }
+
+    /// Returns a cached `Color` for the given hex string, parsing and caching on miss.
+    @MainActor static func cached(hex: String?) -> Color? {
+        guard let hex else { return nil }
+        let key = sanitizedHexKey(hex)
+        if let cached = hexColorCache[key] { return cached }
+        guard let color = Color(hex: hex) else { return nil }
+        hexColorCache[key] = color
+        return color
+    }
+
     /// Convert Color to hex string (returns nil if conversion fails)
     func toHex() -> String? {
         guard let components = UIColor(self).cgColor.components else { return nil }

@@ -95,6 +95,8 @@
 		06E9A0432BDFE3DD00CF09BE /* SnippetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
+		06CC00112233445566778802 /* KeyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CC00112233445566778801 /* KeyStyle.swift */; };
+		06CC00112233445566778803 /* KeyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CC00112233445566778801 /* KeyStyle.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
 		06F4F2FA2BB5F3BD00399C78 /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F92BB5F3BD00399C78 /* Strings.swift */; };
 		06F4F3092BB6270F00399C78 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */; };
@@ -252,6 +254,7 @@
 		06E7E2BF2BD998860058D11E /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewDetail.swift; sourceTree = "<group>"; };
 		06EA76932BB4DED000E3E1F0 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
+		06CC00112233445566778801 /* KeyStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyStyle.swift; sourceTree = "<group>"; };
 		06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetForm.swift; sourceTree = "<group>"; };
 		06F4F2F92BB5F3BD00399C78 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Bold.ttf"; sourceTree = "<group>"; };
@@ -586,6 +589,7 @@
 			isa = PBXGroup;
 			children = (
 				06EA76932BB4DED000E3E1F0 /* Colors.swift */,
+				06CC00112233445566778801 /* KeyStyle.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -811,6 +815,7 @@
 				066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */,
 				06E9A0432BDFE3DD00CF09BE /* SnippetViewModel.swift in Sources */,
 				06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */,
+				06CC00112233445566778802 /* KeyStyle.swift in Sources */,
 				06E7E2BA2BD97FB40058D11E /* Keyboard.swift in Sources */,
 				066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */,
 				061ED3CF2BC44384006A6E47 /* Biometrics.swift in Sources */,
@@ -873,6 +878,7 @@
 				06D454532BEE8E4C00D34782 /* TagsView.swift in Sources */,
 				06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */,
 				06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */,
+				06CC00112233445566778803 /* KeyStyle.swift in Sources */,
 				0630BC0E2C6E747100E8493B /* SnippetContentForm.swift in Sources */,
 				06CA671C2CA4E8A800CAD9E0 /* OnboardingStepperView.swift in Sources */,
 				066952992EBEFAD900CC89BC /* SearchView.swift in Sources */,

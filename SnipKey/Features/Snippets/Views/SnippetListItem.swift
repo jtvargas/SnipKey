@@ -57,37 +57,43 @@ struct SnippetListItem: View {
 
 struct SnippetListItemMinimal: View {
     let item: SnippetItem
+    /// Matches the V2 keys' light/dark signal (driven by the keyboard's
+    /// `appearanceMode`, not the system color scheme). Defaults to light so the
+    /// `#Preview` and any non-keyboard usage stay valid.
+    var isDark: Bool = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Type icon — circle background with improved size for readability
+        let shadow = KeyStyle.keyShadow(isDark: isDark)
+
+        return HStack(spacing: 12) {
+            // Type icon — circle "well", styled like a key surface
             Image(systemName: item.type?.snipTypeImage ?? "doc.text")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color(.secondaryLabel))
+                .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
                 .frame(width: 32, height: 32)
                 .background(
                     Circle()
-                        .fill(Color(.tertiarySystemBackground))
+                        .fill(KeyStyle.iconWell(isDark: isDark))
                 )
 
             // Content — title + metadata with improved legibility
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.title ?? "")
                     .font(.custom("IBMPlexMono-Medium", size: 14))
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(KeyStyle.glyph(isDark: isDark))
                     .lineLimit(1)
 
                 HStack(spacing: 4) {
                     if let tagName = item.customTag?.name {
                         Text("#\(tagName)")
                             .font(.custom("IBMPlexMono-Regular", size: 11))
-                            .foregroundStyle(Color(.secondaryLabel))
+                            .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
                         TagColorIndicator(colorHex: item.customTag?.colorHex, size: 6)
                     }
                     if item.isSecure {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 9))
-                            .foregroundStyle(Color(.secondaryLabel))
+                            .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
                     }
                 }
             }
@@ -97,8 +103,9 @@ struct SnippetListItemMinimal: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: KeyStyle.cornerRadius, style: .continuous)
+                .fill(KeyStyle.keyBackground(isDark: isDark))
+                .shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
         )
     }
 }

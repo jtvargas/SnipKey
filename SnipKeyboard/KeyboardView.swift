@@ -25,6 +25,20 @@ enum SortOption: String, CaseIterable {
     }
 }
 
+// MARK: - Snippet Press Style
+
+/// Lightweight press feedback for snippet cells — subtle scale + opacity, no haptic.
+/// Local to the keyboard target (the app's `PressableButtonStyle` lives in a file
+/// that isn't compiled into SnipKeyboard, and allocates a generator per press).
+struct SnippetPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Keyboard Snippet View
 
 struct KeyboardView: View {
@@ -54,6 +68,12 @@ struct KeyboardView: View {
     @State private var sortOption: SortOption = .recentlyUsed
     @State private var sortOrder: SortOrder = .forward
 
+    // Memoized, ready-to-render list — recomputed only when its inputs change,
+    // not on every body pass. `hasSeeded` keeps the first population un-animated
+    // so cells don't all animate in when the keyboard first opens.
+    @State private var displayedSnippets: [SnippetItem] = []
+    @State private var hasSeeded = false
+
     // Delete long-press
     @State private var isLongPressing = false
     @State private var deleteTimer: Timer?
@@ -67,29 +87,52 @@ struct KeyboardView: View {
         settings.first ?? SettingsModel(afterPasteAction: .space)
     }
 
-    private var sortedSnippets: [SnippetItem] {
+    /// Same light/dark signal the V2 keys use, so the snippet list matches them
+    /// (driven by the keyboard's `appearanceMode`, not the system color scheme).
+    private var isDark: Bool {
+        qwertyStateFromEnvironment?.appearanceMode == .dark
+    }
+
+    /// Filter + sort the snippets once and store the result in `displayedSnippets`.
+    /// Called only from `.onChange` of its inputs (and a one-time seed), so the
+    /// O(n log n) work no longer runs on every unrelated body re-evaluation.
+    private func recomputeDisplayed(animation: Animation? = nil) {
         let filtered: [SnippetItem]
         if let filter = selectedFilter {
             filtered = snippets.filter { $0.customTag == filter }
         } else {
             filtered = Array(snippets)
         }
-        return filtered.sorted { first, second in
-            switch sortOption {
-            case .dateCreated:
+
+        let sorted: [SnippetItem]
+        switch sortOption {
+        case .dateCreated:
+            sorted = filtered.sorted { first, second in
                 let d1 = first.creationDate ?? .distantPast
                 let d2 = second.creationDate ?? .distantPast
                 return sortOrder == .forward ? d1 > d2 : d1 < d2
-            case .recentlyUsed:
+            }
+        case .recentlyUsed:
+            sorted = filtered.sorted { first, second in
                 let d1 = first.lastTimeUsed ?? .distantPast
                 let d2 = second.lastTimeUsed ?? .distantPast
                 return sortOrder == .forward ? d1 > d2 : d1 < d2
-            case .alphabetical:
-                let t1 = first.title?.lowercased() ?? ""
-                let t2 = second.title?.lowercased() ?? ""
-                return sortOrder == .forward ? t1 < t2 : t1 > t2
             }
+        case .alphabetical:
+            // Precompute lowercased titles once (O(n)) instead of inside the
+            // comparator (O(n log n) string allocations).
+            sorted = filtered
+                .map { (item: $0, key: $0.title?.lowercased() ?? "") }
+                .sorted { sortOrder == .forward ? $0.key < $1.key : $0.key > $1.key }
+                .map(\.item)
         }
+
+        if let animation, hasSeeded {
+            withAnimation(animation) { displayedSnippets = sorted }
+        } else {
+            displayedSnippets = sorted
+        }
+        hasSeeded = true
     }
 
     // MARK: - Grid Layout
@@ -110,18 +153,23 @@ struct KeyboardView: View {
                 // Create snippet CTA (when text is selected)
                 CreateSnippetCTA()
 
-                LazyVGrid(columns: gridColumns, spacing: 8) {
-                    ForEach(sortedSnippets, id: \.self.id) { snippet in
-                        Button {
-                            sentValue(snippet: snippet)
-                        } label: {
-                            SnippetListItemMinimal(item: snippet)
+                if displayedSnippets.isEmpty {
+                    EmptyStateView()
+                        .transition(.opacity)
+                } else {
+                    LazyVGrid(columns: gridColumns, spacing: 8) {
+                        ForEach(displayedSnippets, id: \.self.id) { snippet in
+                            Button {
+                                sentValue(snippet: snippet)
+                            } label: {
+                                SnippetListItemMinimal(item: snippet, isDark: isDark)
+                            }
+                            .buttonStyle(SnippetPressStyle())
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 8)
             }
 
             // Bottom bar: filter + actions
@@ -132,6 +180,23 @@ struct KeyboardView: View {
             settingsViewModel.modelContext = modelContext
             snippetViewModel.modelContext = modelContext
             setupNotificationObservers()
+            // Initial population — un-animated (hasSeeded == false) for an instant,
+            // jitter-free first paint.
+            recomputeDisplayed()
+        }
+        .onChange(of: snippets) {
+            // Fires on inserts/deletes (usage-only attribute bumps are handled in
+            // sentValue, since @Query compares elements by persistent ID).
+            recomputeDisplayed(animation: .easeInOut(duration: 0.2))
+        }
+        .onChange(of: sortOption) {
+            recomputeDisplayed(animation: .easeInOut(duration: 0.2))
+        }
+        .onChange(of: sortOrder) {
+            recomputeDisplayed(animation: .easeInOut(duration: 0.2))
+        }
+        .onChange(of: selectedFilter) {
+            recomputeDisplayed(animation: .easeInOut(duration: 0.2))
         }
         .onDisappear {
             removeNotificationObservers()
@@ -198,7 +263,7 @@ struct KeyboardView: View {
             } label: {
                 Image(systemName: "arrow.up.arrow.down")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(Color(.secondaryLabel))
+                    .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
@@ -209,7 +274,7 @@ struct KeyboardView: View {
             } else {
                 Text("Add tags for quick search")
                     .font(.system(size: 10, weight: .regular))
-                    .foregroundStyle(Color(.tertiaryLabel))
+                    .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
             }
 
             // Clear filter
@@ -219,7 +284,7 @@ struct KeyboardView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(.tertiaryLabel))
+                        .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -230,7 +295,7 @@ struct KeyboardView: View {
             if snippets.contains(where: { $0.isSecure }) {
                 Image(systemName: isUnlocked ? "lock.open" : "lock")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color(.secondaryLabel))
+                    .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
             }
 
             Spacer()
@@ -254,16 +319,22 @@ struct KeyboardView: View {
                         Text("Save as snippet")
                             .font(.custom("IBMPlexMono-Medium", size: 12))
                     }
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(KeyStyle.glyph(isDark: isDark))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color(.secondarySystemBackground))
+                        RoundedRectangle(cornerRadius: KeyStyle.cornerRadius, style: .continuous)
+                            .fill(KeyStyle.keyBackground(isDark: isDark))
+                            .shadow(
+                                color: KeyStyle.keyShadow(isDark: isDark).color,
+                                radius: KeyStyle.keyShadow(isDark: isDark).radius,
+                                x: KeyStyle.keyShadow(isDark: isDark).x,
+                                y: KeyStyle.keyShadow(isDark: isDark).y
+                            )
                     )
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SnippetPressStyle())
                 .padding(.horizontal, 12)
                 .padding(.top, 4)
                 .padding(.bottom, 4)
@@ -271,12 +342,66 @@ struct KeyboardView: View {
                 .animation(.easeInOut(duration: 0.2), value: showCreateSnippetCTA)
             } else {
                 Text("Enable Full Access to create snippets from selected text.")
-                    .foregroundStyle(Color(.tertiaryLabel))
+                    .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
                     .font(.system(size: 11))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 4)
             }
         }
+    }
+
+    // MARK: - Empty State
+
+    @ViewBuilder
+    private func EmptyStateView() -> some View {
+        VStack(spacing: 8) {
+            if selectedFilter != nil {
+                // A filter is active but matches nothing.
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
+                Text("No snippets for this filter")
+                    .font(.custom("IBMPlexMono-Medium", size: 13))
+                    .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
+                Button {
+                    selectedFilter = nil
+                } label: {
+                    Text("Clear filter")
+                        .font(.custom("IBMPlexMono-Medium", size: 12))
+                        .foregroundStyle(KeyStyle.glyph(isDark: isDark))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: KeyStyle.cornerRadius, style: .continuous)
+                                .fill(KeyStyle.keyBackground(isDark: isDark))
+                                .shadow(
+                                    color: KeyStyle.keyShadow(isDark: isDark).color,
+                                    radius: KeyStyle.keyShadow(isDark: isDark).radius,
+                                    x: KeyStyle.keyShadow(isDark: isDark).x,
+                                    y: KeyStyle.keyShadow(isDark: isDark).y
+                                )
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(SnippetPressStyle())
+            } else {
+                // No snippets exist yet.
+                Image(systemName: "tray")
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
+                Text("No snippets yet")
+                    .font(.custom("IBMPlexMono-Medium", size: 13))
+                    .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
+                if checkFullAccess() {
+                    Text("Select text and tap Save as snippet")
+                        .font(.custom("IBMPlexMono-Regular", size: 11))
+                        .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
+                        .multilineTextAlignment(.center)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .padding(.horizontal, 16)
     }
 
     // MARK: - Bottom Bar
@@ -296,24 +421,22 @@ struct KeyboardView: View {
                     HStack() {
                         Image(systemName: "keyboard")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color(.secondaryLabel))
                             .frame(width: 44, height: 32)
                             .contentShape(Rectangle())
                         Text("Switch to keyboard")
                             .underline()
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color(.secondaryLabel))
                     }
-                    .foregroundStyle(selectedFilter != nil ? Color(.label) : Color(.secondaryLabel))
+                    .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color(.secondarySystemBackground))
+                        RoundedRectangle(cornerRadius: KeyStyle.cornerRadius)
+                            .fill(KeyStyle.specialKeyBackground(isDark: isDark))
+                            .keyShadow(isDark: isDark)
                     )
-                  
-                    
                 }
+                .buttonStyle(SnippetPressStyle())
             } else {
                 // Legacy fallback: switch to next system keyboard
                 Button {
@@ -322,7 +445,7 @@ struct KeyboardView: View {
                 } label: {
                     Image(systemName: "keyboard")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Color(.secondaryLabel))
+                        .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -355,7 +478,7 @@ struct KeyboardView: View {
                         }
                     } icon: {
                         HStack(spacing: 2) {
-                            if let colorHex = tag.colorHex, let color = Color(hex: colorHex) {
+                            if let colorHex = tag.colorHex, let color = Color.cached(hex: colorHex) {
                                 Image(systemName: "circle.fill")
                                     .foregroundColor(color)
                                     .font(.system(size: 8))
@@ -375,12 +498,13 @@ struct KeyboardView: View {
                 Text(selectedFilter?.name ?? "Filter")
                     .font(.system(size: 12))
             }
-            .foregroundStyle(selectedFilter != nil ? Color(.label) : Color(.secondaryLabel))
+            .foregroundStyle(selectedFilter != nil ? KeyStyle.glyph(isDark: isDark) : KeyStyle.secondaryGlyph(isDark: isDark))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.secondarySystemBackground))
+                RoundedRectangle(cornerRadius: KeyStyle.cornerRadius)
+                    .fill(KeyStyle.specialKeyBackground(isDark: isDark))
+                    .keyShadow(isDark: isDark)
             )
         }
     }
@@ -396,16 +520,17 @@ struct KeyboardView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 24, height: 14)
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(KeyStyle.glyph(isDark: isDark))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color(.secondarySystemBackground))
+                        RoundedRectangle(cornerRadius: KeyStyle.cornerRadius)
+                            .fill(KeyStyle.specialKeyBackground(isDark: isDark))
+                            .keyShadow(isDark: isDark)
                     )
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SnippetPressStyle())
 
             // Return
             Button { returnAction() } label: {
@@ -413,16 +538,17 @@ struct KeyboardView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 18, height: 14)
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(KeyStyle.glyph(isDark: isDark))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color(.secondarySystemBackground))
+                        RoundedRectangle(cornerRadius: KeyStyle.cornerRadius)
+                            .fill(KeyStyle.specialKeyBackground(isDark: isDark))
+                            .keyShadow(isDark: isDark)
                     )
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SnippetPressStyle())
 
             // Delete (with long-press for rapid deletion)
             Button {
@@ -432,16 +558,17 @@ struct KeyboardView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 18, height: 14)
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(KeyStyle.glyph(isDark: isDark))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color(.secondarySystemBackground))
+                        RoundedRectangle(cornerRadius: KeyStyle.cornerRadius)
+                            .fill(KeyStyle.specialKeyBackground(isDark: isDark))
+                            .keyShadow(isDark: isDark)
                     )
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SnippetPressStyle())
             .simultaneousGesture(
                 LongPressGesture(minimumDuration: 0.5)
                     .onEnded { _ in
@@ -466,6 +593,13 @@ struct KeyboardView: View {
 
     private func sentValue(snippet: SnippetItem) {
         snippetViewModel.trackSnippetUsage(snippet: snippet)
+
+        // Usage tracking mutates lastTimeUsed/usedCount in place; @Query won't
+        // re-emit for an attribute-only change, so reorder explicitly (springy
+        // for a natural "bump to top" when sorting by recently used).
+        if sortOption == .recentlyUsed {
+            recomputeDisplayed(animation: .spring(response: 0.35, dampingFraction: 0.85))
+        }
 
         if snippet.isSecure {
             sentSecureValue(snippet: snippet)
