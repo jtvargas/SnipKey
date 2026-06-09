@@ -20,6 +20,96 @@
 
 import UIKit
 
+/// Tunables for cadence/fat-touch β modulation and the burst anchor shrink. Grouped so
+/// data-driven calibration (shadow telemetry, plan §15) edits one block. All modulation
+/// composes in the coordinator — `ProbabilisticHitResolver` math is untouched, so the
+/// β=0 equivalence self-test keeps holding.
+private enum ResolverTuning {
+    // Typing cadence (EMA over inter-tap intervals, ms).
+    static let cadenceAlpha: Double = 0.5          // converges in 2–3 taps — real burst lengths
+    static let cadenceMinIntervalMs: Double = 40   // rollover floor: overlap dt ≈ 0 can't max the EMA
+    static let cadenceResetGapMs: Double = 800     // a pause longer than this ⇒ cold (deliberate)
+    static let cadenceFastKneeMs: Double = 140     // sustained ≤ this ⇒ full fast multiplier
+    static let cadenceNeutralKneeMs: Double = 240  // multiplier crosses 1.0 — ordinary typing keeps today's pull
+    static let cadenceSlowKneeMs: Double = 450     // ≥ this ⇒ floor (deliberate taps resolve geometrically)
+    static let cadenceMultMax: Float = 1.45
+    static let cadenceMultMin: Float = 0.35
+
+    // Anchor shrink at full burst: 60%×70% → 50%×60%, linear in the cadence boost above 1.
+    // Dead-center taps stay immune (the betaCeiling proof below covers the shrunken floor).
+    // Set both to 0 to kill the shrink (static anchor).
+    static let anchorShrinkMaxW: CGFloat = 0.10
+    static let anchorShrinkMaxH: CGFloat = 0.10
+
+    // Fat touch (UITouch.majorRadius, pt). Uniform σ scaling is argmin-equivalent to a β
+    // multiplier (the anchor zone is raw-coords and the anti-swallow ratio is invariant),
+    // so it composes as one multiply here instead of touching the resolver. multMax = 1
+    // is the kill switch. The simulator reports a constant radius — device-only signal.
+    static let fatTouchBaselineRadius: CGFloat = 16
+    static let fatTouchMaxRadius: CGFloat = 28
+    static let fatTouchMultMax: Float = 1.6
+
+    /// Global clamp on the composed β. Worst-case boundary shift at 0.9 is
+    /// βceil·Δlogp/(2d̂) ≈ 0.9·2.7/(2·2.5σ) ≈ 6.2pt — still short of the 8.25pt
+    /// half-width protected by the shrunken 50% anchor floor, so even the maximal
+    /// multiplier stack can never pull a tap out of the anchor.
+    static let betaCeiling: Float = 0.9
+
+    /// 1.0 for fingertip-sized contacts (≤ baseline), linear up to `fatTouchMultMax` at
+    /// `fatTouchMaxRadius`. Pure — self-testable.
+    static func fatTouchBetaMultiplier(radius: CGFloat) -> Float {
+        guard fatTouchMultMax > 1 else { return 1 }  // kill switch
+        guard radius > fatTouchBaselineRadius else { return 1 }
+        let t = min((radius - fatTouchBaselineRadius) / (fatTouchMaxRadius - fatTouchBaselineRadius), 1)
+        return 1 + Float(t) * (fatTouchMultMax - 1)
+    }
+}
+
+/// Typing-cadence tracker: an EMA over inter-tap intervals. Two stored values, zero
+/// allocations, updated once per touch-down from `UITouch.timestamp` (event time on the
+/// `CACurrentMediaTime` clock — immune to main-thread delivery jitter).
+private struct KeyboardCadenceTracker {
+    /// Smoothed inter-tap interval in ms. 0 = cold (session start or post-pause): the
+    /// next tap is treated as deliberate.
+    private(set) var emaMs: Double = 0
+    private var lastTimestamp: TimeInterval = 0
+
+    mutating func registerTouchDown(at t: TimeInterval) {
+        defer { lastTimestamp = t }
+        guard lastTimestamp > 0 else { return }
+        let dtMs = (t - lastTimestamp) * 1000
+        guard dtMs >= 0 else { return }  // defensive: out-of-order event timestamps
+        if dtMs > ResolverTuning.cadenceResetGapMs {
+            emaMs = 0
+            return
+        }
+        // Rolling-type overlap delivers near-zero dt between fingers — floor it so a
+        // single overlap can't max out the multiplier.
+        let clamped = max(dtMs, ResolverTuning.cadenceMinIntervalMs)
+        emaMs = emaMs == 0 ? clamped : emaMs + ResolverTuning.cadenceAlpha * (clamped - emaMs)
+    }
+
+    /// β multiplier for the current cadence. Piecewise linear, monotone non-increasing:
+    /// sustained fast bursts lean harder on the language prior; slow deliberate taps
+    /// resolve almost purely geometrically (native feel). Pure — self-testable.
+    static func betaMultiplier(forEmaMs ema: Double) -> Float {
+        guard ema > 0 else { return ResolverTuning.cadenceMultMin }  // cold ⇒ deliberate
+        let fast = ResolverTuning.cadenceFastKneeMs
+        let neutral = ResolverTuning.cadenceNeutralKneeMs
+        let slow = ResolverTuning.cadenceSlowKneeMs
+        if ema <= fast { return ResolverTuning.cadenceMultMax }
+        if ema < neutral {
+            let t = Float((ema - fast) / (neutral - fast))
+            return ResolverTuning.cadenceMultMax + t * (1 - ResolverTuning.cadenceMultMax)
+        }
+        if ema < slow {
+            let t = Float((ema - neutral) / (slow - neutral))
+            return 1 + t * (ResolverTuning.cadenceMultMin - 1)
+        }
+        return ResolverTuning.cadenceMultMin
+    }
+}
+
 final class KeyboardGestureCoordinator: UIView {
 
     // MARK: - Dependencies
@@ -48,6 +138,11 @@ final class KeyboardGestureCoordinator: UIView {
     /// Tunables for the power-diagram resolver. β stays 0 until calibrated on the touch
     /// corpus; the flag gates activation independently so the path can be exercised first.
     private var probabilisticConfig = ProbabilisticHitResolver.Config.default
+
+    /// Typing-cadence EMA, fed by every touch-down (space/backspace are part of the typing
+    /// rhythm; rapid-delete repeats are a single touch-down so they can't spam it). Modulates
+    /// β and the anchor zone per tap in `smartResolvedResult` — see `ResolverTuning`.
+    private var cadence = KeyboardCadenceTracker()
 
     /// Debug overlay that paints the next-gen engine's actual decision cells. Shown only when
     /// the hit-overlay setting AND the next-gen engine are both on; recomputed off the hot path.
@@ -305,6 +400,9 @@ final class KeyboardGestureCoordinator: UIView {
             return
         }
         let tc = state.inputTracking.touchContext
+        // Cadence-neutral boundary: the overlay uses the static config (confidence-scaled
+        // only), so it shows the baseline cells — per-tap cadence/fat-touch modulation
+        // (ResolverTuning) shifts the live boundary around what's painted here.
         var cfg = probabilisticConfig
         cfg.beta *= tc.confidence
         let image = ProbabilisticHitResolver.debugCellImage(
@@ -425,6 +523,7 @@ final class KeyboardGestureCoordinator: UIView {
         for touch in touches {
             let id = ObjectIdentifier(touch)
             KeyboardResponsivenessTelemetry.shared.markTouchDown(id)
+            cadence.registerTouchDown(at: touch.timestamp)
             let point = touch.location(in: self)
             guard ensureLayoutReadyForTouch(), let rawKey = findKey(at: point) else {
                 TypingTelemetry.shared.recordUnresolvedTouchDown(layout: currentLayoutHash)
@@ -776,6 +875,9 @@ final class KeyboardGestureCoordinator: UIView {
         guard rawKey.rowIndex == resolvedKey.rowIndex else { return false }
         guard (state?.inputTracking.touchContext.confidence ?? 0) >= 0.35 else { return false }
         if rawKey.action == resolvedKey.action { return true }
+        // Deliberately the STATIC config — offset learning must never get more permissive
+        // when the burst anchor-shrink is active (ResolverTuning), or sloppy-burst taps
+        // would feed the offset model.
         let cfg = probabilisticConfig
         let anchor = rawKey.rect.insetBy(
             dx: rawKey.rect.width * (1 - cfg.anchorFracW) / 2,
@@ -813,10 +915,20 @@ final class KeyboardGestureCoordinator: UIView {
         let eligible = rawKey.isCharacterKey && currentPage == .letters && allowsTransforms
 
         func newEngine() -> ProbabilisticHitResolver.Result {
-            // Dynamic λ: scale the language pull by how confident the context is, so word-start
-            // (flat) taps lean on geometry and mid-word (peaked) taps get the full prior.
+            // Dynamic λ: scale the language pull by how confident the context is (word-start
+            // taps lean on geometry, mid-word taps get the full prior) AND by typing cadence
+            // (sustained fast bursts lean harder on the prior; slow deliberate taps resolve
+            // almost purely geometrically — native feel). Composed and clamped here; the
+            // resolver math itself is untouched.
             var cfg = probabilisticConfig
-            cfg.beta *= touchContext.confidence
+            let cadenceMult = KeyboardCadenceTracker.betaMultiplier(forEmaMs: cadence.emaMs)
+            cfg.beta = min(cfg.beta * touchContext.confidence * cadenceMult, ResolverTuning.betaCeiling)
+            // During sustained bursts, shrink the prior-immune anchor zone (60%×70% →
+            // 50%×60% at full burst) so the prior can rescue sloppier taps. Dead-center
+            // taps stay immune; slow taps keep the full anchor (shrink only when mult > 1).
+            let shrinkT = CGFloat(max(0, min(1, (cadenceMult - 1) / (ResolverTuning.cadenceMultMax - 1))))
+            cfg.anchorFracW -= ResolverTuning.anchorShrinkMaxW * shrinkT
+            cfg.anchorFracH -= ResolverTuning.anchorShrinkMaxH * shrinkT
             return ProbabilisticHitResolver.resolveWithCandidates(
                 rawKey: rawKey,
                 point: point,
