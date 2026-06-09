@@ -47,6 +47,9 @@ final class TypingTelemetry {
         let dy: Float
         let confidence: Float
         let margin: Float?
+        /// Composed cadence × fat-touch β multiplier in effect for this tap (nil for
+        /// pre-cadence records). Lets analysis bucket outcomes by typing regime.
+        let betaMult: Float?
     }
 
     /// Master switch, mirrored from `AppGroupSettings.Key.shadowLoggingEnabled`.
@@ -93,7 +96,8 @@ final class TypingTelemetry {
         runnerUp: KeyFrame?,
         point: CGPoint,
         confidence: Float,
-        margin: Float?
+        margin: Float?,
+        betaMult: Float? = nil
     ) {
         guard enabled else { return }
         let w = max(raw.rect.width, 1)
@@ -113,7 +117,8 @@ final class TypingTelemetry {
             dx: dx,
             dy: dy,
             confidence: confidence,
-            margin: margin
+            margin: margin,
+            betaMult: betaMult
         )
         if outcomes.count >= capacity { outcomes.removeFirst() }
         outcomes.append(event)

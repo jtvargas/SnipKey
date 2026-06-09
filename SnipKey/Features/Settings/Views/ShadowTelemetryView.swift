@@ -53,6 +53,8 @@ struct ShadowTelemetryView: View {
         let dy: Float
         let confidence: Float
         let margin: Float?
+        /// Composed cadence × fat-touch β multiplier (nil for pre-cadence records).
+        let betaMult: Float?
     }
 
     private struct CellStat: Identifiable {
