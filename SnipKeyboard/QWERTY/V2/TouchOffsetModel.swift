@@ -11,9 +11,8 @@
 //   • Clustered (3 row-bands × 2 lateral zones = 6) so it learns fast without overfitting.
 //   • Offsets stored as FRACTIONS of key size and keyed by a layout hash, so they survive
 //     rotation / device / keyboard-height changes (plan §8, Risk 3).
-//   • Confidence-gated: a keystroke is only learned from once it's "confirmed" — i.e. the user
-//     typed another character afterwards rather than immediately backspacing it. This avoids the
-//     self-reinforcing-error loop (plan Risk 1).
+//   • Confidence-gated: a keystroke is only learned from once it survives a short backspace
+//     window. This avoids the self-reinforcing-error loop (plan Risk 1).
 //   • Divergence guard: a cluster that drifts beyond half a key resets to neutral.
 //   • Trust ramps with sample count, so early taps barely move anything.
 //
@@ -46,8 +45,18 @@ final class TouchOffsetModel {
     /// Tied to the next-gen engine being enabled.
     var enabled = false
 
-    /// The just-typed keystroke awaiting confirmation (folded in only if not backspaced).
-    private var pending: (layoutKey: String, cluster: Int, fx: Float, fy: Float)?
+    private struct PendingSample {
+        let id: UInt64
+        let layoutKey: String
+        let cluster: Int
+        let fx: Float
+        let fy: Float
+        let task: Task<Void, Never>
+    }
+
+    /// Recently typed keystrokes awaiting the backspace survival window.
+    private var pending: [PendingSample] = []
+    private var nextPendingID: UInt64 = 0
     private var dirty = false
 
     private init() { load() }
@@ -68,7 +77,7 @@ final class TouchOffsetModel {
 
     // MARK: - Learning
 
-    /// Stage the just-committed character touch for learning (confirmed on the next character).
+    /// Stage the just-committed character touch for learning after the backspace-survival window.
     func record(keyFrame: KeyFrame, point: CGPoint, keyboardWidth: CGFloat, rowCount: Int) {
         guard enabled, keyFrame.isCharacterKey else { return }
         let w = max(keyFrame.rect.width, 1)
@@ -77,31 +86,55 @@ final class TouchOffsetModel {
         let fy = Float((point.y - keyFrame.rect.midY) / h)
         let latFrac = Float(keyFrame.rect.midX / max(keyboardWidth, 1))
         let idx = clusterIndex(row: keyFrame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
-        pending = (key(currentLayout), idx, fx, fy)
+        nextPendingID &+= 1
+        let id = nextPendingID
+        let task = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            self?.confirmPending(id: id)
+        }
+        pending.append(PendingSample(id: id, layoutKey: key(currentLayout), cluster: idx, fx: fx, fy: fy, task: task))
+        if pending.count > 16 {
+            let stale = pending.removeFirst()
+            stale.task.cancel()
+        }
     }
 
-    /// Fold the pending sample into its cluster's running mean (the keystroke survived).
+    /// Compatibility hook for older callers. Confirmation is now time-windowed per sample.
     func confirmPending() {
-        guard enabled, let p = pending else { pending = nil; return }
-        pending = nil
-        var cs = clusters[p.layoutKey] ?? Array(repeating: Cluster(), count: Self.clusterCount)
-        var c = cs[p.cluster]
+        guard enabled, let first = pending.first else { return }
+        first.task.cancel()
+        confirmPending(id: first.id)
+    }
+
+    private func confirmPending(id: UInt64) {
+        guard enabled, let index = pending.firstIndex(where: { $0.id == id }) else { return }
+        let sample = pending.remove(at: index)
+        fold(layoutKey: sample.layoutKey, cluster: sample.cluster, fx: sample.fx, fy: sample.fy)
+    }
+
+    private func fold(layoutKey: String, cluster: Int, fx: Float, fy: Float) {
+        var cs = clusters[layoutKey] ?? Array(repeating: Cluster(), count: Self.clusterCount)
+        var c = cs[cluster]
         if c.n == 0 {
-            c.fx = p.fx; c.fy = p.fy
+            c.fx = fx; c.fy = fy
         } else {
-            c.fx = (1 - Self.alpha) * c.fx + Self.alpha * p.fx
-            c.fy = (1 - Self.alpha) * c.fy + Self.alpha * p.fy
+            c.fx = (1 - Self.alpha) * c.fx + Self.alpha * fx
+            c.fy = (1 - Self.alpha) * c.fy + Self.alpha * fy
         }
         c.n += 1
         // Divergence guard — a runaway cluster resets to neutral.
         if abs(c.fx) > Self.maxFraction || abs(c.fy) > Self.maxFraction { c = Cluster() }
-        cs[p.cluster] = c
-        clusters[p.layoutKey] = cs
+        cs[cluster] = c
+        clusters[layoutKey] = cs
         dirty = true
     }
 
-    /// Drop the pending sample (the keystroke was immediately backspaced — likely an error).
-    func discardPending() { pending = nil }
+    /// Drop the most recent pending sample (the keystroke was quickly backspaced — likely an error).
+    func discardPending() {
+        guard let sample = pending.popLast() else { return }
+        sample.task.cancel()
+    }
 
     // MARK: - Clustering
 

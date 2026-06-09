@@ -430,13 +430,16 @@ final class KeyboardGestureCoordinator: UIView {
                 TypingTelemetry.shared.recordUnresolvedTouchDown(layout: currentLayoutHash)
                 continue
             }
-            let key = smartResolved(rawKey: rawKey, at: point)
+            let resolved = smartResolvedResult(rawKey: rawKey, at: point)
+            let key = resolved.key
             TypingTelemetry.shared.recordOutcome(
                 layout: currentLayoutHash,
                 raw: rawKey,
                 resolved: key,
+                runnerUp: resolved.runnerUp,
                 point: point,
-                confidence: state?.inputTracking.touchContext.confidence ?? 0
+                confidence: state?.inputTracking.touchContext.confidence ?? 0,
+                margin: resolved.margin
             )
             beginPress(touch: touch, key: key, rawKey: rawKey, at: point)
         }
@@ -498,14 +501,11 @@ final class KeyboardGestureCoordinator: UIView {
                 KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
             }
             // Per-user offset learning: a new character means the PREVIOUS one survived (wasn't
-            // backspaced) → confirm it, then stage this touch. Letters page only.
+            // backspaced quickly) after a short survival window. Letters page only.
             if useProbabilisticHitResolver, currentPage == .letters {
-                TouchOffsetModel.shared.confirmPending()
                 if shouldLearnTouchOffset(rawKey: rawKey, resolvedKey: key, point: point) {
                     TouchOffsetModel.shared.record(keyFrame: key, point: point,
                                                    keyboardWidth: bounds.width, rowCount: currentRowCount)
-                } else {
-                    TouchOffsetModel.shared.discardPending()
                 }
             }
             press.longPressTask = scheduleLongPress(touchID: id, key: key)
@@ -774,6 +774,7 @@ final class KeyboardGestureCoordinator: UIView {
     private func shouldLearnTouchOffset(rawKey: KeyFrame, resolvedKey: KeyFrame, point: CGPoint) -> Bool {
         guard rawKey.isCharacterKey, resolvedKey.isCharacterKey else { return false }
         guard rawKey.rowIndex == resolvedKey.rowIndex else { return false }
+        guard (state?.inputTracking.touchContext.confidence ?? 0) >= 0.35 else { return false }
         if rawKey.action == resolvedKey.action { return true }
         let cfg = probabilisticConfig
         let anchor = rawKey.rect.insetBy(
@@ -786,8 +787,20 @@ final class KeyboardGestureCoordinator: UIView {
     /// Apply bigram-weighted smart-touch correction to the raw `findKey` result.
     /// Non-character keys, and presses while smart touch is disabled, pass through unchanged.
     private func smartResolved(rawKey: KeyFrame, at point: CGPoint) -> KeyFrame {
-        guard let state else { return rawKey }
-        guard probabilisticTouchEnabled else { return rawKey }
+        smartResolvedResult(rawKey: rawKey, at: point).key
+    }
+
+    private struct SmartResolvedResult {
+        let key: KeyFrame
+        let runnerUp: KeyFrame?
+        let margin: Float?
+    }
+
+    private func smartResolvedResult(rawKey: KeyFrame, at point: CGPoint) -> SmartResolvedResult {
+        guard let state else { return SmartResolvedResult(key: rawKey, runnerUp: nil, margin: nil) }
+        guard probabilisticTouchEnabled else {
+            return SmartResolvedResult(key: rawKey, runnerUp: nil, margin: nil)
+        }
 
         // 2D power-diagram engine (V2 next-gen), gated to the letters page and fields that
         // allow smart transforms (excludes URL/email/number pads). Non-letters pages and
@@ -799,15 +812,15 @@ final class KeyboardGestureCoordinator: UIView {
         // these get the language-prior engine (symbols/number keys carry no English prior).
         let eligible = rawKey.isCharacterKey && currentPage == .letters && allowsTransforms
 
-        func newEngine() -> KeyFrame {
+        func newEngine() -> ProbabilisticHitResolver.Result {
             // Dynamic λ: scale the language pull by how confident the context is, so word-start
             // (flat) taps lean on geometry and mid-word (peaked) taps get the full prior.
             var cfg = probabilisticConfig
             cfg.beta *= touchContext.confidence
-            return ProbabilisticHitResolver.resolve(
+            return ProbabilisticHitResolver.resolveWithCandidates(
                 rawKey: rawKey,
                 point: point,
-                frames: resolvedFrames.filter { $0.rowIndex == rawKey.rowIndex },
+                frames: probabilisticCandidateFrames(for: rawKey),
                 weightFor: { str in touchContext.weight(for: str.first ?? " ") },
                 offsetFor: { [weak self] in self?.siteOffset(for: $0) ?? .zero },
                 config: cfg
@@ -826,17 +839,35 @@ final class KeyboardGestureCoordinator: UIView {
 
         // Acting resolver — what actually commits. New engine only when its flag is on AND
         // the touch is eligible; otherwise the legacy 1D path (unchanged).
-        let acting: KeyFrame = (useProbabilisticHitResolver && eligible) ? newEngine() : legacy()
+        let actingResult: SmartResolvedResult
+        if useProbabilisticHitResolver && eligible {
+            let result = newEngine()
+            actingResult = SmartResolvedResult(
+                key: result.winner,
+                runnerUp: result.runnerUp,
+                margin: result.runnerUp == nil ? nil : result.margin
+            )
+        } else {
+            actingResult = SmartResolvedResult(key: legacy(), runnerUp: nil, margin: nil)
+        }
 
         // Shadow mode: compute the OTHER resolver too (only when eligible) and log the
         // comparison without affecting what commits. The shadow cost is paid only when
         // shadow logging is on.
         if shadowLoggingEnabled, eligible {
-            let shadow: KeyFrame = useProbabilisticHitResolver ? legacy() : newEngine()
-            TypingTelemetry.shared.record(layout: currentLayoutHash, acting: acting, shadow: shadow, point: point)
+            let shadow: KeyFrame = useProbabilisticHitResolver ? legacy() : newEngine().winner
+            TypingTelemetry.shared.record(layout: currentLayoutHash, acting: actingResult.key, shadow: shadow, point: point)
         }
 
-        return acting
+        return actingResult
+    }
+
+    /// The 2D engine is allowed to correct vertical near-misses, so it scores the raw row plus
+    /// adjacent letter rows. Non-letter pages still use the legacy same-row path.
+    private func probabilisticCandidateFrames(for rawKey: KeyFrame) -> [KeyFrame] {
+        resolvedFrames.filter {
+            $0.isCharacterKey && abs($0.rowIndex - rawKey.rowIndex) <= 1
+        }
     }
 
     private func findKey(at point: CGPoint) -> KeyFrame? {
@@ -956,6 +987,7 @@ final class KeyboardGestureCoordinator: UIView {
             // The character was already committed on touch-down (Phase D). Undo that commit
             // so the eventual accent insertion replaces it cleanly.
             self.actions?.deleteBackward()
+            TouchOffsetModel.shared.discardPending()
             self.state?.inputTracking.recordAction(.other)
             // Accent menu becomes the visual focus — promote this touch to most-recent.
             self.mostRecentTouchID = id

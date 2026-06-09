@@ -31,6 +31,14 @@ import UIKit
 
 enum ProbabilisticHitResolver {
 
+    /// Full resolver output. `winner` is the key to commit; `runnerUp` is the next-best
+    /// geometric/language candidate for telemetry and future word-level hypothesis ranking.
+    struct Result {
+        let winner: KeyFrame
+        let runnerUp: KeyFrame?
+        let margin: Float
+    }
+
     /// Tunable parameters. Defaults are conservative starting points; calibrate `beta`,
     /// `sigmaX/Y`, and the anchor fractions on the touch corpus (plan §11, §14).
     struct Config {
@@ -88,8 +96,28 @@ enum ProbabilisticHitResolver {
         offsetFor: (KeyFrame) -> CGVector,
         config: Config
     ) -> KeyFrame {
+        resolveWithCandidates(
+            rawKey: rawKey,
+            point: point,
+            frames: frames,
+            weightFor: weightFor,
+            offsetFor: offsetFor,
+            config: config
+        ).winner
+    }
+
+    /// Resolve a touch-down point and keep the runner-up candidate. This has the same hot-path
+    /// cost as `resolve` plus one extra score comparison per candidate.
+    static func resolveWithCandidates(
+        rawKey: KeyFrame,
+        point: CGPoint,
+        frames: [KeyFrame],
+        weightFor: (String) -> Float,
+        offsetFor: (KeyFrame) -> CGVector,
+        config: Config
+    ) -> Result {
         // Only correct character-key touches. (Caller already gates, but be defensive.)
-        guard rawKey.isCharacterKey else { return rawKey }
+        guard rawKey.isCharacterKey else { return Result(winner: rawKey, runnerUp: nil, margin: 0) }
 
         // Anchor zone: a touch within the raw key's central strip is a deliberate, unambiguous
         // hit — never override it with the language prior.
@@ -97,7 +125,7 @@ enum ProbabilisticHitResolver {
             dx: rawKey.rect.width * (1 - config.anchorFracW) / 2,
             dy: rawKey.rect.height * (1 - config.anchorFracH) / 2
         )
-        if anchor.contains(point) { return rawKey }
+        if anchor.contains(point) { return Result(winner: rawKey, runnerUp: nil, margin: .greatestFiniteMagnitude) }
 
         let invSx = config.sigmaX > 0 ? 1 / config.sigmaX : 1
         let invSy = config.sigmaY > 0 ? 1 / config.sigmaY : 1
@@ -107,8 +135,10 @@ enum ProbabilisticHitResolver {
         let logFloor = logf(1.0 / Float(max(config.vocab, 2)))
 
         var bestScore = Float.greatestFiniteMagnitude
-        var best: KeyFrame = rawKey
+        var best: KeyFrame?
         var bestDist2: Float = .greatestFiniteMagnitude
+        var secondScore = Float.greatestFiniteMagnitude
+        var second: KeyFrame?
         var diagSum: Float = 0
         var charCount: Float = 0
 
@@ -130,9 +160,15 @@ enum ProbabilisticHitResolver {
             let score = dist2 - w
 
             if score < bestScore {
+                secondScore = bestScore
+                second = best
                 bestScore = score
                 best = f
                 bestDist2 = dist2
+            } else if score < secondScore {
+                if let best, f.action == best.action { continue }
+                secondScore = score
+                second = f
             }
 
             // Mean normalized key diagonal, for the anti-swallow radius.
@@ -145,10 +181,12 @@ enum ProbabilisticHitResolver {
         if charCount > 0 {
             let meanDiag = diagSum / charCount
             let maxDist = config.maxCaptureDiagonals * meanDiag
-            if sqrtf(bestDist2) > maxDist { return rawKey }
+            if sqrtf(bestDist2) > maxDist {
+                return Result(winner: rawKey, runnerUp: best, margin: max(0, secondScore - bestScore))
+            }
         }
 
-        return best
+        return Result(winner: best ?? rawKey, runnerUp: second, margin: max(0, secondScore - bestScore))
     }
 }
 

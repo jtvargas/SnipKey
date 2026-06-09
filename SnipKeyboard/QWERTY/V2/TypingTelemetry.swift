@@ -40,10 +40,13 @@ final class TypingTelemetry {
         let rawCol: Int
         let resolvedRow: Int
         let resolvedCol: Int
+        let runnerUpRow: Int?
+        let runnerUpCol: Int?
         let resolvedDiffered: Bool
         let dx: Float
         let dy: Float
         let confidence: Float
+        let margin: Float?
     }
 
     /// Master switch, mirrored from `AppGroupSettings.Key.shadowLoggingEnabled`.
@@ -83,7 +86,15 @@ final class TypingTelemetry {
         if !agreed { disagreements += 1 }
     }
 
-    func recordOutcome(layout: Int, raw: KeyFrame, resolved: KeyFrame, point: CGPoint, confidence: Float) {
+    func recordOutcome(
+        layout: Int,
+        raw: KeyFrame,
+        resolved: KeyFrame,
+        runnerUp: KeyFrame?,
+        point: CGPoint,
+        confidence: Float,
+        margin: Float?
+    ) {
         guard enabled else { return }
         let w = max(raw.rect.width, 1)
         let h = max(raw.rect.height, 1)
@@ -96,10 +107,13 @@ final class TypingTelemetry {
             rawCol: raw.columnIndex,
             resolvedRow: resolved.rowIndex,
             resolvedCol: resolved.columnIndex,
+            runnerUpRow: runnerUp?.rowIndex,
+            runnerUpCol: runnerUp?.columnIndex,
             resolvedDiffered: differed,
             dx: dx,
             dy: dy,
-            confidence: confidence
+            confidence: confidence,
+            margin: margin
         )
         if outcomes.count >= capacity { outcomes.removeFirst() }
         outcomes.append(event)
@@ -156,14 +170,42 @@ final class KeyboardResponsivenessTelemetry {
     static let shared = KeyboardResponsivenessTelemetry()
 
     struct Metric: Codable {
+        private static let capacity = 5000
+
         var count: Int = 0
         var totalMs: Double = 0
         var maxMs: Double = 0
+        var p50Ms: Double = 0
+        var p95Ms: Double = 0
+        var p99Ms: Double = 0
+        private var samples: [Double] = []
 
         mutating func add(_ ms: Double) {
             count += 1
             totalMs += ms
             maxMs = max(maxMs, ms)
+            if samples.count >= Self.capacity { samples.removeFirst() }
+            samples.append(ms)
+            updatePercentiles()
+        }
+
+        private mutating func updatePercentiles() {
+            guard !samples.isEmpty else {
+                p50Ms = 0
+                p95Ms = 0
+                p99Ms = 0
+                return
+            }
+            let sorted = samples.sorted()
+            p50Ms = Self.percentile(0.50, sorted: sorted)
+            p95Ms = Self.percentile(0.95, sorted: sorted)
+            p99Ms = Self.percentile(0.99, sorted: sorted)
+        }
+
+        private static func percentile(_ p: Double, sorted: [Double]) -> Double {
+            guard !sorted.isEmpty else { return 0 }
+            let idx = min(max(Int((Double(sorted.count - 1) * p).rounded()), 0), sorted.count - 1)
+            return sorted[idx]
         }
     }
 
