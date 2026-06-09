@@ -279,16 +279,16 @@ private extension UIColor {
 /// weight β, so they improve accuracy even with the language prior disabled.
 ///
 /// Expressed as FRACTIONS of key size so they survive rotation / layout / device changes
-/// (plan §8). The SIGN and magnitude are device/study-dependent and MUST be calibrated on the
-/// touch corpus (plan §11, §14) — so `scale` ships at 0 (no-op) with the literature-derived
-/// fractions captured here for calibration. Online per-user/per-region learning is a later tier.
+/// (plan §8). Serves as the COLD-START baseline: `TouchOffsetModel` crossfades it out as the
+/// per-user clusters earn trust (`user·trust + population·(1−trust)`), so a fresh install or
+/// fresh layout hash starts from the literature bias instead of zero. The DEBUG sign audit in
+/// `TouchOffsetModel.fold` validates the sign against fully-trusted learned clusters on-device.
 enum PopulationOffset {
 
-    /// Master scale. 0 ⇒ no offset (ships safe). Set to 1 (and confirm the sign) after the
-    /// corpus calibration in plan §11.
-    static var scale: CGFloat = 0
+    /// Master scale. 1 = literature fractions; 0 = kill switch (no-op).
+    static var scale: CGFloat = 1
 
-    /// Upward vertical bias as a fraction of key height, indexed by row band (top→bottom of
+    /// Downward vertical bias as a fraction of key height, indexed by row band (top→bottom of
     /// the alpha block). Captured from Azenkot & Zhai 2012 (~2/5/8 px on ~44pt keys ⇒
     /// ~0.045 / 0.11 / 0.18). The last value is reused for any extra rows.
     static let verticalFractionByRow: [CGFloat] = [0.045, 0.11, 0.18]
@@ -297,9 +297,12 @@ enum PopulationOffset {
     static func offset(for frame: KeyFrame) -> CGVector {
         guard scale != 0, frame.isCharacterKey, frame.rowIndex >= 0 else { return .zero }
         let row = min(frame.rowIndex, verticalFractionByRow.count - 1)
-        // Negative dy moves the site UP (screen-y grows downward). Final sign is confirmed
-        // during calibration; until then `scale == 0` makes this a no-op regardless.
-        let dy = -verticalFractionByRow[row] * frame.rect.height * scale
+        // POSITIVE dy moves the site DOWN (screen-y grows downward) — toward where touch
+        // centroids actually land: below the visually-aimed keycap (finger occlusion),
+        // increasingly so on lower rows. This matches the learned model's convention —
+        // `TouchOffsetModel` folds fy = (point.y − midY)/h (positive = below center) and
+        // applies +fy·h, so the baseline it crossfades against must share the sign.
+        let dy = verticalFractionByRow[row] * frame.rect.height * scale
         return CGVector(dx: 0, dy: dy)
     }
 }

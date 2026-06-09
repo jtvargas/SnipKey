@@ -63,16 +63,22 @@ final class TouchOffsetModel {
 
     // MARK: - Query (hot path)
 
-    /// Learned site offset for `frame` in points. `.zero` until enough samples accumulate.
+    /// Site offset for `frame` in points: the learned per-user offset crossfaded with the
+    /// population baseline as the cluster earns trust — `user·trust + population·(1−trust)`.
+    /// The existing `·trust` ramp was already a crossfade against a zero baseline; the
+    /// population offset replaces the zero, so fresh installs and fresh layout hashes start
+    /// from the literature bias instead of nothing.
     func offset(for frame: KeyFrame, keyboardWidth: CGFloat, rowCount: Int) -> CGVector {
         guard enabled, frame.isCharacterKey else { return .zero }
-        guard let cs = clusters[key(currentLayout)] else { return .zero }
+        let pop = PopulationOffset.offset(for: frame)
+        guard let cs = clusters[key(currentLayout)] else { return pop }  // cold start
         let latFrac = Float(frame.rect.midX / max(keyboardWidth, 1))
         let idx = clusterIndex(row: frame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
         let c = cs[idx]
-        let trust = min(Float(c.n) / Self.learnThreshold, 1)
-        return CGVector(dx: CGFloat(c.fx * trust) * frame.rect.width,
-                        dy: CGFloat(c.fy * trust) * frame.rect.height)
+        let trust = CGFloat(min(Float(c.n) / Self.learnThreshold, 1))
+        // Population dx is 0, so only dy blends.
+        return CGVector(dx: CGFloat(c.fx) * trust * frame.rect.width,
+                        dy: CGFloat(c.fy) * trust * frame.rect.height + pop.dy * (1 - trust))
     }
 
     // MARK: - Learning
@@ -125,6 +131,15 @@ final class TouchOffsetModel {
         c.n += 1
         // Divergence guard — a runaway cluster resets to neutral.
         if abs(c.fx) > Self.maxFraction || abs(c.fy) > Self.maxFraction { c = Cluster() }
+        #if DEBUG
+        // Population-offset sign audit: the moment a cluster becomes fully trusted, its
+        // learned vertical sign should agree with the population baseline (+down). A
+        // disagreement here is the on-device signal that `PopulationOffset`'s sign is
+        // wrong for this user/device profile — review before trusting the cold start.
+        if c.n == Int(Self.learnThreshold), c.fy < -0.02 {
+            NSLog("[SnipKeyboard] PopulationOffset sign audit: cluster %d learned fy=%.3f (UP) but population baseline is DOWN — review PopulationOffset sign", cluster, c.fy)
+        }
+        #endif
         cs[cluster] = c
         clusters[layoutKey] = cs
         dirty = true
@@ -170,3 +185,81 @@ final class TouchOffsetModel {
         }
     }
 }
+
+#if DEBUG
+extension TouchOffsetModel {
+    /// One-time invariant check for the population/user offset crossfade: pure population
+    /// for unseen layouts and untrusted clusters, pure user at full trust, the exact
+    /// midpoint halfway up the ramp, bounded output, and the population sign lock (+down
+    /// for every row band). Logs (does not crash) on violation.
+    static func runCrossfadeSelfTest() {
+        var failures: [String] = []
+        let model = TouchOffsetModel()
+        model.enabled = true
+        model.currentLayout = Int.min   // synthetic layout key — never a real geometry hash
+
+        let w: CGFloat = 40, h: CGFloat = 44
+        let rect = CGRect(x: 10, y: 100, width: w, height: h)
+        func frame(row: Int) -> KeyFrame {
+            KeyFrame(action: .character("a"), rect: rect, hitRect: rect,
+                     rowIndex: row, columnIndex: 0, isCharacterKey: true)
+        }
+
+        // Sign lock: the population baseline must point DOWN (+) for every row band —
+        // it crossfades against the learned model, whose convention is site-toward-landing.
+        for row in 0..<3 where PopulationOffset.offset(for: frame(row: row)).dy < 0 {
+            failures.append("population dy negative (UP) for row \(row)")
+        }
+
+        let f = frame(row: 2)   // 4-row layout ⇒ band 1; midX 30/393 ⇒ lateral 0 ⇒ cluster 2
+        let pop = PopulationOffset.offset(for: f)
+
+        // Unseen layout ⇒ pure population (the cold-start fix).
+        let cold = model.offset(for: f, keyboardWidth: 393, rowCount: 4)
+        if abs(cold.dy - pop.dy) > 0.001 || abs(cold.dx) > 0.001 {
+            failures.append("cold start is not pure population: \(cold) vs \(pop)")
+        }
+
+        // Synthetic cluster landing ABOVE center (opposite the population sign) so the
+        // crossfade direction is unambiguous in the assertions below.
+        let userFx: Float = 0.1, userFy: Float = -0.2
+        func setCluster(n: Int) {
+            var cs = Array(repeating: Cluster(), count: Self.clusterCount)
+            cs[2] = Cluster(fx: userFx, fy: userFy, n: n)
+            model.clusters[String(model.currentLayout)] = cs
+        }
+
+        setCluster(n: 0)        // zero trust ⇒ still pure population
+        let untrusted = model.offset(for: f, keyboardWidth: 393, rowCount: 4)
+        if abs(untrusted.dy - pop.dy) > 0.001 || abs(untrusted.dx) > 0.001 {
+            failures.append("untrusted cluster is not pure population: \(untrusted)")
+        }
+
+        setCluster(n: Int(Self.learnThreshold))   // full trust ⇒ pure user
+        let trusted = model.offset(for: f, keyboardWidth: 393, rowCount: 4)
+        if abs(trusted.dx - CGFloat(userFx) * w) > 0.001 || abs(trusted.dy - CGFloat(userFy) * h) > 0.001 {
+            failures.append("fully-trusted cluster is not pure user offset: \(trusted)")
+        }
+
+        setCluster(n: Int(Self.learnThreshold) / 2)   // half trust ⇒ exact midpoint
+        let mid = model.offset(for: f, keyboardWidth: 393, rowCount: 4)
+        let expectedMidDy = CGFloat(userFy) * 0.5 * h + pop.dy * 0.5
+        if abs(mid.dx - CGFloat(userFx) * 0.5 * w) > 0.001 || abs(mid.dy - expectedMidDy) > 0.001 {
+            failures.append("half-trust crossfade is not the midpoint: \(mid) expected dy \(expectedMidDy)")
+        }
+
+        // Bound: |offset| can never exceed the divergence-guard fraction of the key plus
+        // the population maximum.
+        let bound = CGFloat(Self.maxFraction) * max(w, h) + PopulationOffset.verticalFractionByRow.max()! * h
+        for o in [cold, untrusted, trusted, mid] where abs(o.dx) > bound || abs(o.dy) > bound {
+            failures.append("offset exceeds bound: \(o)")
+        }
+
+        if failures.isEmpty {
+            NSLog("[SnipKeyboard] offset-crossfade self-test passed")
+        } else {
+            for fail in failures { NSLog("[SnipKeyboard] offset-crossfade SELF-TEST FAILED: %@", fail) }
+        }
+    }
+}
+#endif
