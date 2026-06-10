@@ -51,6 +51,7 @@ struct KeyboardToolbarView: View {
     @Environment(\.predictiveTextState) private var predictiveState
     @Environment(\.reminderSuggestionState) private var reminderState
     @Environment(\.timerSuggestionState) private var timerState
+    @Environment(\.clipboardState) private var clipboardState
     @Environment(\.modelContext) private var modelContext
 
     /// All snippets from SwiftData — used for slash command matching.
@@ -109,6 +110,27 @@ struct KeyboardToolbarView: View {
                 } else {
                     Spacer()
                 }
+            }
+
+            // Paste button — inserts the clipboard's text at the cursor. Only rendered when the
+            // clipboard has text AND no full-width flow (slash suggestions, reminder/timer pill)
+            // owns the toolbar. Idle ↔ predictive transitions keep it stable (same trailing slot).
+            if clipboardState.hasContent,
+               !slashState.isActive, !reminderState.isActive, !timerState.isActive {
+                Button {
+                    KeyboardHaptics.specialKey()
+                    actions.pasteFromClipboard()
+                } label: {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.custom("IBMPlexMono-Medium", size: 16))
+                        .foregroundStyle(Color(.secondaryLabel))
+                        .frame(minWidth: 44, maxHeight: .infinity)
+                        .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable
+                        .contentShape(Rectangle())                    // whole frame is the tap target
+                        .debugHitOverlay()
+                }
+                .buttonStyle(SuggestionPillButtonStyle())             // instant pressed highlight, like pills
+                .accessibilityLabel("Paste from clipboard")
             }
 
 //            // Reminder button — schedules a local notification (fires in 2 min; 10s DEBUG).

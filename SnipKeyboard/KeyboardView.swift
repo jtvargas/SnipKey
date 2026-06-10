@@ -898,6 +898,7 @@ struct KeyboardViewExt: View {
     var predictiveTextState: PredictiveTextState
     var reminderSuggestionState: ReminderSuggestionState
     var timerSuggestionState: TimerSuggestionState
+    var clipboardState: ClipboardState
 
     var body: some View {
         Group {
@@ -921,6 +922,7 @@ struct KeyboardViewExt: View {
                 .environment(\.predictiveTextState, predictiveTextState)
                 .environment(\.reminderSuggestionState, reminderSuggestionState)
                 .environment(\.timerSuggestionState, timerSuggestionState)
+                .environment(\.clipboardState, clipboardState)
             } else {
                 // Reserve the full keyboard rect so the system shows the keyboard
                 // frame instantly. No ProgressView — it would draw and animate,
@@ -971,7 +973,8 @@ struct KeyboardViewExt: View {
         slashCommandState: SlashCommandState(),
         predictiveTextState: PredictiveTextState(),
         reminderSuggestionState: ReminderSuggestionState(),
-        timerSuggestionState: TimerSuggestionState()
+        timerSuggestionState: TimerSuggestionState(),
+        clipboardState: ClipboardState()
     )
     .onAppear {
         settingsViewModel.modelContext = tempSettingsContainer.mainContext

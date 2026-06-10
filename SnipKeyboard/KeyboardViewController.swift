@@ -80,6 +80,17 @@ class KeyboardViewController: UIInputViewController {
     /// Updated from the coalesced side-effect flush, gated on the Timer integration. See TimerParseEngine.
     let timerSuggestionState = TimerSuggestionState()
 
+    // MARK: - Clipboard Paste
+
+    /// Observable clipboard availability — drives the toolbar paste button. Refreshed in
+    /// `viewWillAppear` and by `clipboardPollTimer` while the keyboard is visible.
+    let clipboardState = ClipboardState()
+
+    /// 1s metadata-only poll (changeCount, then hasStrings/hasURLs only when it moved) so the
+    /// paste button appears live when the user copies text while the keyboard stays open.
+    /// Visibility-scoped: started in `viewWillAppear`, invalidated in `viewWillDisappear`.
+    private var clipboardPollTimer: Timer?
+
     // MARK: - Reminder destination (Integrations)
 
     /// Active reminder destination + integration enable flag. Read ONCE per session in
@@ -200,6 +211,16 @@ class KeyboardViewController: UIInputViewController {
                     return
                 }
                 self.routeTimer(duration: duration, label: label)
+            },
+            pasteFromClipboard: { [weak self] in
+                guard let self, self.hasFullAccess else { return }
+                let pb = UIPasteboard.general
+                // Content read — the one call that can trigger the iOS 16 paste prompt.
+                guard let text = pb.string ?? pb.url?.absoluteString, !text.isEmpty else { return }
+                self.textDocumentProxy.insertText(text)
+                // Pasted content is arbitrary — never carries a smart space (snippet precedent).
+                self.qwertyState.inputTracking.pendingSmartSpace = false
+                self.scheduleSideEffectFlush()
             },
             evaluateSlashCommand: { [weak self] in
                 // V1 path: read context and evaluate synchronously.
@@ -351,7 +372,8 @@ class KeyboardViewController: UIInputViewController {
                 slashCommandState: slashCommandState,
                 predictiveTextState: predictiveTextState,
                 reminderSuggestionState: reminderSuggestionState,
-                timerSuggestionState: timerSuggestionState
+                timerSuggestionState: timerSuggestionState,
+                clipboardState: clipboardState
             )
         )
         
@@ -504,14 +526,35 @@ class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
+        startClipboardPolling()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        stopClipboardPolling()
         // Persist shadow-mode telemetry + learned per-user offsets off the hot path.
         TypingTelemetry.shared.flush()
         KeyboardResponsivenessTelemetry.shared.flush()
         TouchOffsetModel.shared.flush()
+    }
+
+    // MARK: - Clipboard Polling
+
+    private func startClipboardPolling() {
+        guard hasFullAccess else { return }   // null pasteboard without Full Access — skip the XPC
+        clipboardState.refresh()              // immediate refresh on appear
+        guard clipboardPollTimer == nil else { return }
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.clipboardState.refresh()    // main run loop → main thread
+        }
+        timer.tolerance = 0.5
+        RunLoop.main.add(timer, forMode: .default)  // pauses during pill scroll tracking
+        clipboardPollTimer = timer
+    }
+
+    private func stopClipboardPolling() {
+        clipboardPollTimer?.invalidate()
+        clipboardPollTimer = nil
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {

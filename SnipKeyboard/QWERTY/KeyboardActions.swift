@@ -104,6 +104,11 @@ struct KeyboardActions {
     /// display title. Schedules a local SnipKey notification when it ends. See TimerParseEngine.
     let createTimer: (_ duration: TimeInterval, _ label: String) -> Void
 
+    /// Insert the clipboard's text into the active text field (toolbar paste button).
+    /// The controller guards Full Access; the `.string` read here is the one pasteboard
+    /// call that can trigger the iOS 16 "Allow Paste" prompt.
+    let pasteFromClipboard: () -> Void
+
     /// Evaluate the current text context for slash command patterns.
     /// Called after character insertion, deletion, and other key events.
     let evaluateSlashCommand: () -> Void
@@ -155,6 +160,7 @@ struct KeyboardActions {
         requestReminder: {},
         createReminder: { _, _ in },
         createTimer: { _, _ in },
+        pasteFromClipboard: {},
         evaluateSlashCommand: {},
         evaluatePredictiveText: {},
         scheduleSideEffects: {},
@@ -169,4 +175,37 @@ struct KeyboardActions {
 
 extension EnvironmentValues {
     @Entry var keyboardActions: KeyboardActions = .noop
+}
+
+// MARK: - Clipboard State
+
+/// Observable clipboard availability — drives the toolbar paste button's visibility.
+/// Owned by `KeyboardViewController`, refreshed on `viewWillAppear` and by a 1s poll
+/// while the keyboard is visible (UIPasteboard.changedNotification only fires
+/// in-process, so the host app's Copy action can only be caught by polling).
+@MainActor
+@Observable
+final class ClipboardState {
+    var hasContent: Bool = false
+
+    /// Cached pasteboard generation — lets each poll tick skip the hasStrings/hasURLs
+    /// reads (and any observable mutation) when nothing was copied since last tick.
+    @ObservationIgnored private var lastChangeCount: Int = -1
+
+    nonisolated init() {}
+
+    /// Metadata-only refresh — changeCount + hasStrings/hasURLs never trigger
+    /// the iOS 16 paste prompt. Only content reads (.string) do.
+    func refresh() {
+        let pb = UIPasteboard.general
+        let count = pb.changeCount
+        guard count != lastChangeCount else { return }
+        lastChangeCount = count
+        let newValue = pb.hasStrings || pb.hasURLs
+        if hasContent != newValue { hasContent = newValue }
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var clipboardState: ClipboardState = ClipboardState()
 }
