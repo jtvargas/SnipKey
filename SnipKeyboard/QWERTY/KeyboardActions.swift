@@ -47,11 +47,6 @@ struct HostInputTraits {
         KeyboardLayoutProfile(keyboardType: keyboardType)
     }
 
-    /// True when SnipKey may rewrite a completed word automatically. Manual suggestions can
-    /// still be shown when this is false, but space/backspace should not mutate typed text.
-    var allowsAutomaticCorrection: Bool {
-        allowsSmartTransforms && autocorrectionType != .no && spellCheckingType != .no
-    }
 }
 
 /// Wraps textDocumentProxy operations as closures, passed from
@@ -92,6 +87,11 @@ struct KeyboardActions {
     /// Open the main SnipKey app (for settings access from the keyboard)
     let openApp: () -> Void
 
+    /// Authoritative Full Access check (UIInputViewController.hasFullAccess).
+    /// Prefer this over the pasteboard-probing `checkFullAccess()` helper, which
+    /// false-negatives on an empty pasteboard.
+    let hasFullAccess: () -> Bool
+
     /// Schedule a generic local notification from the keyboard (🔔 quick button). The controller
     /// supplies `hasFullAccess` and the delay. See LOCAL_NOTIFICATIONS.md.
     let requestReminder: () -> Void
@@ -104,6 +104,11 @@ struct KeyboardActions {
     /// display title. Schedules a local SnipKey notification when it ends. See TimerParseEngine.
     let createTimer: (_ duration: TimeInterval, _ label: String) -> Void
 
+    /// Insert the clipboard's text into the active text field (toolbar paste button).
+    /// The controller guards Full Access; the `.string` read here is the one pasteboard
+    /// call that can trigger the iOS 16 "Allow Paste" prompt.
+    let pasteFromClipboard: () -> Void
+
     /// Evaluate the current text context for slash command patterns.
     /// Called after character insertion, deletion, and other key events.
     let evaluateSlashCommand: () -> Void
@@ -111,18 +116,6 @@ struct KeyboardActions {
     /// Evaluate the current text context for predictive text suggestions.
     /// Called after character insertion, deletion, and other key events.
     let evaluatePredictiveText: () -> Void
-
-    /// Apply a high-confidence predictive correction before a user-typed space is committed.
-    /// Returns true when the document was mutated. The controller owns the actual replacement
-    /// because it has access to `PredictiveTextState` and `textDocumentProxy`.
-    let applyPendingPredictiveCorrection: () -> Bool
-
-    /// Revert the most recent automatic correction when the user's next action is backspace.
-    /// Returns true when it handled the backspace and the caller should skip normal deletion.
-    let revertLastPredictiveCorrection: () -> Bool
-
-    /// Clear the pending immediate-backspace undo window after any non-backspace follow-up.
-    let clearPendingPredictiveCorrection: () -> Void
 
     /// Coalesced post-commit side-effects for the V2 path. Instead of synchronously
     /// reading `documentContextBeforeInput` and running slash + predictive evaluation
@@ -163,14 +156,13 @@ struct KeyboardActions {
         showPopup: { _, _, _ in },
         hidePopup: {},
         openApp: {},
+        hasFullAccess: { false },
         requestReminder: {},
         createReminder: { _, _ in },
         createTimer: { _, _ in },
+        pasteFromClipboard: {},
         evaluateSlashCommand: {},
         evaluatePredictiveText: {},
-        applyPendingPredictiveCorrection: { false },
-        revertLastPredictiveCorrection: { false },
-        clearPendingPredictiveCorrection: {},
         scheduleSideEffects: {},
         adjustCaret: { _ in },
         inputTraits: { .defaults },
@@ -183,4 +175,37 @@ struct KeyboardActions {
 
 extension EnvironmentValues {
     @Entry var keyboardActions: KeyboardActions = .noop
+}
+
+// MARK: - Clipboard State
+
+/// Observable clipboard availability — drives the toolbar paste button's visibility.
+/// Owned by `KeyboardViewController`, refreshed on `viewWillAppear` and by a 1s poll
+/// while the keyboard is visible (UIPasteboard.changedNotification only fires
+/// in-process, so the host app's Copy action can only be caught by polling).
+@MainActor
+@Observable
+final class ClipboardState {
+    var hasContent: Bool = false
+
+    /// Cached pasteboard generation — lets each poll tick skip the hasStrings/hasURLs
+    /// reads (and any observable mutation) when nothing was copied since last tick.
+    @ObservationIgnored private var lastChangeCount: Int = -1
+
+    nonisolated init() {}
+
+    /// Metadata-only refresh — changeCount + hasStrings/hasURLs never trigger
+    /// the iOS 16 paste prompt. Only content reads (.string) do.
+    func refresh() {
+        let pb = UIPasteboard.general
+        let count = pb.changeCount
+        guard count != lastChangeCount else { return }
+        lastChangeCount = count
+        let newValue = pb.hasStrings || pb.hasURLs
+        if hasContent != newValue { hasContent = newValue }
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var clipboardState: ClipboardState = ClipboardState()
 }

@@ -34,13 +34,35 @@ final class TypingTelemetry {
         let dy: Float        // normalized y within acting key rect [0,1]
     }
 
+    struct TouchOutcome: Codable {
+        let layout: Int
+        let rawRow: Int
+        let rawCol: Int
+        let resolvedRow: Int
+        let resolvedCol: Int
+        let runnerUpRow: Int?
+        let runnerUpCol: Int?
+        let resolvedDiffered: Bool
+        let dx: Float
+        let dy: Float
+        let confidence: Float
+        let margin: Float?
+        /// Composed cadence × fat-touch β multiplier in effect for this tap (nil for
+        /// pre-cadence records). Lets analysis bucket outcomes by typing regime.
+        let betaMult: Float?
+    }
+
     /// Master switch, mirrored from `AppGroupSettings.Key.shadowLoggingEnabled`.
     var enabled = false
 
     private var buffer: [Event] = []
+    private var outcomes: [TouchOutcome] = []
     private let capacity = 5000
     private(set) var total = 0
     private(set) var disagreements = 0
+    private(set) var outcomeTotal = 0
+    private(set) var unresolvedTouchDowns = 0
+    private(set) var rawResolvedDisagreements = 0
 
     private init() {}
 
@@ -67,10 +89,52 @@ final class TypingTelemetry {
         if !agreed { disagreements += 1 }
     }
 
+    func recordOutcome(
+        layout: Int,
+        raw: KeyFrame,
+        resolved: KeyFrame,
+        runnerUp: KeyFrame?,
+        point: CGPoint,
+        confidence: Float,
+        margin: Float?,
+        betaMult: Float? = nil
+    ) {
+        guard enabled else { return }
+        let w = max(raw.rect.width, 1)
+        let h = max(raw.rect.height, 1)
+        let dx = Float(min(max((point.x - raw.rect.minX) / w, 0), 1))
+        let dy = Float(min(max((point.y - raw.rect.minY) / h, 0), 1))
+        let differed = raw.action != resolved.action
+        let event = TouchOutcome(
+            layout: layout,
+            rawRow: raw.rowIndex,
+            rawCol: raw.columnIndex,
+            resolvedRow: resolved.rowIndex,
+            resolvedCol: resolved.columnIndex,
+            runnerUpRow: runnerUp?.rowIndex,
+            runnerUpCol: runnerUp?.columnIndex,
+            resolvedDiffered: differed,
+            dx: dx,
+            dy: dy,
+            confidence: confidence,
+            margin: margin,
+            betaMult: betaMult
+        )
+        if outcomes.count >= capacity { outcomes.removeFirst() }
+        outcomes.append(event)
+        outcomeTotal += 1
+        if differed { rawResolvedDisagreements += 1 }
+    }
+
+    func recordUnresolvedTouchDown(layout: Int) {
+        guard enabled else { return }
+        unresolvedTouchDowns += 1
+    }
+
     /// Persist buffer + summary to the App Group container as JSON. Call OFF the hot path
     /// (e.g. `viewWillDisappear`). No-op when disabled or empty.
     func flush() {
-        guard enabled, !buffer.isEmpty else { return }
+        guard enabled, !buffer.isEmpty || !outcomes.isEmpty || unresolvedTouchDowns > 0 else { return }
         guard let dir = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: AppGroupSettings.suite
         ) else { return }
@@ -80,12 +144,20 @@ final class TypingTelemetry {
             let disagreements: Int
             let disagreementRate: Double
             let events: [Event]
+            let outcomeTotal: Int
+            let unresolvedTouchDowns: Int
+            let rawResolvedDisagreements: Int
+            let outcomes: [TouchOutcome]
         }
         let payload = Payload(
             total: total,
             disagreements: disagreements,
             disagreementRate: disagreementRate,
-            events: buffer
+            events: buffer,
+            outcomeTotal: outcomeTotal,
+            unresolvedTouchDowns: unresolvedTouchDowns,
+            rawResolvedDisagreements: rawResolvedDisagreements,
+            outcomes: outcomes
         )
         if let data = try? JSONEncoder().encode(payload) {
             try? data.write(to: url, options: .atomic)
@@ -103,14 +175,42 @@ final class KeyboardResponsivenessTelemetry {
     static let shared = KeyboardResponsivenessTelemetry()
 
     struct Metric: Codable {
+        private static let capacity = 5000
+
         var count: Int = 0
         var totalMs: Double = 0
         var maxMs: Double = 0
+        var p50Ms: Double = 0
+        var p95Ms: Double = 0
+        var p99Ms: Double = 0
+        private var samples: [Double] = []
 
         mutating func add(_ ms: Double) {
             count += 1
             totalMs += ms
             maxMs = max(maxMs, ms)
+            if samples.count >= Self.capacity { samples.removeFirst() }
+            samples.append(ms)
+            updatePercentiles()
+        }
+
+        private mutating func updatePercentiles() {
+            guard !samples.isEmpty else {
+                p50Ms = 0
+                p95Ms = 0
+                p99Ms = 0
+                return
+            }
+            let sorted = samples.sorted()
+            p50Ms = Self.percentile(0.50, sorted: sorted)
+            p95Ms = Self.percentile(0.95, sorted: sorted)
+            p99Ms = Self.percentile(0.99, sorted: sorted)
+        }
+
+        private static func percentile(_ p: Double, sorted: [Double]) -> Double {
+            guard !sorted.isEmpty else { return 0 }
+            let idx = min(max(Int((Double(sorted.count - 1) * p).rounded()), 0), sorted.count - 1)
+            return sorted[idx]
         }
     }
 

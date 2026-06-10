@@ -81,8 +81,8 @@ final class SettingsModel {
     /// to capitalize. Default ON to match iOS defaults.
     var autoCapitalizationEnabled: Bool = true
 
-    /// When true, pressing space accepts the high-confidence center word suggestion. Default OFF
-    /// so the improved toolbar suggestions are visible without automatically rewriting text.
+    /// Legacy inert field retained for SwiftData compatibility. Space no longer accepts
+    /// predictive suggestions; toolbar suggestions are manual-only.
     var autoSuggestionSpaceEnabled: Bool = false
 
     /// DEBUG only: overlays each key's tiling touch cell (its `hitRect`) with a visible
@@ -159,6 +159,7 @@ enum AppGroupSettings {
         static let useNativeKeyboardV2 = "useNativeKeyboardV2"
         static let probabilisticTouchEnabled = "probabilisticTouchEnabled"
         static let autoCapitalizationEnabled = "autoCapitalizationEnabled"
+        /// Legacy unused key retained so old App Group values do not need migration.
         static let autoSuggestionSpaceEnabled = "autoSuggestionSpaceEnabled"
         static let debugHitOverlayEnabled = "debugHitOverlayEnabled"
         /// Staged-enablement flag for the 2D power-diagram hit resolver (Keyboard V2

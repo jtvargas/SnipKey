@@ -34,6 +34,27 @@ struct ShadowTelemetryView: View {
         let disagreements: Int
         let disagreementRate: Double
         let events: [Event]
+        let outcomeTotal: Int?
+        let unresolvedTouchDowns: Int?
+        let rawResolvedDisagreements: Int?
+        let outcomes: [TouchOutcome]?
+    }
+
+    private struct TouchOutcome: Codable {
+        let layout: Int
+        let rawRow: Int
+        let rawCol: Int
+        let resolvedRow: Int
+        let resolvedCol: Int
+        let runnerUpRow: Int?
+        let runnerUpCol: Int?
+        let resolvedDiffered: Bool
+        let dx: Float
+        let dy: Float
+        let confidence: Float
+        let margin: Float?
+        /// Composed cadence × fat-touch β multiplier (nil for pre-cadence records).
+        let betaMult: Float?
     }
 
     private struct CellStat: Identifiable {
@@ -92,6 +113,12 @@ struct ShadowTelemetryView: View {
             row("Touches sampled", "\(p.total)")
             row("Disagreements", "\(p.disagreements)")
             row("Disagreement rate", String(format: "%.2f%%", p.disagreementRate * 100))
+            row("Touch outcomes", "\(p.outcomeTotal ?? 0)")
+            row("Unresolved touch-downs", "\(p.unresolvedTouchDowns ?? 0)",
+                tint: (p.unresolvedTouchDowns ?? 0) == 0 ? .green : .orange)
+            row("Raw→resolved changes", "\(p.rawResolvedDisagreements ?? 0)")
+            row("Mean confidence", String(format: "%.3f", meanConfidence(p)))
+            row("Mean runner-up margin", String(format: "%.3f", meanMargin(p)))
             row("Rollout gate (< 3%)", p.disagreementRate < 0.03 ? "PASS" : "review",
                 tint: p.disagreementRate < 0.03 ? .green : .orange)
         }
@@ -172,6 +199,17 @@ struct ShadowTelemetryView: View {
             map[key] = s
         }
         return Array(map.values)
+    }
+
+    private func meanConfidence(_ payload: Payload) -> Float {
+        guard let outcomes = payload.outcomes, !outcomes.isEmpty else { return 0 }
+        return outcomes.reduce(Float(0)) { $0 + $1.confidence } / Float(outcomes.count)
+    }
+
+    private func meanMargin(_ payload: Payload) -> Float {
+        let margins = payload.outcomes?.compactMap(\.margin) ?? []
+        guard !margins.isEmpty else { return 0 }
+        return margins.reduce(Float(0), +) / Float(margins.count)
     }
 
     private func load() {

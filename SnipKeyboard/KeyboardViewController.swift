@@ -70,10 +70,6 @@ class KeyboardViewController: UIInputViewController {
     /// Observable predictive text state — shared with SwiftUI toolbar for suggestions display.
     let predictiveTextState = PredictiveTextState()
 
-    /// Last automatic word correction. Kept outside observable state so the immediate
-    /// backspace undo window never invalidates SwiftUI while the user keeps typing.
-    private var lastPredictiveCorrection: PredictiveCorrectionSnapshot?
-
     // MARK: - NLP Reminders
 
     /// Observable reminder state — drives the "Create reminder" pill when the user types
@@ -83,6 +79,17 @@ class KeyboardViewController: UIInputViewController {
     /// Observable timer state — drives the "Create timer" pill when the user types `/timer <dur>`.
     /// Updated from the coalesced side-effect flush, gated on the Timer integration. See TimerParseEngine.
     let timerSuggestionState = TimerSuggestionState()
+
+    // MARK: - Clipboard Paste
+
+    /// Observable clipboard availability — drives the toolbar paste button. Refreshed in
+    /// `viewWillAppear` and by `clipboardPollTimer` while the keyboard is visible.
+    let clipboardState = ClipboardState()
+
+    /// 1s metadata-only poll (changeCount, then hasStrings/hasURLs only when it moved) so the
+    /// paste button appears live when the user copies text while the keyboard stays open.
+    /// Visibility-scoped: started in `viewWillAppear`, invalidated in `viewWillDisappear`.
+    private var clipboardPollTimer: Timer?
 
     // MARK: - Reminder destination (Integrations)
 
@@ -100,10 +107,6 @@ class KeyboardViewController: UIInputViewController {
     /// Cached once per keyboard session. Avoids App Group UserDefaults reads from space,
     /// auto-cap, and text-change paths while the user is actively typing.
     private var autoCapitalizationEnabled = true
-
-    /// Whether a user-typed space accepts the high-confidence center word suggestion.
-    /// The toolbar still shows improved candidates when this is false.
-    private var autoSuggestionSpaceEnabled = false
 
     /// Cached host field input traits (keyboard type, autocorrect/spell/smart-punctuation flags).
     /// These are properties of the focused text field — constant while typing in one field — but
@@ -168,6 +171,9 @@ class KeyboardViewController: UIInputViewController {
                     self?.openURL(url)
                 }
             },
+            hasFullAccess: { [weak self] in
+                self?.hasFullAccess ?? false
+            },
             requestReminder: { [weak self] in
                 guard let self = self else { return }
                 // 🔔 quick button. Requires Full Access; the app owns the one-time authorization
@@ -206,6 +212,16 @@ class KeyboardViewController: UIInputViewController {
                 }
                 self.routeTimer(duration: duration, label: label)
             },
+            pasteFromClipboard: { [weak self] in
+                guard let self, self.hasFullAccess else { return }
+                let pb = UIPasteboard.general
+                // Content read — the one call that can trigger the iOS 16 paste prompt.
+                guard let text = pb.string ?? pb.url?.absoluteString, !text.isEmpty else { return }
+                self.textDocumentProxy.insertText(text)
+                // Pasted content is arbitrary — never carries a smart space (snippet precedent).
+                self.qwertyState.inputTracking.pendingSmartSpace = false
+                self.scheduleSideEffectFlush()
+            },
             evaluateSlashCommand: { [weak self] in
                 // V1 path: read context and evaluate synchronously.
                 guard let self = self else { return }
@@ -215,15 +231,6 @@ class KeyboardViewController: UIInputViewController {
                 // V1 path: read context and schedule synchronously.
                 guard let self = self else { return }
                 self.runPredictiveEvaluation(context: self.textDocumentProxy.documentContextBeforeInput)
-            },
-            applyPendingPredictiveCorrection: { [weak self] in
-                self?.applyPendingPredictiveCorrection() ?? false
-            },
-            revertLastPredictiveCorrection: { [weak self] in
-                self?.revertLastPredictiveCorrection() ?? false
-            },
-            clearPendingPredictiveCorrection: { [weak self] in
-                self?.lastPredictiveCorrection = nil
             },
             scheduleSideEffects: { [weak self] in
                 self?.scheduleSideEffectFlush()
@@ -332,8 +339,6 @@ class KeyboardViewController: UIInputViewController {
             forKey: AppGroupSettings.Key.timerIntegrationEnabled, default: false)
         autoCapitalizationEnabled = AppGroupSettings.bool(
             forKey: AppGroupSettings.Key.autoCapitalizationEnabled, default: true)
-        autoSuggestionSpaceEnabled = AppGroupSettings.bool(
-            forKey: AppGroupSettings.Key.autoSuggestionSpaceEnabled, default: false)
 
         // Prime the hot-path caches once. Both are refreshed off the keystroke path afterwards
         // (traits in `flushSideEffects`, width in `viewWillTransition`).
@@ -367,7 +372,8 @@ class KeyboardViewController: UIInputViewController {
                 slashCommandState: slashCommandState,
                 predictiveTextState: predictiveTextState,
                 reminderSuggestionState: reminderSuggestionState,
-                timerSuggestionState: timerSuggestionState
+                timerSuggestionState: timerSuggestionState,
+                clipboardState: clipboardState
             )
         )
         
@@ -520,14 +526,35 @@ class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
+        startClipboardPolling()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        stopClipboardPolling()
         // Persist shadow-mode telemetry + learned per-user offsets off the hot path.
         TypingTelemetry.shared.flush()
         KeyboardResponsivenessTelemetry.shared.flush()
         TouchOffsetModel.shared.flush()
+    }
+
+    // MARK: - Clipboard Polling
+
+    private func startClipboardPolling() {
+        guard hasFullAccess else { return }   // null pasteboard without Full Access — skip the XPC
+        clipboardState.refresh()              // immediate refresh on appear
+        guard clipboardPollTimer == nil else { return }
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.clipboardState.refresh()    // main run loop → main thread
+        }
+        timer.tolerance = 0.5
+        RunLoop.main.add(timer, forMode: .default)  // pauses during pill scroll tracking
+        clipboardPollTimer = timer
+    }
+
+    private func stopClipboardPolling() {
+        clipboardPollTimer?.invalidate()
+        clipboardPollTimer = nil
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -716,22 +743,42 @@ class KeyboardViewController: UIInputViewController {
     /// is dispatched off-main by `predictiveEngineAsync`.
     private func runPredictiveEvaluation(context: String?) {
         // Skip when showing snippet grid or when slash command is active.
-        guard !qwertyState.showingSnippets else { return }
+        guard !qwertyState.showingSnippets else {
+            resetPredictivePipeline()
+            return
+        }
         guard !slashCommandState.isActive else {
-            // Clear suggestions when slash is active.
-            predictiveTextState.dismiss()
+            resetPredictivePipeline()
             return
         }
         // Yield the suggestion bar to the "Create reminder" pill when a /remind command is parsed.
         guard !reminderSuggestionState.isActive else {
-            predictiveTextState.dismiss()
+            resetPredictivePipeline()
+            return
+        }
+        guard !timerSuggestionState.isActive else {
+            resetPredictivePipeline()
             return
         }
         predictiveEngineAsync.schedule(context: context) { [weak self] candidates, partialWord in
             guard let self else { return }
+            guard !partialWord.isEmpty,
+                  (self.textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(partialWord)
+            else {
+                self.resetPredictivePipeline()
+                return
+            }
             self.predictiveTextState.updateCandidates(candidates, partialWord: partialWord)
             self.updateTouchPrior(candidates: candidates, partialWord: partialWord)
         }
+    }
+
+    /// Clear every prediction surface, including the invisible next-character prior used by
+    /// smart touch. Use whenever another toolbar mode owns the row or the context goes stale.
+    private func resetPredictivePipeline() {
+        predictiveTextState.dismiss()
+        predictiveEngineAsync.reset()
+        updateTouchPrior(candidates: [], partialWord: "")
     }
 
     /// Cached field traits read by the keystroke hot path. See `refreshHostInputTraits`.
@@ -754,67 +801,6 @@ class KeyboardViewController: UIInputViewController {
         )
     }
 
-    /// Applies the center/high-confidence correction just before the user's space is inserted.
-    /// This mirrors iOS's conservative autocorrect feel while keeping the actual space a normal
-    /// user keystroke and preserving the immediate backspace undo window.
-    private func applyPendingPredictiveCorrection() -> Bool {
-        guard !qwertyState.showingSnippets,
-              autoSuggestionSpaceEnabled,
-              !slashCommandState.isActive,
-              !reminderSuggestionState.isActive,
-              !timerSuggestionState.isActive,
-              currentHostInputTraits().allowsAutomaticCorrection,
-              let candidate = predictiveTextState.autoCommitCandidate,
-              !predictiveTextState.partialWord.isEmpty
-        else { return false }
-
-        let original = predictiveTextState.partialWord
-        guard candidate.text.lowercased() != original.lowercased() else { return false }
-        guard (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(original) else {
-            predictiveTextState.dismiss()
-            predictiveEngineAsync.reset()
-            updateTouchPrior(candidates: [], partialWord: "")
-            return false
-        }
-
-        for _ in 0..<candidate.replacementLength {
-            textDocumentProxy.deleteBackward()
-        }
-        textDocumentProxy.insertText(candidate.text)
-
-        lastPredictiveCorrection = PredictiveCorrectionSnapshot(
-            original: original,
-            replacement: candidate.text
-        )
-        predictiveTextState.dismiss()
-        predictiveEngineAsync.reset()
-        updateTouchPrior(candidates: [], partialWord: "")
-        return true
-    }
-
-    /// If the user presses backspace immediately after an automatic correction, restore the
-    /// original typed word and suppress that correction pair for the rest of this session.
-    private func revertLastPredictiveCorrection() -> Bool {
-        guard let correction = lastPredictiveCorrection else { return false }
-        lastPredictiveCorrection = nil
-
-        // Document shape after auto-correct-on-space is "<replacement> ". Delete the user
-        // space plus the replacement, then put back the literal typed word.
-        textDocumentProxy.deleteBackward()
-        for _ in 0..<correction.replacement.count {
-            textDocumentProxy.deleteBackward()
-        }
-        textDocumentProxy.insertText(correction.original)
-
-        predictiveEngineAsync.rejectCorrection(
-            original: correction.original,
-            replacement: correction.replacement
-        )
-        predictiveTextState.dismiss()
-        updateTouchPrior(candidates: [], partialWord: "")
-        return true
-    }
-
     /// Derive a next-character prior from the in-progress word's top completions and push it
     /// onto the shared `ProbabilisticTouchContext`, so near-miss taps bias toward the letter
     /// that finishes the likely word ("after `thr` → enlarge `o`"). Runs in the predictive
@@ -822,25 +808,25 @@ class KeyboardViewController: UIInputViewController {
     /// it rides the existing coalesced flush. The same context object is read by
     /// `SmartTouchResolver` on the touch hot path via `weightsForRow`.
     private func updateTouchPrior(candidates: [PredictiveCandidate], partialWord: String) {
-        let suggestions = candidates.filter { $0.role != .typed }.map(\.text)
-        let prior = Self.nextCharacterPrior(suggestions: suggestions, partialWord: partialWord)
+        let prior = Self.nextCharacterPrior(candidates: candidates, partialWord: partialWord)
         qwertyState.inputTracking.touchContext.updatePredictivePrior(prior, isEnglish: Self.isEnglishInputContext)
     }
 
     /// Build a `{nextChar: weight}` prior from the characters that would extend `partialWord`
-    /// toward each top completion, weighted by suggestion rank. Returns nil below a 2-char
+    /// toward each top completion, weighted by suggestion rank. Returns nil below a 3-char
     /// prefix (the suggestion set is too noisy to bias touch targets that early).
     /// Tuning knobs (rank weights, prefix threshold) live here, at the point of use.
-    static func nextCharacterPrior(suggestions: [String], partialWord: String) -> [Character: Float]? {
+    static func nextCharacterPrior(candidates: [PredictiveCandidate], partialWord: String) -> [Character: Float]? {
         let prefixCount = partialWord.count
-        guard prefixCount >= 2 else { return nil }
-        let rankWeights: [Float] = [0.7, 0.2, 0.1]
+        guard prefixCount >= 3 else { return nil }
+        let rankWeights: [Float] = [0.55, 0.30, 0.15]
         let lowerPartial = partialWord.lowercased()
         var prior: [Character: Float] = [:]
         var rankIndex = 0
-        for suggestion in suggestions {
+        for candidate in candidates {
             if rankIndex >= rankWeights.count { break }
-            let lowerSuggestion = suggestion.lowercased()
+            guard candidate.role == .completion, candidate.confidence >= 0.70 else { continue }
+            let lowerSuggestion = candidate.text.lowercased()
             // Only true completions of the partial word bias the next character.
             guard lowerSuggestion.count > prefixCount,
                   lowerSuggestion.hasPrefix(lowerPartial) else { continue }

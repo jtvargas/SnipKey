@@ -31,6 +31,14 @@ import UIKit
 
 enum ProbabilisticHitResolver {
 
+    /// Full resolver output. `winner` is the key to commit; `runnerUp` is the next-best
+    /// geometric/language candidate for telemetry and future word-level hypothesis ranking.
+    struct Result {
+        let winner: KeyFrame
+        let runnerUp: KeyFrame?
+        let margin: Float
+    }
+
     /// Tunable parameters. Defaults are conservative starting points; calibrate `beta`,
     /// `sigmaX/Y`, and the anchor fractions on the touch corpus (plan §11, §14).
     struct Config {
@@ -43,7 +51,7 @@ enum ProbabilisticHitResolver {
         var sigmaX: Float
         var sigmaY: Float
         /// Central anchor strip that always wins, as a fraction of the key's width/height.
-        /// e.g. 0.5 / 0.6 ⇒ inner 50%×60% of the key is immune to prior pressure.
+        /// e.g. 0.6 / 0.7 ⇒ inner 60%×70% of the key is immune to prior pressure.
         var anchorFracW: CGFloat
         var anchorFracH: CGFloat
         /// Anti-swallow guard: max allowed distance (in σ-normalized units, as a multiple of
@@ -59,11 +67,11 @@ enum ProbabilisticHitResolver {
         /// protects deliberate center taps). Conservative on purpose — per-user offset learning
         /// (TouchOffsetModel) does the heavier personalization over time.
         static let `default` = Config(
-            beta: 0.5,
+            beta: 0.35,
             sigmaX: 13,
             sigmaY: 16,
-            anchorFracW: 0.5,
-            anchorFracH: 0.6,
+            anchorFracW: 0.6,
+            anchorFracH: 0.7,
             maxCaptureDiagonals: 1.5,
             vocab: 30
         )
@@ -88,8 +96,28 @@ enum ProbabilisticHitResolver {
         offsetFor: (KeyFrame) -> CGVector,
         config: Config
     ) -> KeyFrame {
+        resolveWithCandidates(
+            rawKey: rawKey,
+            point: point,
+            frames: frames,
+            weightFor: weightFor,
+            offsetFor: offsetFor,
+            config: config
+        ).winner
+    }
+
+    /// Resolve a touch-down point and keep the runner-up candidate. This has the same hot-path
+    /// cost as `resolve` plus one extra score comparison per candidate.
+    static func resolveWithCandidates(
+        rawKey: KeyFrame,
+        point: CGPoint,
+        frames: [KeyFrame],
+        weightFor: (String) -> Float,
+        offsetFor: (KeyFrame) -> CGVector,
+        config: Config
+    ) -> Result {
         // Only correct character-key touches. (Caller already gates, but be defensive.)
-        guard rawKey.isCharacterKey else { return rawKey }
+        guard rawKey.isCharacterKey else { return Result(winner: rawKey, runnerUp: nil, margin: 0) }
 
         // Anchor zone: a touch within the raw key's central strip is a deliberate, unambiguous
         // hit — never override it with the language prior.
@@ -97,7 +125,7 @@ enum ProbabilisticHitResolver {
             dx: rawKey.rect.width * (1 - config.anchorFracW) / 2,
             dy: rawKey.rect.height * (1 - config.anchorFracH) / 2
         )
-        if anchor.contains(point) { return rawKey }
+        if anchor.contains(point) { return Result(winner: rawKey, runnerUp: nil, margin: .greatestFiniteMagnitude) }
 
         let invSx = config.sigmaX > 0 ? 1 / config.sigmaX : 1
         let invSy = config.sigmaY > 0 ? 1 / config.sigmaY : 1
@@ -107,8 +135,10 @@ enum ProbabilisticHitResolver {
         let logFloor = logf(1.0 / Float(max(config.vocab, 2)))
 
         var bestScore = Float.greatestFiniteMagnitude
-        var best: KeyFrame = rawKey
+        var best: KeyFrame?
         var bestDist2: Float = .greatestFiniteMagnitude
+        var secondScore = Float.greatestFiniteMagnitude
+        var second: KeyFrame?
         var diagSum: Float = 0
         var charCount: Float = 0
 
@@ -130,9 +160,15 @@ enum ProbabilisticHitResolver {
             let score = dist2 - w
 
             if score < bestScore {
+                secondScore = bestScore
+                second = best
                 bestScore = score
                 best = f
                 bestDist2 = dist2
+            } else if score < secondScore {
+                if let best, f.action == best.action { continue }
+                secondScore = score
+                second = f
             }
 
             // Mean normalized key diagonal, for the anti-swallow radius.
@@ -145,10 +181,12 @@ enum ProbabilisticHitResolver {
         if charCount > 0 {
             let meanDiag = diagSum / charCount
             let maxDist = config.maxCaptureDiagonals * meanDiag
-            if sqrtf(bestDist2) > maxDist { return rawKey }
+            if sqrtf(bestDist2) > maxDist {
+                return Result(winner: rawKey, runnerUp: best, margin: max(0, secondScore - bestScore))
+            }
         }
 
-        return best
+        return Result(winner: best ?? rawKey, runnerUp: second, margin: max(0, secondScore - bestScore))
     }
 }
 
@@ -241,16 +279,16 @@ private extension UIColor {
 /// weight β, so they improve accuracy even with the language prior disabled.
 ///
 /// Expressed as FRACTIONS of key size so they survive rotation / layout / device changes
-/// (plan §8). The SIGN and magnitude are device/study-dependent and MUST be calibrated on the
-/// touch corpus (plan §11, §14) — so `scale` ships at 0 (no-op) with the literature-derived
-/// fractions captured here for calibration. Online per-user/per-region learning is a later tier.
+/// (plan §8). Serves as the COLD-START baseline: `TouchOffsetModel` crossfades it out as the
+/// per-user clusters earn trust (`user·trust + population·(1−trust)`), so a fresh install or
+/// fresh layout hash starts from the literature bias instead of zero. The DEBUG sign audit in
+/// `TouchOffsetModel.fold` validates the sign against fully-trusted learned clusters on-device.
 enum PopulationOffset {
 
-    /// Master scale. 0 ⇒ no offset (ships safe). Set to 1 (and confirm the sign) after the
-    /// corpus calibration in plan §11.
-    static var scale: CGFloat = 0
+    /// Master scale. 1 = literature fractions; 0 = kill switch (no-op).
+    static var scale: CGFloat = 1
 
-    /// Upward vertical bias as a fraction of key height, indexed by row band (top→bottom of
+    /// Downward vertical bias as a fraction of key height, indexed by row band (top→bottom of
     /// the alpha block). Captured from Azenkot & Zhai 2012 (~2/5/8 px on ~44pt keys ⇒
     /// ~0.045 / 0.11 / 0.18). The last value is reused for any extra rows.
     static let verticalFractionByRow: [CGFloat] = [0.045, 0.11, 0.18]
@@ -259,9 +297,12 @@ enum PopulationOffset {
     static func offset(for frame: KeyFrame) -> CGVector {
         guard scale != 0, frame.isCharacterKey, frame.rowIndex >= 0 else { return .zero }
         let row = min(frame.rowIndex, verticalFractionByRow.count - 1)
-        // Negative dy moves the site UP (screen-y grows downward). Final sign is confirmed
-        // during calibration; until then `scale == 0` makes this a no-op regardless.
-        let dy = -verticalFractionByRow[row] * frame.rect.height * scale
+        // POSITIVE dy moves the site DOWN (screen-y grows downward) — toward where touch
+        // centroids actually land: below the visually-aimed keycap (finger occlusion),
+        // increasingly so on lower rows. This matches the learned model's convention —
+        // `TouchOffsetModel` folds fy = (point.y − midY)/h (positive = below center) and
+        // applies +fy·h, so the baseline it crossfades against must share the sign.
+        let dy = verticalFractionByRow[row] * frame.rect.height * scale
         return CGVector(dx: 0, dy: dy)
     }
 }
