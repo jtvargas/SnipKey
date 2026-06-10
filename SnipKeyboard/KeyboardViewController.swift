@@ -160,6 +160,9 @@ class KeyboardViewController: UIInputViewController {
                     self?.openURL(url)
                 }
             },
+            hasFullAccess: { [weak self] in
+                self?.hasFullAccess ?? false
+            },
             requestReminder: { [weak self] in
                 guard let self = self else { return }
                 // 🔔 quick button. Requires Full Access; the app owns the one-time authorization

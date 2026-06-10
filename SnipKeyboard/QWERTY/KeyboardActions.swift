@@ -87,6 +87,11 @@ struct KeyboardActions {
     /// Open the main SnipKey app (for settings access from the keyboard)
     let openApp: () -> Void
 
+    /// Authoritative Full Access check (UIInputViewController.hasFullAccess).
+    /// Prefer this over the pasteboard-probing `checkFullAccess()` helper, which
+    /// false-negatives on an empty pasteboard.
+    let hasFullAccess: () -> Bool
+
     /// Schedule a generic local notification from the keyboard (🔔 quick button). The controller
     /// supplies `hasFullAccess` and the delay. See LOCAL_NOTIFICATIONS.md.
     let requestReminder: () -> Void
@@ -146,6 +151,7 @@ struct KeyboardActions {
         showPopup: { _, _, _ in },
         hidePopup: {},
         openApp: {},
+        hasFullAccess: { false },
         requestReminder: {},
         createReminder: { _, _ in },
         createTimer: { _, _ in },

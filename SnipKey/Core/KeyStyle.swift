@@ -47,6 +47,27 @@ enum KeyStyle {
                : Color(red: 0.674, green: 0.704, blue: 0.747, opacity: 0.88)
     }
 
+    // MARK: - Elevated Surfaces
+
+    /// Fully opaque elevated surface for cards/toasts floating over the keyboard.
+    /// Mirrors ReminderToastModifier's pill (QWERTYKeyboardView.swift) — key
+    /// backgrounds are translucent by design (they sit on the keyboard blur), so
+    /// anything floating OVER content needs its own solid color or the content
+    /// bleeds through.
+    static func solidSurface(isDark: Bool) -> Color {
+        isDark ? Color(red: 0.17, green: 0.17, blue: 0.19) : .white
+    }
+
+    /// Primary text on a `solidSurface`.
+    static func solidSurfaceText(isDark: Bool) -> Color {
+        isDark ? .white : Color(red: 0.10, green: 0.10, blue: 0.12)
+    }
+
+    /// Subtle solid button fill that reads on top of `solidSurface`.
+    static func solidSurfaceButton(isDark: Bool) -> Color {
+        isDark ? Color(white: 0.28) : Color(white: 0.93)
+    }
+
     // MARK: - Glyphs / text
 
     /// Primary glyph color — explicit black/white like the keys.

@@ -8,6 +8,7 @@
 import SwiftData
 import SwiftUI
 import AlertToast
+import UniformTypeIdentifiers
 
 // MARK: - Sort Option
 
@@ -35,7 +36,7 @@ struct SnippetPressStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .opacity(configuration.isPressed ? 0.85 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+            .animation(.spring(response: 0.18, dampingFraction: 0.8), value: configuration.isPressed)
     }
 }
 
@@ -58,8 +59,16 @@ struct KeyboardView: View {
     @State private var showCreateSnippetCTA = false
     @State private var showCreatedToast = false
     @State private var showToast = false
+    @State private var showCopiedToast = false
+    @State private var copyToastText = ""
     @State private var selectedText: String = ""
     @State var snippetViewModel = SnippetViewModel()
+
+    // Long-press preview
+    @State private var previewedSnippet: SnippetItem?
+    // SwiftUI fires the Button action on touch-up even after a simultaneous
+    // long press succeeded — this flag eats that one spurious tap.
+    @State private var suppressNextTap = false
 
     // Tag filter
     @State private var selectedFilter: SnipTag? = nil
@@ -127,7 +136,10 @@ struct KeyboardView: View {
                 .map(\.item)
         }
 
-        if let animation, hasSeeded {
+        // Animate only when the visible order actually changes — e.g. tapping the
+        // already-top recently-used cell would otherwise fire a no-op animated
+        // assignment (implicit-transition flicker).
+        if let animation, hasSeeded, sorted.map(\.id) != displayedSnippets.map(\.id) {
             withAnimation(animation) { displayedSnippets = sorted }
         } else {
             displayedSnippets = sorted
@@ -160,26 +172,70 @@ struct KeyboardView: View {
                     LazyVGrid(columns: gridColumns, spacing: 8) {
                         ForEach(displayedSnippets, id: \.self.id) { snippet in
                             Button {
+                                if suppressNextTap {
+                                    suppressNextTap = false
+                                    return
+                                }
                                 sentValue(snippet: snippet)
                             } label: {
                                 SnippetListItemMinimal(item: snippet, isDark: isDark)
                             }
                             .buttonStyle(SnippetPressStyle())
+                            // simultaneousGesture (not highPriority) keeps ScrollView
+                            // panning intact; the default 10pt maximumDistance cancels
+                            // the press once a scroll drag starts. Same combo as the
+                            // delete key below.
+                            .simultaneousGesture(
+                                LongPressGesture(minimumDuration: 0.4)
+                                    .onEnded { _ in
+                                        suppressNextTap = true
+                                        presentPreview(for: snippet)
+                                    }
+                            )
                         }
                     }
                     .padding(.horizontal, 12)
+                    .padding(.top, 2)
                     .padding(.bottom, 8)
                 }
             }
+            .scrollIndicators(.hidden)
 
             // Bottom bar: filter + actions
             BottomBar()
         }
         .frame(height: KeyboardDimensions.totalHeight(forScreenWidth: UIScreen.main.bounds.width))
+        .overlay {
+            if let snippet = previewedSnippet {
+                SnippetPreviewOverlay(
+                    snippet: snippet,
+                    isDark: isDark,
+                    canCopy: keyboardActions.hasFullAccess(),
+                    onCopy: { copySnippetToClipboard(snippet) },
+                    onInsert: {
+                        previewedSnippet = nil
+                        snippetViewModel.trackSnippetUsage(snippet: snippet)
+                        if sortOption == .recentlyUsed {
+                            recomputeDisplayed(animation: .spring(response: 0.35, dampingFraction: 0.85))
+                        }
+                        KeyboardHaptics.keyPress()
+                        // Secure snippets were already authenticated to open the
+                        // preview — go straight to insertion, not through sentValue.
+                        sentValueToKeyboard(snippet: snippet)
+                    },
+                    onDismiss: {
+                        suppressNextTap = false
+                        withAnimation(.easeIn(duration: 0.12)) { previewedSnippet = nil }
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
+        }
         .onAppear {
             settingsViewModel.modelContext = modelContext
             snippetViewModel.modelContext = modelContext
             setupNotificationObservers()
+            KeyboardHaptics.prepare()
             // Initial population — un-animated (hasSeeded == false) for an instant,
             // jitter-free first paint.
             recomputeDisplayed()
@@ -205,13 +261,13 @@ struct KeyboardView: View {
         .toast(isPresenting: $showToast) {
             AlertToast(
                 displayMode: .banner(.pop),
-                type: .systemImage("doc.on.clipboard", .label),
+                type: .systemImage("doc.on.clipboard", KeyStyle.solidSurfaceText(isDark: isDark)),
                 title: !checkFullAccess()
                     ? "Enable full keyboard access to copy/paste images."
                     : "File copied to your clipboard. Paste to use it.",
                 style: .style(
-                    backgroundColor: Color(.tertiarySystemBackground),
-                    titleColor: .primary,
+                    backgroundColor: KeyStyle.solidSurface(isDark: isDark),
+                    titleColor: KeyStyle.solidSurfaceText(isDark: isDark),
                     titleFont: .custom("IBMPlexMono-Medium", size: 14)
                 )
             )
@@ -222,8 +278,20 @@ struct KeyboardView: View {
                 type: .systemImage("checkmark.circle.fill", .green),
                 title: "New Snippet created!",
                 style: .style(
-                    backgroundColor: Color(.tertiarySystemBackground),
-                    titleColor: .primary,
+                    backgroundColor: KeyStyle.solidSurface(isDark: isDark),
+                    titleColor: KeyStyle.solidSurfaceText(isDark: isDark),
+                    titleFont: .custom("IBMPlexMono-Medium", size: 14)
+                )
+            )
+        }
+        .toast(isPresenting: $showCopiedToast) {
+            AlertToast(
+                displayMode: .banner(.pop),
+                type: .systemImage("doc.on.doc", KeyStyle.solidSurfaceText(isDark: isDark)),
+                title: copyToastText,
+                style: .style(
+                    backgroundColor: KeyStyle.solidSurface(isDark: isDark),
+                    titleColor: KeyStyle.solidSurfaceText(isDark: isDark),
                     titleFont: .custom("IBMPlexMono-Medium", size: 14)
                 )
             )
@@ -360,9 +428,14 @@ struct KeyboardView: View {
                 Image(systemName: "line.3.horizontal.decrease.circle")
                     .font(.system(size: 28, weight: .light))
                     .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
-                Text("No snippets for this filter")
-                    .font(.custom("IBMPlexMono-Medium", size: 13))
-                    .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
+                HStack(spacing: 5) {
+                    if let colorHex = selectedFilter?.colorHex {
+                        TagColorIndicator(colorHex: colorHex, size: 6)
+                    }
+                    Text(selectedFilter?.name.map { "No snippets tagged #\($0)" } ?? "No snippets for this filter")
+                        .font(.custom("IBMPlexMono-Medium", size: 13))
+                        .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
+                }
                 Button {
                     selectedFilter = nil
                 } label: {
@@ -392,6 +465,31 @@ struct KeyboardView: View {
                 Text("No snippets yet")
                     .font(.custom("IBMPlexMono-Medium", size: 13))
                     .foregroundStyle(KeyStyle.secondaryGlyph(isDark: isDark))
+                Text("Create snippets in the SnipKey app")
+                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                    .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
+                    .multilineTextAlignment(.center)
+                Button {
+                    keyboardActions.openApp()
+                } label: {
+                    Text("Open SnipKey")
+                        .font(.custom("IBMPlexMono-Medium", size: 12))
+                        .foregroundStyle(KeyStyle.glyph(isDark: isDark))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: KeyStyle.cornerRadius, style: .continuous)
+                                .fill(KeyStyle.keyBackground(isDark: isDark))
+                                .shadow(
+                                    color: KeyStyle.keyShadow(isDark: isDark).color,
+                                    radius: KeyStyle.keyShadow(isDark: isDark).radius,
+                                    x: KeyStyle.keyShadow(isDark: isDark).x,
+                                    y: KeyStyle.keyShadow(isDark: isDark).y
+                                )
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(SnippetPressStyle())
                 if checkFullAccess() {
                     Text("Select text and tap Save as snippet")
                         .font(.custom("IBMPlexMono-Regular", size: 11))
@@ -592,6 +690,10 @@ struct KeyboardView: View {
     // MARK: - Snippet Actions
 
     private func sentValue(snippet: SnippetItem) {
+        // Light tick on tap acknowledgment — covers both secure and plain paths
+        // (sentValueToKeyboard must NOT also fire, or the secure path double-buzzes).
+        KeyboardHaptics.keyPress()
+
         snippetViewModel.trackSnippetUsage(snippet: snippet)
 
         // Usage tracking mutates lastTimeUsed/usedCount in place; @Query won't
@@ -609,15 +711,71 @@ struct KeyboardView: View {
     }
 
     private func sentSecureValue(snippet: SnippetItem) {
+        // LAContext invokes the handlers on its own reply queue — hop to main
+        // before touching @State or the text proxy.
         deviceBiometrics.authenticate(
             successHandler: {
-                isUnlocked = true
-                sentValueToKeyboard(snippet: snippet)
+                DispatchQueue.main.async {
+                    isUnlocked = true
+                    sentValueToKeyboard(snippet: snippet)
+                }
             },
             unSuccessHandler: { _ in
-                isUnlocked = false
+                DispatchQueue.main.async {
+                    isUnlocked = false
+                }
             }
         )
+    }
+
+    /// Long-press entry point for the preview overlay. Secure snippets
+    /// authenticate BEFORE any content is exposed.
+    private func presentPreview(for snippet: SnippetItem) {
+        KeyboardHaptics.specialKey()
+        if snippet.isSecure {
+            deviceBiometrics.authenticate(
+                successHandler: {
+                    DispatchQueue.main.async {
+                        isUnlocked = true
+                        withAnimation(.easeOut(duration: 0.15)) { previewedSnippet = snippet }
+                    }
+                },
+                unSuccessHandler: { _ in
+                    DispatchQueue.main.async {
+                        isUnlocked = false
+                    }
+                }
+            )
+        } else {
+            withAnimation(.easeOut(duration: 0.15)) { previewedSnippet = snippet }
+        }
+    }
+
+    /// Copy from the preview overlay. Secure content only ever reaches this
+    /// function post-auth (the overlay is only presentable after biometrics).
+    private func copySnippetToClipboard(_ snippet: SnippetItem) {
+        guard keyboardActions.hasFullAccess() else {
+            copyToastText = "Enable Full Access to copy snippets."
+            showCopiedToast = true
+            return
+        }
+
+        switch snippet.type ?? .txt {
+        case .txt, .url:
+            UIPasteboard.general.string = snippet.content ?? ""
+        case .image:
+            // copyImageToClipboard force-unwraps fileData — guard first.
+            guard snippet.file?.fileData != nil else { return }
+            _ = copyImageToClipboard(snippet: snippet)
+        case .file:
+            guard let data = snippet.file?.fileData else { return }
+            UIPasteboard.general.setData(data, forPasteboardType: UTType.pdf.identifier)
+        }
+
+        suppressNextTap = false
+        withAnimation(.easeIn(duration: 0.12)) { previewedSnippet = nil }
+        copyToastText = "Copied to clipboard"
+        showCopiedToast = true
     }
 
     private func sentValueToKeyboard(snippet: SnippetItem) {
