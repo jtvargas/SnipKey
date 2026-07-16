@@ -1,7 +1,8 @@
 # SnipKey Keyboard V2 — Next-Gen Typing Quality Plan
 
-> **Status:** **IMPLEMENTED and shipping by default** (see Implementation Status below). One item —
-> data-driven *tuning* — is intentionally left as optional future work.
+> **Status:** **IMPLEMENTED and shipping by default** (see Implementation Status below). The
+> data-driven tuning TOOLING (capture → replay → sweep) now ships too; what remains is the
+> on-device data-collection pass itself (§15/§15a).
 > **Goal:** A keyboard that feels extremely smooth, highly accurate, fast/reliable, consistent under
 > high typing speed, predictable and forgiving — comparable to or better than the perceived typing
 > quality of the stock iOS keyboard.
@@ -34,10 +35,11 @@ plan.
 | Responsiveness percentiles | ✅ Shipped (DEBUG telemetry, off by default) | `KeyboardResponsivenessTelemetry` |
 | Live Voronoi debug overlay | ✅ Shipped (off by default) | coordinator `updateVoronoiDebugOverlay` |
 | Settings toggles + version-string alignment | ✅ Shipped | `SettingsView`, `SettingsModel`, pbxproj |
-| **Data-driven tuning** of β / σ / offset sign-scale | ⏸️ **Remaining work** — see §15 | — |
+| **Data-driven tuning** of β / σ / offset sign-scale | 🔧 **Tooling shipped** (capture + replay + drill/lab, see §15); on-device data collection pending | `CalibrationCapture`, `ResolverReplayEngine`, `CalibrationLabView` |
 | Population-prior fixed offsets (`PopulationOffset`) | ⚠️ **ACTIVE — `scale = 1`, +down sign** (cold-start crossfade). Sign never validated on a real device — see §15a | `PopulationOffset` |
-| Offline replay harness / CI corpus gates | ⏸️ Remaining work | host app or test target |
-| Full corpus-trained trigram / sequence decoding | ⏸️ Out of scope (needs a corpus) | — |
+| Offline replay harness / CI corpus gates | ✅ Shipped — deterministic replay w/ baseline bit-exactness gate + synthetic XCTest suites | `ResolverReplayEngine`, `SnipKeyTests` |
+| Full corpus-trained trigram | ✅ Shipped behind `useCorpusTrigram` (DEBUG ON / RELEASE OFF until gates pass) — Norvig-corpus 27×27×26 table, offline-smoothed | `CharacterTrigramLM`, `tooling/trigram/` |
+| Sequence decoding / retroactive autocorrect | ⏸️ Out of scope | — |
 | Haptics | 🚫 Excluded by product decision | — |
 
 Shipped defaults (research-shaped, conservative): `β = 0.35`, `σx = 13`, `σy = 16`, anchor inner

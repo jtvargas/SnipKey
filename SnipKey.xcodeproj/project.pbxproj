@@ -149,6 +149,7 @@
 		A6C27CA5DF7742F084A2061B /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
 		A7B8C9D0E1F2A3B4C5D6E7F8 /* TouchOffsetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */; };
 		A7B8C9D0E1F2A3B4C5D6E7F9 /* TouchOffsetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */; };
+		A927F99A00E8B8A908A64F1F /* SyntheticResolverSuiteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C24E64B7EF2BD93BCEB121D /* SyntheticResolverSuiteTests.swift */; };
 		ADA928B4FA9D5DA9CDFACEB3 /* IntegrationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE8DB50F5227711F0A44F2E /* IntegrationsView.swift */; };
 		B1C2D3E4F5A6B7C8D9E0F1B1 /* BigramEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */; };
 		B1C2D3E4F5A6B7C8D9E0F1B2 /* DynamicHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */; };
@@ -301,6 +302,7 @@
 		0863C40DC54F8B0573428C40 /* ReminderDestination.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReminderDestination.swift; sourceTree = "<group>"; };
 		1C830E3C63663CCF65E72BF1 /* KeyboardCalloutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardCalloutView.swift; path = V2/KeyboardCalloutView.swift; sourceTree = "<group>"; };
 		263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReminderParseEngine.swift; sourceTree = "<group>"; };
+		2C24E64B7EF2BD93BCEB121D /* SyntheticResolverSuiteTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SyntheticResolverSuiteTests.swift; sourceTree = "<group>"; };
 		314D660CC6FE8B02931C5358 /* ResolverTuning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResolverTuning.swift; path = V2/ResolverTuning.swift; sourceTree = "<group>"; };
 		3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutResolver.swift; path = V2/KeyboardLayoutResolver.swift; sourceTree = "<group>"; };
 		426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardGestureCoordinator.swift; path = V2/KeyboardGestureCoordinator.swift; sourceTree = "<group>"; };
@@ -734,6 +736,7 @@
 				46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */,
 				B7E4D723A1CD32CCD8D7DB20 /* ReplayEngineTests.swift */,
 				F6374B40A047164AF651131A /* CharacterTrigramLMTests.swift */,
+				2C24E64B7EF2BD93BCEB121D /* SyntheticResolverSuiteTests.swift */,
 			);
 			name = SnipKeyTests;
 			path = SnipKeyTests;
@@ -1103,6 +1106,7 @@
 				25B6CF74129974BEF158F5F0 /* ResolverSelfTests.swift in Sources */,
 				1F6BAD1F43E88D59C5638277 /* ReplayEngineTests.swift in Sources */,
 				C5B1464E88293157449DAF06 /* CharacterTrigramLMTests.swift in Sources */,
+				A927F99A00E8B8A908A64F1F /* SyntheticResolverSuiteTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

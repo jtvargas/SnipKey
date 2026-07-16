@@ -251,6 +251,13 @@ Two complementary mechanisms guarantee every point resolves to exactly one key:
   Burst window tracked via `CACurrentMediaTime()` in `CalloutController`.
 
 ### 5.3 Special keys & native behaviors
+- **Slide gestures (native commit timing):** a pending letter press retargets across keys with
+  12pt hysteresis (raw geometry — the prior never fights the finger; coalesced touches at 120Hz);
+  the balloon glides between same-size keys (~70ms ease-out). Sliding off the bottom cancels;
+  sliding onto backspace/shift/mode voids the press. **Shift-slide-release** types one capital;
+  **123-slide-release** types the symbol and snaps back to letters (the plane switches at the
+  mode key's touch-down). A slid-and-corrected commit feeds the offset model a gold label
+  (`TouchOffsetModel.recordCorrected`, ±0.3 fraction clamp, plausible-aim-error gated).
 - **Shift / caps lock:** `.disabled`→`.enabled` (one-shot, auto-resets after a char) → double-tap
   within 300ms → `.locked`. Fires on touch-down for instant visual change. (`QWERTYKeyboardState.swift:121–153`.)
 - **Space:** commits on touch-UP (must distinguish tap from cursor mode). Hold 250ms or drift 14pt →
@@ -286,11 +293,11 @@ Found in the code (not speculative). Severity is relative to an already-fast bas
 
 | # | Item | Severity | Location |
 |---|---|---|---|
-| 6.1 | `AppGroupSettings.bool(probabilisticTouchEnabled)` read on **every** character touch-down — a never-changes-mid-session setting on a latency path. Cache once at init. | Medium | `SmartTouchResolver.swift:40` |
-| 6.2 | `rebuildLayout()` recomputes `resolvedFrames` + `HitGrid` (array allocs) **before** the `RenderSignature` short-circuit; wasteful on non-render `layoutSubviews` (trait/frame animations). Move the signature check first. | Low–Med | `KeyboardGestureCoordinator.swift:182–217` |
-| 6.3 | `rebuildHitViews` destroys + recreates ~35 `KeyHitView`s on each signature change (view alloc ≫ layer alloc). Reframe in place when key count is unchanged (e.g., rotation). | Low–Med | `KeyboardGestureCoordinator.swift:241–249` |
-| 6.4 | Smart-punctuation does a synchronous `documentContextBeforeInput` XPC read for `- . " '` on the touch path (intentional, but those 4 keys are higher-latency than letters). | Known | `KeyboardCommitPipeline.swift:163–164` |
-| 6.5 | `modelContext.save()` runs synchronously on main after snippet insert — fine at low frequency, a risk as the store grows. | Low | `QWERTYKeyboardView.swift:155–157` |
+| 6.1 | ✅ FIXED — setting cached once per session in `configure(...)`; `SmartTouchResolver.resolve` takes `enabled` as a parameter. | — | `KeyboardGestureCoordinator.configure` |
+| 6.2 | ✅ FIXED — the `RenderSignature` short-circuit runs before any layout/grid work. | — | `performRebuildLayout` |
+| 6.3 | ✅ FIXED — `KeyHitView`s are reused/parked, never destroyed mid-session (also required so mid-gesture page swaps don't cancel the sliding touch). | — | `rebuildHitViews` |
+| 6.4 | ✅ MITIGATED — the keyboard-side context mirror (`QWERTYInputTracking.trailingContextFast`) answers most `- . " '` transforms with zero XPC; the sync read remains only as the invalidation fallback. | — | `KeyboardCommitPipeline.applySmartPunctuation` |
+| 6.5 | ✅ FIXED — the save is deferred off the insert turn (`Task { @MainActor }`). | — | `QWERTYKeyboardView.insertSnippet` |
 | 6.6 | One `Task { @MainActor }` allocation per `withObservationTracking` `onChange` fire (re-registration pattern). Short-lived; negligible. | Very low | `NativeKeyboardV2View.swift:91–97` |
 
 **Note on a claim that didn't fully match:** the predictive engine is described as a "background
