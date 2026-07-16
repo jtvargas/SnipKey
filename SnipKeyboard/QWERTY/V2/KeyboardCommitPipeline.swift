@@ -22,6 +22,7 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) {
+      KeyboardSignposts.interval("commit") {
         let textToInsert: String
         switch state.shiftState {
         case .disabled: textToInsert = char.lowercased()
@@ -40,7 +41,9 @@ enum KeyboardCommitPipeline {
 
         // `insertCharacter` marks the host's synchronous textDidChange re-entrancy as
         // our own insert, so the controller skips the redundant auto-cap context read.
-        actions.insertCharacter(textToInsert)
+        KeyboardSignposts.interval("insertXPC") {
+            actions.insertCharacter(textToInsert)
+        }
         state.inputTracking.recordAction(.character)
         if let scalar = textToInsert.first {
             if scalar.isLetter {
@@ -60,6 +63,7 @@ enum KeyboardCommitPipeline {
         // Defer slash + predictive evaluation off the synchronous touch path. The
         // coalesced flush reads context once (post-mutation, always fresh).
         actions.scheduleSideEffects()
+      }
     }
 
     /// Commit a literal shortcut key such as `.com`, `@`, `#`, `.`, or `/`.

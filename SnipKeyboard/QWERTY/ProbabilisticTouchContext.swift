@@ -7,6 +7,21 @@
 
 import Foundation
 
+/// Tunables for the prior pipeline (blend factor + confidence mapping). Internal so the
+/// calibration replay harness and unit tests can sweep them; the live keyboard always
+/// uses `.current`.
+struct ContextTuning {
+    /// Prior's share of the blend; the bigram gets the remainder.
+    var priorBlendFactor: Float = 0.45
+    /// Floor so β is never fully zeroed.
+    var minConfidence: Float = 0.25
+    /// Peak-weight normalization window: peak ≤ low ⇒ minConfidence, peak ≥ high ⇒ 1.
+    var confidencePeakLow: Float = 0.12
+    var confidencePeakHigh: Float = 0.35
+
+    static let current = ContextTuning()
+}
+
 /// Tracks the last typed character for probabilistic touch resolution.
 /// This is a plain class (NOT @Observable) — updates cause zero SwiftUI
 /// re-renders. Read by KeyButtonView during touch resolution (UIKit path).
@@ -49,8 +64,9 @@ final class ProbabilisticTouchContext {
     /// wrong-language bigram.
     private var priorIsFresh = false
 
-    /// Prior's share of the blend; the bigram gets the remainder. Tunable.
-    private static let priorBlendFactor: Float = 0.45
+    /// Blend/confidence tunables. `.current` on the live keyboard; the calibration replay
+    /// harness constructs contexts with sweep variants.
+    let tuning: ContextTuning
 
     /// The character before `lastCharacter` — gives the 2-char context for trigram boosts.
     private var secondLastCharacter: Character?
@@ -60,9 +76,8 @@ final class ProbabilisticTouchContext {
     /// at all when it isn't (first letter of a word). Plan §7.
     private(set) var confidence: Float = 0.35
 
-    private static let minConfidence: Float = 0.25      // floor so β is never fully zeroed
-
-    init() {
+    init(tuning: ContextTuning = .current) {
+        self.tuning = tuning
         self.currentWeights = BigramEngine.wordInitialFrequencies
         recomputeConfidence()
     }
@@ -122,8 +137,9 @@ final class ProbabilisticTouchContext {
     private func recomputeConfidence() {
         let source = blendedWeights ?? currentWeights
         let peak = source.values.max() ?? fallbackPeak
-        let normalized = min(max((peak - 0.12) / (0.35 - 0.12), 0), 1)
-        confidence = Self.minConfidence + normalized * (1 - Self.minConfidence)
+        let normalized = min(max((peak - tuning.confidencePeakLow)
+                                 / (tuning.confidencePeakHigh - tuning.confidencePeakLow), 0), 1)
+        confidence = tuning.minConfidence + normalized * (1 - tuning.minConfidence)
     }
 
     private var fallbackPeak: Float { 1.0 / 26.0 }
@@ -149,7 +165,7 @@ final class ProbabilisticTouchContext {
             blendedWeights = nil
             return
         }
-        let priorFactor = Self.priorBlendFactor
+        let priorFactor = tuning.priorBlendFactor
         let bigramFactor = 1 - priorFactor
         let fallback: Float = 1.0 / 26.0
         var blended: [Character: Float] = [:]
@@ -189,13 +205,14 @@ final class ProbabilisticTouchContext {
 
 #if DEBUG
 extension ProbabilisticTouchContext {
-    /// One-time invariant check for the prior pipeline: sharp (un-smoothed) weights,
-    /// stale-prior exclusion, double-letter trigram context, and word-boundary snap.
-    /// Logs (does not crash) on violation — same pattern as
-    /// `ProbabilisticHitResolver.runEquivalenceSelfTest`.
-    static func runContextSelfTest() {
+    /// Invariant check for the prior pipeline: sharp (un-smoothed) weights, stale-prior
+    /// exclusion, double-letter trigram context, and word-boundary snap. Returns the
+    /// violations so XCTest can assert; the runtime wrapper logs (does not crash) —
+    /// same pattern as `ProbabilisticHitResolver.runEquivalenceSelfTest`.
+    static func contextSelfTestFailures() -> [String] {
         var failures: [String] = []
         let ctx = ProbabilisticTouchContext()
+        let tuning = ctx.tuning
 
         // 1. Trigram sharpness: after "t","h" the resolver must see the full "th→e"
         //    boost immediately (no EMA dilution).
@@ -205,8 +222,9 @@ extension ProbabilisticTouchContext {
             failures.append("th→e boost diluted: weight(e)=\(ctx.weight(for: "e"))")
         }
         let expectedPeak = ctx.currentWeights.values.max() ?? 0
-        let expectedNorm = min(max((expectedPeak - 0.12) / (0.35 - 0.12), 0), 1)
-        let expectedConfidence = minConfidence + expectedNorm * (1 - minConfidence)
+        let expectedNorm = min(max((expectedPeak - tuning.confidencePeakLow)
+                                   / (tuning.confidencePeakHigh - tuning.confidencePeakLow), 0), 1)
+        let expectedConfidence = tuning.minConfidence + expectedNorm * (1 - tuning.minConfidence)
         if abs(ctx.confidence - expectedConfidence) > 0.001 {
             failures.append("confidence lags sharp source: \(ctx.confidence) vs \(expectedConfidence)")
         }
@@ -218,7 +236,8 @@ extension ProbabilisticTouchContext {
             failures.append("fresh prior did not produce a blend")
         }
         let blendedX = ctx.weight(for: "x")
-        let expectedX = 0.45 * Float(0.9) + 0.55 * (ctx.currentWeights["x"] ?? 1.0 / 26.0)
+        let expectedX = tuning.priorBlendFactor * Float(0.9)
+            + (1 - tuning.priorBlendFactor) * (ctx.currentWeights["x"] ?? 1.0 / 26.0)
         if abs(blendedX - expectedX) > 0.001 {
             failures.append("fresh prior under-applied: weight(x)=\(blendedX) expected \(expectedX)")
         }
@@ -249,7 +268,12 @@ extension ProbabilisticTouchContext {
         if ctx2.blendedWeights != nil || ctx2.currentWeights != BigramEngine.wordInitialFrequencies {
             failures.append("word boundary did not snap to word-initial")
         }
+        return failures
+    }
 
+    /// One-time runtime wrapper — logs instead of crashing, keyboard-extension safe.
+    static func runContextSelfTest() {
+        let failures = contextSelfTestFailures()
         if failures.isEmpty {
             NSLog("[SnipKeyboard] ProbabilisticTouchContext self-test passed")
         } else {

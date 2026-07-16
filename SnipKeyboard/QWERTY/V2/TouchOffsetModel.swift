@@ -59,7 +59,9 @@ final class TouchOffsetModel {
     private var nextPendingID: UInt64 = 0
     private var dirty = false
 
-    private init() { load() }
+    /// Internal (not private) so the DEBUG self-test and the unit-test target can build
+    /// isolated instances. Production code always goes through `shared`.
+    init() { load() }
 
     // MARK: - Query (hot path)
 
@@ -188,11 +190,12 @@ final class TouchOffsetModel {
 
 #if DEBUG
 extension TouchOffsetModel {
-    /// One-time invariant check for the population/user offset crossfade: pure population
+    /// Invariant check for the population/user offset crossfade: pure population
     /// for unseen layouts and untrusted clusters, pure user at full trust, the exact
     /// midpoint halfway up the ramp, bounded output, and the population sign lock (+down
-    /// for every row band). Logs (does not crash) on violation.
-    static func runCrossfadeSelfTest() {
+    /// for every row band). Returns the violations so XCTest can assert; the runtime
+    /// wrapper logs (does not crash).
+    static func crossfadeSelfTestFailures() -> [String] {
         var failures: [String] = []
         let model = TouchOffsetModel()
         model.enabled = true
@@ -255,6 +258,12 @@ extension TouchOffsetModel {
             failures.append("offset exceeds bound: \(o)")
         }
 
+        return failures
+    }
+
+    /// One-time runtime wrapper — logs instead of crashing, keyboard-extension safe.
+    static func runCrossfadeSelfTest() {
+        let failures = crossfadeSelfTestFailures()
         if failures.isEmpty {
             NSLog("[SnipKeyboard] offset-crossfade self-test passed")
         } else {

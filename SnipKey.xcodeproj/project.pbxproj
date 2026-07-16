@@ -37,8 +37,6 @@
 		066E69DB2BB9831900D971E8 /* SnipKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 066E69D42BB9831900D971E8 /* SnipKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69E02BB985CF00D971E8 /* KeyboardView.swift */; };
 		066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69E02BB985CF00D971E8 /* KeyboardView.swift */; };
-		06AB20022F40B00200C2D002 /* SnippetPreviewOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */; };
-		06AB20032F40B00200C2D003 /* SnippetPreviewOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */; };
 		066E69E32BB9896400D971E8 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69D62BB9831900D971E8 /* KeyboardViewController.swift */; };
 		066E69F42BB9CB7600D971E8 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */; };
 		066E69F52BB9CB7900D971E8 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FF2BB6270E00399C78 /* IBMPlexMono-Medium.ttf */; };
@@ -70,6 +68,8 @@
 		06AA10162F30A00200B1C006 /* KeyRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100D2F30A00100B1C006 /* KeyRowView.swift */; };
 		06AA10172F30A00200B1C007 /* QWERTYKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */; };
 		06AA10182F30A00300B1C009 /* KeyPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AA10182F30A00300B1C008 /* KeyPopupView.swift */; };
+		06AB20022F40B00200C2D002 /* SnippetPreviewOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */; };
+		06AB20032F40B00200C2D003 /* SnippetPreviewOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */; };
 		06AE130E2BBB09B5008EAE98 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */; };
 		06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */; };
 		06AE13122BBB0D16008EAE98 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AE13112BBB0D16008EAE98 /* SettingsView.swift */; };
@@ -83,6 +83,8 @@
 		06CA671C2CA4E8A800CAD9E0 /* OnboardingStepperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA671B2CA4E8A800CAD9E0 /* OnboardingStepperView.swift */; };
 		06CA671E2CA5B6BF00CAD9E0 /* AboutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA671D2CA5B6BF00CAD9E0 /* AboutApp.swift */; };
 		06CA67202CA6EFAB00CAD9E0 /* TipDevView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA671F2CA6EFAB00CAD9E0 /* TipDevView.swift */; };
+		06CC00112233445566778802 /* KeyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CC00112233445566778801 /* KeyStyle.swift */; };
+		06CC00112233445566778803 /* KeyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CC00112233445566778801 /* KeyStyle.swift */; };
 		06D428DE2CA4BC10005A5445 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D428DD2CA4BC10005A5445 /* HomeView.swift */; };
 		06D428E12CA4E51B005A5445 /* Page.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D428E02CA4E51B005A5445 /* Page.swift */; };
 		06D428E42CA4E580005A5445 /* StaggeredImagesList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D428E32CA4E580005A5445 /* StaggeredImagesList.swift */; };
@@ -97,8 +99,6 @@
 		06E9A0432BDFE3DD00CF09BE /* SnippetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
-		06CC00112233445566778802 /* KeyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CC00112233445566778801 /* KeyStyle.swift */; };
-		06CC00112233445566778803 /* KeyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CC00112233445566778801 /* KeyStyle.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
 		06F4F2FA2BB5F3BD00399C78 /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F92BB5F3BD00399C78 /* Strings.swift */; };
 		06F4F3092BB6270F00399C78 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */; };
@@ -115,14 +115,17 @@
 		07A0543E0902CBF6CCE3B9D7 /* EventKitReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */; };
 		1142CDD55DA16C28B97CBF60 /* KeyboardLayoutItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C12EC5363837C2A8630F8D3 /* KeyboardLayoutItem.swift */; };
 		13187A91ACE382E7BB5417AF /* AppIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79883A265C444A3AA9FC72A /* AppIntegration.swift */; };
+		163B8ED5BE60161637D33C1D /* KeyboardSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */; };
 		1B4D251F0C1290F3471DE222 /* KeyboardCalloutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C830E3C63663CCF65E72BF1 /* KeyboardCalloutView.swift */; };
 		1B89BCF6E55C957D694FFC9F /* SpaceBarCursorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */; };
 		1C42A37DBDFADA2C7CAC9C4F /* KeyboardCalloutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C830E3C63663CCF65E72BF1 /* KeyboardCalloutView.swift */; };
 		1F37BE6C7F110517BEBB4D46 /* AccentMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE452F555419A6F46984CBBC /* AccentMap.swift */; };
 		2442C0CA741CAA2D7A8250C9 /* SpaceBarCursorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */; };
+		25B6CF74129974BEF158F5F0 /* ResolverSelfTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */; };
 		2DBFAE70D96145748A557295 /* KeyboardLayoutItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C12EC5363837C2A8630F8D3 /* KeyboardLayoutItem.swift */; };
 		2EB6784CAE685D2E8A3EB0D8 /* EventKitReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */; };
 		2FFEF0199EB1B3E100CF3396 /* ModelContainerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */; };
+		3903C47C0AC60946D90B8D0D /* ResolverTuning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314D660CC6FE8B02931C5358 /* ResolverTuning.swift */; };
 		3A8B76B2949D48589DC82983 /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
 		3A8B76B2949D48589DC82A94 /* PredictiveTextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */; };
 		4314634F36B04D70854CC02D /* SlashCommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */; };
@@ -134,10 +137,9 @@
 		5F658D6000CB59E3322A6785 /* CalloutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCB146313BAC73C4D3C608 /* CalloutController.swift */; };
 		83E827CBB3A447C9194F1669 /* CalloutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCB146313BAC73C4D3C608 /* CalloutController.swift */; };
 		854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
+		8580E351A1E27239207E109F /* KeyboardSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */; };
 		97D243C545AE5AC733FC26FB /* ModelContainerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */; };
 		9AD80476CD0C9C51C700F601 /* LocalNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */; };
-		BD5F1A2C3E4D5B6A79880103 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
-		BD5F1A2C3E4D5B6A79880104 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
 		9DFAAFBE4D41F82F980F94A2 /* TimerIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */; };
 		A6C27CA5DF7742F084A2061B /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
 		A7B8C9D0E1F2A3B4C5D6E7F8 /* TouchOffsetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */; };
@@ -149,6 +151,8 @@
 		B34CB5065459AFDE2C23A92F /* KeyboardCommitPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = C38FE722252F18F28A754009 /* KeyboardCommitPipeline.swift */; };
 		B583A44D6D4DBE7597870131 /* RemindersIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B761651C894AA3B2981C82 /* RemindersIntegrationView.swift */; };
 		B89C0449762FBFE1BC7FB157 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A617BC51EE90BF0174CD25F /* NotificationPresenter.swift */; };
+		BD5F1A2C3E4D5B6A79880103 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
+		BD5F1A2C3E4D5B6A79880104 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
 		BF8B6001DF52F893601D98F0 /* PredictiveTextEngineAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */; };
 		C2B69DCF6F147603AE4534CC /* LocalNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */; };
 		C2D3E4F5A6B7C8D9E0F1A1B1 /* BigramEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */; };
@@ -159,6 +163,7 @@
 		CC72D06329CE5A0FD24F039D /* KeyboardLayoutFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */; };
 		D0F2F46440C35CB437608B91 /* ReminderParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */; };
 		D4F176DB438B2BCE533956F6 /* KeyboardLayoutResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */; };
+		D9C3F52B5184326361EAE3B6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AD1001DDF6C6C8B28781E4D8 /* Foundation.framework */; };
 		D9F1A2B3C4D5E6F708192A3C /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
 		D9F1A2B3C4D5E6F708192A3D /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
 		E1A2B3C4D5E6F7A8B9C0D1E3 /* TypingTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6F7A8B9C0D1E2 /* TypingTelemetry.swift */; };
@@ -175,6 +180,7 @@
 		F8A78ACE4CAA56EB63166041 /* PredictiveTextEngineAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */; };
 		F977E6660EB5E6D9FE1B2F3A /* ReminderDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0863C40DC54F8B0573428C40 /* ReminderDestination.swift */; };
 		F9781C3BAA457D15529F3AFC /* KeyboardLayoutResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */; };
+		FF36A9DA1C13EC27D1D755F0 /* ResolverTuning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314D660CC6FE8B02931C5358 /* ResolverTuning.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -184,6 +190,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 066E69D32BB9831900D971E8;
 			remoteInfo = SnipKeyboard;
+		};
+		6A0E9790B155A27831B53EA4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 066FAF022BB216160086F135 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 066FAF092BB216160086F135;
+			remoteInfo = SnipKey;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -223,7 +236,6 @@
 		066E69D62BB9831900D971E8 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		066E69D82BB9831900D971E8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		066E69E02BB985CF00D971E8 /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
-		06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetPreviewOverlay.swift; sourceTree = "<group>"; };
 		066FAF0A2BB216160086F135 /* SnipKey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnipKey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		066FAF0D2BB216160086F135 /* SnipKeyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyApp.swift; sourceTree = "<group>"; };
 		066FAF132BB216170086F135 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -240,6 +252,7 @@
 		06AA100D2F30A00100B1C006 /* KeyRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyRowView.swift; sourceTree = "<group>"; };
 		06AA100E2F30A00100B1C007 /* QWERTYKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QWERTYKeyboardView.swift; sourceTree = "<group>"; };
 		06AA10182F30A00300B1C008 /* KeyPopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPopupView.swift; sourceTree = "<group>"; };
+		06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetPreviewOverlay.swift; sourceTree = "<group>"; };
 		06AE130D2BBB09B5008EAE98 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		06AE130F2BBB0B61008EAE98 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		06AE13112BBB0D16008EAE98 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -249,6 +262,7 @@
 		06CA671B2CA4E8A800CAD9E0 /* OnboardingStepperView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStepperView.swift; sourceTree = "<group>"; };
 		06CA671D2CA5B6BF00CAD9E0 /* AboutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutApp.swift; sourceTree = "<group>"; };
 		06CA671F2CA6EFAB00CAD9E0 /* TipDevView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipDevView.swift; sourceTree = "<group>"; };
+		06CC00112233445566778801 /* KeyStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyStyle.swift; sourceTree = "<group>"; };
 		06D428DD2CA4BC10005A5445 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		06D428E02CA4E51B005A5445 /* Page.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Page.swift; sourceTree = "<group>"; };
 		06D428E32CA4E580005A5445 /* StaggeredImagesList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaggeredImagesList.swift; sourceTree = "<group>"; };
@@ -259,7 +273,6 @@
 		06E7E2BF2BD998860058D11E /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewDetail.swift; sourceTree = "<group>"; };
 		06EA76932BB4DED000E3E1F0 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
-		06CC00112233445566778801 /* KeyStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyStyle.swift; sourceTree = "<group>"; };
 		06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetForm.swift; sourceTree = "<group>"; };
 		06F4F2F92BB5F3BD00399C78 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Bold.ttf"; sourceTree = "<group>"; };
@@ -277,16 +290,21 @@
 		0863C40DC54F8B0573428C40 /* ReminderDestination.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReminderDestination.swift; sourceTree = "<group>"; };
 		1C830E3C63663CCF65E72BF1 /* KeyboardCalloutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardCalloutView.swift; path = V2/KeyboardCalloutView.swift; sourceTree = "<group>"; };
 		263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReminderParseEngine.swift; sourceTree = "<group>"; };
+		314D660CC6FE8B02931C5358 /* ResolverTuning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResolverTuning.swift; path = V2/ResolverTuning.swift; sourceTree = "<group>"; };
 		3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutResolver.swift; path = V2/KeyboardLayoutResolver.swift; sourceTree = "<group>"; };
 		426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardGestureCoordinator.swift; path = V2/KeyboardGestureCoordinator.swift; sourceTree = "<group>"; };
+		46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResolverSelfTests.swift; sourceTree = "<group>"; };
 		67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventKitReminderService.swift; sourceTree = "<group>"; };
+		717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardSignposts.swift; path = V2/KeyboardSignposts.swift; sourceTree = "<group>"; };
 		798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpaceBarCursorController.swift; path = V2/SpaceBarCursorController.swift; sourceTree = "<group>"; };
 		7C12EC5363837C2A8630F8D3 /* KeyboardLayoutItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutItem.swift; path = V2/KeyboardLayoutItem.swift; sourceTree = "<group>"; };
 		80EB0CF160026E9B1BAF2EE5 /* NativeKeyboardV2View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NativeKeyboardV2View.swift; path = V2/NativeKeyboardV2View.swift; sourceTree = "<group>"; };
 		85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SmartTouchResolver.swift; path = V2/SmartTouchResolver.swift; sourceTree = "<group>"; };
 		88B761651C894AA3B2981C82 /* RemindersIntegrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemindersIntegrationView.swift; sourceTree = "<group>"; };
 		9A617BC51EE90BF0174CD25F /* NotificationPresenter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
+		A5A4521ED79B29D8582D144F /* SnipKeyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnipKeyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TouchOffsetModel.swift; path = V2/TouchOffsetModel.swift; sourceTree = "<group>"; };
+		AD1001DDF6C6C8B28781E4D8 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		ADE910AE12DD4415B552E4A2 /* SlashCommandEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandEngine.swift; sourceTree = "<group>"; };
 		ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictiveTextEngine.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigramEngine.swift; sourceTree = "<group>"; };
@@ -294,8 +312,8 @@
 		B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbabilisticTouchContext.swift; sourceTree = "<group>"; };
 		B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerIntegrationView.swift; sourceTree = "<group>"; };
 		BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalNotificationScheduler.swift; sourceTree = "<group>"; };
-		BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnippetPasteboard.swift; sourceTree = "<group>"; };
 		BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyLayerRenderer.swift; path = V2/KeyLayerRenderer.swift; sourceTree = "<group>"; };
+		BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnippetPasteboard.swift; sourceTree = "<group>"; };
 		C38FE722252F18F28A754009 /* KeyboardCommitPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardCommitPipeline.swift; path = V2/KeyboardCommitPipeline.swift; sourceTree = "<group>"; };
 		C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerParseEngine.swift; sourceTree = "<group>"; };
 		D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutFactory.swift; path = V2/KeyboardLayoutFactory.swift; sourceTree = "<group>"; };
@@ -333,6 +351,14 @@
 				066372172BEDC0AC00226EE4 /* CloudKitSyncMonitor in Frameworks */,
 				064D8A122BDC1E3200B9B65F /* SwiftUIMasonry in Frameworks */,
 				060399962BB8836E00A6E818 /* AlertToast in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8CEE9FE99AC6B06F6861B907 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9C3F52B5184326361EAE3B6 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -384,6 +410,7 @@
 				066E69D52BB9831900D971E8 /* SnipKeyboard */,
 				066FAF0B2BB216160086F135 /* Products */,
 				06E7E2B52BD30A610058D11E /* Frameworks */,
+				527368819406477233EBD592 /* SnipKeyTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -392,6 +419,7 @@
 			children = (
 				066FAF0A2BB216160086F135 /* SnipKey.app */,
 				066E69D42BB9831900D971E8 /* SnipKeyboard.appex */,
+				A5A4521ED79B29D8582D144F /* SnipKeyTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -504,6 +532,8 @@
 				A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */,
 				263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */,
 				C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */,
+				717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */,
+				314D660CC6FE8B02931C5358 /* ResolverTuning.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -572,6 +602,7 @@
 			isa = PBXGroup;
 			children = (
 				06E7E2BF2BD998860058D11E /* StoreKit.framework */,
+				4D4ED7EE62F5DD4B757E1298 /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -666,6 +697,23 @@
 			path = Notifications;
 			sourceTree = "<group>";
 		};
+		4D4ED7EE62F5DD4B757E1298 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				AD1001DDF6C6C8B28781E4D8 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		527368819406477233EBD592 /* SnipKeyTests */ = {
+			isa = PBXGroup;
+			children = (
+				46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */,
+			);
+			name = SnipKeyTests;
+			path = SnipKeyTests;
+			sourceTree = "<group>";
+		};
 		AAFB51DEBD1B8B2B69F29261 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
@@ -750,6 +798,24 @@
 			productReference = 066FAF0A2BB216160086F135 /* SnipKey.app */;
 			productType = "com.apple.product-type.application";
 		};
+		C52996F26E17C37E694F3A09 /* SnipKeyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E909DF814613F191F086C26B /* Build configuration list for PBXNativeTarget "SnipKeyTests" */;
+			buildPhases = (
+				37661C21E6CC4369F8CBBD59 /* Sources */,
+				8CEE9FE99AC6B06F6861B907 /* Frameworks */,
+				0B7448ACE3B0512B0DA7107B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8CEEBFE60FB0B0260C743A9D /* PBXTargetDependency */,
+			);
+			name = SnipKeyTests;
+			productName = SnipKeyTests;
+			productReference = A5A4521ED79B29D8582D144F /* SnipKeyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -791,6 +857,7 @@
 			targets = (
 				066FAF092BB216160086F135 /* SnipKey */,
 				066E69D32BB9831900D971E8 /* SnipKeyboard */,
+				C52996F26E17C37E694F3A09 /* SnipKeyTests */,
 			);
 		};
 /* End PBXProject section */
@@ -819,6 +886,13 @@
 				06F4F30D2BB6270F00399C78 /* IBMPlexMono-Medium.ttf in Resources */,
 				06F4F3092BB6270F00399C78 /* IBMPlexMono-Bold.ttf in Resources */,
 				066E69CD2BB8D11400D971E8 /* Launch Screen.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0B7448ACE3B0512B0DA7107B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -881,6 +955,8 @@
 				F977E6660EB5E6D9FE1B2F3A /* ReminderDestination.swift in Sources */,
 				2EB6784CAE685D2E8A3EB0D8 /* EventKitReminderService.swift in Sources */,
 				4357CA1F7209133EF8A7BB31 /* TimerParseEngine.swift in Sources */,
+				163B8ED5BE60161637D33C1D /* KeyboardSignposts.swift in Sources */,
+				3903C47C0AC60946D90B8D0D /* ResolverTuning.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -981,6 +1057,16 @@
 				B583A44D6D4DBE7597870131 /* RemindersIntegrationView.swift in Sources */,
 				9DFAAFBE4D41F82F980F94A2 /* TimerIntegrationView.swift in Sources */,
 				47E09081072FF9E2DEC87BA3 /* TimerParseEngine.swift in Sources */,
+				8580E351A1E27239207E109F /* KeyboardSignposts.swift in Sources */,
+				FF36A9DA1C13EC27D1D755F0 /* ResolverTuning.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		37661C21E6CC4369F8CBBD59 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				25B6CF74129974BEF158F5F0 /* ResolverSelfTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -991,6 +1077,12 @@
 			isa = PBXTargetDependency;
 			target = 066E69D32BB9831900D971E8 /* SnipKeyboard */;
 			targetProxy = 066E69D92BB9831900D971E8 /* PBXContainerItemProxy */;
+		};
+		8CEEBFE60FB0B0260C743A9D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = SnipKey;
+			target = 066FAF092BB216160086F135 /* SnipKey */;
+			targetProxy = 6A0E9790B155A27831B53EA4 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1252,6 +1344,41 @@
 			};
 			name = Release;
 		};
+		9A0953E4F8826F798FD19D38 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey.SnipKeyTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SnipKey.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SnipKey";
+			};
+			name = Debug;
+		};
+		B4C88F0275F36AC33356EC91 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey.SnipKeyTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SnipKey.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SnipKey";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1278,6 +1405,15 @@
 			buildConfigurations = (
 				066FAF312BB216170086F135 /* Debug */,
 				066FAF322BB216170086F135 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E909DF814613F191F086C26B /* Build configuration list for PBXNativeTarget "SnipKeyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B4C88F0275F36AC33356EC91 /* Release */,
+				9A0953E4F8826F798FD19D38 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
