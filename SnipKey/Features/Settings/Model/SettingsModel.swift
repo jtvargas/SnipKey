@@ -179,6 +179,10 @@ enum AppGroupSettings {
         /// committed characters to the App Group for the offline replay harness. Records
         /// typed text — developer's own device only. Default OFF; RELEASE-locked off. Bool.
         static let calibrationCaptureEnabled = "calibrationCaptureEnabled"
+        /// Corpus-trained character trigram prior (bundled trigram-en.bin) instead of the
+        /// legacy bigram + curated boosts. DEBUG default ON for dogfooding; RELEASE-locked
+        /// OFF until the replay/shadow gates pass (V2_KEYBOARD_NEXTGEN_PLAN §12). Bool.
+        static let useCorpusTrigram = "useCorpusTrigram"
         /// Master enable for the Reminders integration. When false, the keyboard behaves exactly
         /// as today (SnipKey local notifications only). Bool.
         static let remindersIntegrationEnabled = "remindersIntegrationEnabled"
@@ -267,6 +271,14 @@ enum KeyboardFeatureFlags {
     static var calibrationCaptureEnabled: Bool {
         #if DEBUG
         AppGroupSettings.bool(forKey: AppGroupSettings.Key.calibrationCaptureEnabled, default: false)
+        #else
+        false
+        #endif
+    }
+
+    static var useCorpusTrigram: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.useCorpusTrigram, default: true)
         #else
         false
         #endif

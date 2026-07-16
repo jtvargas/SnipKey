@@ -133,6 +133,7 @@
 		4314634F36B04D70854CC03E /* PredictiveTextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE910AE12DD4415B552E4B3 /* PredictiveTextEngine.swift */; };
 		4357CA1F7209133EF8A7BB31 /* TimerParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */; };
 		47E09081072FF9E2DEC87BA3 /* TimerParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */; };
+		531D9A19F182A54F591CCDD8 /* trigram-en.bin in Resources */ = {isa = PBXBuildFile; fileRef = 501CDE2D77800335FB2DD5DE /* trigram-en.bin */; };
 		5AA1CF567B54EAE8DFCBAF2F /* ReminderDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0863C40DC54F8B0573428C40 /* ReminderDestination.swift */; };
 		5AA259C84646E2C6725970F5 /* KeyboardLayoutFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */; };
 		5F658D6000CB59E3322A6785 /* CalloutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCB146313BAC73C4D3C608 /* CalloutController.swift */; };
@@ -142,6 +143,7 @@
 		854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
 		8580E351A1E27239207E109F /* KeyboardSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */; };
 		97D243C545AE5AC733FC26FB /* ModelContainerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */; };
+		9A07952948514535BCF96200 /* CharacterTrigramLM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C7DB60CB94B5F0CD67A47E /* CharacterTrigramLM.swift */; };
 		9AD80476CD0C9C51C700F601 /* LocalNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */; };
 		9DFAAFBE4D41F82F980F94A2 /* TimerIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */; };
 		A6C27CA5DF7742F084A2061B /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
@@ -154,6 +156,7 @@
 		B34CB5065459AFDE2C23A92F /* KeyboardCommitPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = C38FE722252F18F28A754009 /* KeyboardCommitPipeline.swift */; };
 		B583A44D6D4DBE7597870131 /* RemindersIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B761651C894AA3B2981C82 /* RemindersIntegrationView.swift */; };
 		B89C0449762FBFE1BC7FB157 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A617BC51EE90BF0174CD25F /* NotificationPresenter.swift */; };
+		B97874AC51BB77034D5565F1 /* CharacterTrigramLM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C7DB60CB94B5F0CD67A47E /* CharacterTrigramLM.swift */; };
 		BD5F1A2C3E4D5B6A79880103 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
 		BD5F1A2C3E4D5B6A79880104 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
 		BF8B6001DF52F893601D98F0 /* PredictiveTextEngineAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */; };
@@ -163,6 +166,7 @@
 		C2D3E4F5A6B7C8D9E0F1A1B3 /* ProbabilisticTouchContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */; };
 		C2E798470841C581DCDD7687 /* CalibrationCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */; };
 		C499471BC1178E27BCE65613 /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
+		C5B1464E88293157449DAF06 /* CharacterTrigramLMTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6374B40A047164AF651131A /* CharacterTrigramLMTests.swift */; };
 		C67BF68846AC7970ACE1CB05 /* ResolverReplayEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */; };
 		C6C79CE1B8ACC91139B273DD /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
 		CC72D06329CE5A0FD24F039D /* KeyboardLayoutFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */; };
@@ -178,6 +182,7 @@
 		E700E7444943F0F8E705293A /* AccentMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE452F555419A6F46984CBBC /* AccentMap.swift */; };
 		E9395E039E047952A59EE0E8 /* KeyLayerRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */; };
 		EBA12BC3F47C57B75EBA44F4 /* RemindersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F559D4F5BD052FAD0F47B8 /* RemindersView.swift */; };
+		EE29CE4DCF6CF86E5D53F808 /* trigram-en.bin in Resources */ = {isa = PBXBuildFile; fileRef = 501CDE2D77800335FB2DD5DE /* trigram-en.bin */; };
 		EE3A895ADA9EFDA4F1FF82A7 /* KeyLayerRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */; };
 		EFE5647EEF13001D16377DCC /* NativeKeyboardV2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EB0CF160026E9B1BAF2EE5 /* NativeKeyboardV2View.swift */; };
 		F2B3C4D5E6F7A8B9C0D1E2F4 /* ShadowTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B3C4D5E6F7A8B9C0D1E2F3 /* ShadowTelemetryView.swift */; };
@@ -300,6 +305,8 @@
 		3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutResolver.swift; path = V2/KeyboardLayoutResolver.swift; sourceTree = "<group>"; };
 		426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardGestureCoordinator.swift; path = V2/KeyboardGestureCoordinator.swift; sourceTree = "<group>"; };
 		46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResolverSelfTests.swift; sourceTree = "<group>"; };
+		501CDE2D77800335FB2DD5DE /* trigram-en.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = "trigram-en.bin"; path = "SnipKeyboard/Resources/trigram-en.bin"; sourceTree = SOURCE_ROOT; };
+		59C7DB60CB94B5F0CD67A47E /* CharacterTrigramLM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CharacterTrigramLM.swift; path = V2/CharacterTrigramLM.swift; sourceTree = "<group>"; };
 		624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalibrationCapture.swift; path = V2/CalibrationCapture.swift; sourceTree = "<group>"; };
 		67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventKitReminderService.swift; sourceTree = "<group>"; };
 		717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardSignposts.swift; path = V2/KeyboardSignposts.swift; sourceTree = "<group>"; };
@@ -331,6 +338,7 @@
 		EE452F555419A6F46984CBBC /* AccentMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AccentMap.swift; path = V2/AccentMap.swift; sourceTree = "<group>"; };
 		EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ModelContainerProvider.swift; path = V2/ModelContainerProvider.swift; sourceTree = "<group>"; };
 		F2B3C4D5E6F7A8B9C0D1E2F3 /* ShadowTelemetryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowTelemetryView.swift; sourceTree = "<group>"; };
+		F6374B40A047164AF651131A /* CharacterTrigramLMTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterTrigramLMTests.swift; sourceTree = "<group>"; };
 		F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResolverReplayEngine.swift; path = V2/ResolverReplayEngine.swift; sourceTree = "<group>"; };
 		F7FCB146313BAC73C4D3C608 /* CalloutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalloutController.swift; path = V2/CalloutController.swift; sourceTree = "<group>"; };
 		F9F559D4F5BD052FAD0F47B8 /* RemindersView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemindersView.swift; sourceTree = "<group>"; };
@@ -402,6 +410,7 @@
 		066E69D52BB9831900D971E8 /* SnipKeyboard */ = {
 			isa = PBXGroup;
 			children = (
+				501CDE2D77800335FB2DD5DE /* trigram-en.bin */,
 				0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */,
 				066E69D62BB9831900D971E8 /* KeyboardViewController.swift */,
 				066E69D82BB9831900D971E8 /* Info.plist */,
@@ -546,6 +555,7 @@
 				314D660CC6FE8B02931C5358 /* ResolverTuning.swift */,
 				624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */,
 				F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */,
+				59C7DB60CB94B5F0CD67A47E /* CharacterTrigramLM.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -723,6 +733,7 @@
 			children = (
 				46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */,
 				B7E4D723A1CD32CCD8D7DB20 /* ReplayEngineTests.swift */,
+				F6374B40A047164AF651131A /* CharacterTrigramLMTests.swift */,
 			);
 			name = SnipKeyTests;
 			path = SnipKeyTests;
@@ -881,6 +892,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EE29CE4DCF6CF86E5D53F808 /* trigram-en.bin in Resources */,
 				066E69F52BB9CB7900D971E8 /* IBMPlexMono-Medium.ttf in Resources */,
 				066E69F62BB9CB7C00D971E8 /* IBMPlexMono-Regular.ttf in Resources */,
 				066E69F72BB9CB7F00D971E8 /* IBMPlexMono-SemiBold.ttf in Resources */,
@@ -893,6 +905,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				531D9A19F182A54F591CCDD8 /* trigram-en.bin in Resources */,
 				066FAF172BB216170086F135 /* Preview Assets.xcassets in Resources */,
 				06F4F3102BB6270F00399C78 /* IBMPlexMono-SemiBold.ttf in Resources */,
 				066FAF142BB216170086F135 /* Assets.xcassets in Resources */,
@@ -973,6 +986,7 @@
 				3903C47C0AC60946D90B8D0D /* ResolverTuning.swift in Sources */,
 				C2E798470841C581DCDD7687 /* CalibrationCapture.swift in Sources */,
 				C67BF68846AC7970ACE1CB05 /* ResolverReplayEngine.swift in Sources */,
+				B97874AC51BB77034D5565F1 /* CharacterTrigramLM.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1078,6 +1092,7 @@
 				FF36A9DA1C13EC27D1D755F0 /* ResolverTuning.swift in Sources */,
 				D59BAAF0D552AA91E0BE20F9 /* CalibrationCapture.swift in Sources */,
 				841E0DA42C3D9F6A2A83006B /* ResolverReplayEngine.swift in Sources */,
+				9A07952948514535BCF96200 /* CharacterTrigramLM.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1087,6 +1102,7 @@
 			files = (
 				25B6CF74129974BEF158F5F0 /* ResolverSelfTests.swift in Sources */,
 				1F6BAD1F43E88D59C5638277 /* ReplayEngineTests.swift in Sources */,
+				C5B1464E88293157449DAF06 /* CharacterTrigramLMTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

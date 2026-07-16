@@ -18,8 +18,16 @@ struct ContextTuning: Codable, Equatable {
     /// Peak-weight normalization window: peak ≤ low ⇒ minConfidence, peak ≥ high ⇒ 1.
     var confidencePeakLow: Float = 0.12
     var confidencePeakHigh: Float = 0.35
+    /// Use the bundled corpus trigram (`CharacterTrigramLM`) as the per-key prior instead
+    /// of the legacy BigramEngine + curated TrigramEngine boosts. Falls back automatically
+    /// when the table failed to load.
+    var useCorpusTrigram: Bool = false
 
-    static let current = ContextTuning()
+    /// The live keyboard's tuning: the flag is session-cached here so calibration capture
+    /// snapshots it and replay reproduces the same prior source.
+    static var current: ContextTuning {
+        ContextTuning(useCorpusTrigram: KeyboardFeatureFlags.useCorpusTrigram)
+    }
 }
 
 /// Tracks the last typed character for probabilistic touch resolution.
@@ -87,7 +95,11 @@ final class ProbabilisticTouchContext {
         self.tuning = tuning
         self.currentWeights26 = ContiguousArray<Float>(repeating: 0, count: 26)
         self.blended26 = ContiguousArray<Float>(repeating: 0, count: 26)
-        BigramEngine.fill26(after: nil, into: &currentWeights26)  // bakes table26 off the touch path
+        // Word-initial distribution; also bakes/loads the tables off the touch path.
+        if !(tuning.useCorpusTrigram
+             && CharacterTrigramLM.shared.fill(into: &currentWeights26, prev2: nil, prev1: nil)) {
+            BigramEngine.fill26(after: nil, into: &currentWeights26)
+        }
         recomputeConfidence()
     }
 
@@ -100,13 +112,19 @@ final class ProbabilisticTouchContext {
         // prev1='l') — the old early-out left it stale after double letters.
         secondLastCharacter = (lower == lastCharacter) ? lower : lastCharacter
         lastCharacter = lower
-        // Bigram base, then raise the predicted letters for high-confidence trigram prefixes
-        // (max-merge: only ever increases a likely letter, never lowers another).
-        BigramEngine.fill26(after: lower, into: &currentWeights26)
-        if let boost = TrigramEngine.boost(prev2: secondLastCharacter, prev1: lower) {
-            for (ch, b) in boost {
-                if let i = BigramEngine.letterIndex(ch) {
-                    currentWeights26[i] = max(currentWeights26[i], b)
+        // Prior source: the corpus trigram when enabled and loaded (real English
+        // P(next | prev2, prev1) with offline-smoothed backoff — subsumes the curated
+        // boosts); otherwise bigram base + high-confidence trigram max-merge (only ever
+        // increases a likely letter, never lowers another).
+        if !(tuning.useCorpusTrigram
+             && CharacterTrigramLM.shared.fill(into: &currentWeights26,
+                                               prev2: secondLastCharacter, prev1: lower)) {
+            BigramEngine.fill26(after: lower, into: &currentWeights26)
+            if let boost = TrigramEngine.boost(prev2: secondLastCharacter, prev1: lower) {
+                for (ch, b) in boost {
+                    if let i = BigramEngine.letterIndex(ch) {
+                        currentWeights26[i] = max(currentWeights26[i], b)
+                    }
                 }
             }
         }
@@ -122,7 +140,10 @@ final class ProbabilisticTouchContext {
     func recordNonCharacter() {
         if lastCharacter != nil {
             lastCharacter = nil
-            BigramEngine.fill26(after: nil, into: &currentWeights26)
+            if !(tuning.useCorpusTrigram
+                 && CharacterTrigramLM.shared.fill(into: &currentWeights26, prev2: nil, prev1: nil)) {
+                BigramEngine.fill26(after: nil, into: &currentWeights26)
+            }
         }
         secondLastCharacter = nil
         // Word boundary — the prefix prior no longer applies.
@@ -252,7 +273,9 @@ extension ProbabilisticTouchContext {
     /// same pattern as `ProbabilisticHitResolver.runEquivalenceSelfTest`.
     static func contextSelfTestFailures() -> [String] {
         var failures: [String] = []
-        let ctx = ProbabilisticTouchContext()
+        // Pinned to the legacy prior source: these invariants assert against the
+        // BigramEngine tables specifically (the corpus-trigram source has its own tests).
+        let ctx = ProbabilisticTouchContext(tuning: ContextTuning(useCorpusTrigram: false))
         let tuning = ctx.tuning
 
         // 1. Trigram sharpness: after "t","h" the resolver must see the full "th→e"
@@ -295,7 +318,7 @@ extension ProbabilisticTouchContext {
         }
 
         // 4. Double-letter trigram context: "t","e","e" ⇒ prev2='e', prev1='e'.
-        let ctx2 = ProbabilisticTouchContext()
+        let ctx2 = ProbabilisticTouchContext(tuning: ContextTuning(useCorpusTrigram: false))
         ctx2.recordCharacter("t")
         ctx2.recordCharacter("e")
         ctx2.recordCharacter("e")
