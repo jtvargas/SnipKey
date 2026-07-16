@@ -44,6 +44,7 @@ struct SnippetViewDetail: View {
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
     
     @State private var showToast = false
+    @State private var toastText = "Copied!"
     @State var isEditFormVisible: Bool = false
     @State private var snippet: SnippetItem = SnippetItem(
         title: "", content: "", type: SnipType.url, isSecure: false)
@@ -212,7 +213,7 @@ struct SnippetViewDetail: View {
         .toast(isPresenting: $showToast) {
             AlertToast(
                 displayMode: .banner(.pop), type: .systemImage("doc.on.clipboard", .label),
-                title: "Copied!",
+                title: toastText,
                 style: .style(
                     backgroundColor: Color.tertiarySystemBackground,
                     titleFont: .custom("IBMPlexMono-Medium", size: 14)))
@@ -242,39 +243,31 @@ struct SnippetViewDetail: View {
         self.isEditFormVisible.toggle()
     }
     
-    func copyImageToClipboard() {
-        guard
-            let newImage = UIImage(data: (snippet.file?.fileData)!)
-        else { return }
-        
-        var imageData: Data?
-        
-        if snippet.file?.fileFormatType == "image/png"{
-            imageData = newImage.pngData()
-        }
-        
-        if snippet.file?.fileFormatType == "image/jpeg"{
-            imageData = newImage.jpegData(compressionQuality: 0.5)
-        }
-        
-        
-        let clipboard = UIPasteboard.general
-        clipboard.setValue(imageData!, forPasteboardType: UTType.png.identifier)
-        
-    }
-    
     func copyToClipboard() {
-        let clipboard = UIPasteboard.general
+        let result: SnippetCopyResult
         switch snippet.type {
-        case .file:
-            clipboard.setValue(snippet.file?.fileData as Any, forPasteboardType: UTType.pdf.identifier)
-        case .image:
-            copyImageToClipboard()
+        case .file, .image:
+            result = SnippetPasteboard.copyFile(
+                data: snippet.file?.fileData,
+                mimeType: snippet.file?.fileFormatType,
+                hasFullAccess: true)
         default:
-            clipboard.setValue(snippet.content!, forPasteboardType: UTType.plainText.identifier)
+            result = SnippetPasteboard.copyText(snippet.content ?? "", hasFullAccess: true)
         }
-//        clipboard.setValue(snippet.content, forPasteboardType: UTType.plainText.identifier)
-        showToast.toggle()
+
+        switch result {
+        case .success:
+            toastText = "Copied!"
+        case .missingData:
+            toastText = "File data missing."
+        case .tooLarge:
+            toastText = "File is over \(SnippetPasteboard.maxFileSizeDescription) — too large to copy."
+        case .unsupportedType:
+            toastText = "Unsupported file type."
+        case .noFullAccess:
+            toastText = "Copy failed."
+        }
+        showToast = true
     }
 }
 

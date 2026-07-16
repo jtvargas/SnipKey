@@ -13,7 +13,7 @@ struct TagColorIndicator: View {
     var size: CGFloat = 8
     
     var body: some View {
-        if let hex = colorHex, let color = Color(hex: hex) {
+        if let hex = colorHex, let color = Color.cached(hex: hex) {
             Circle()
                 .fill(color)
                 .frame(width: size, height: size)

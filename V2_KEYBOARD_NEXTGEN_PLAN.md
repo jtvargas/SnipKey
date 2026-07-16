@@ -14,8 +14,9 @@
 
 ## Implementation Status (current)
 
-The next-gen engine is **enabled by default** alongside the V2 keyboard. What shipped vs. what's
-deferred:
+The next-gen engine is **enabled by default** alongside the V2 keyboard. This document now tracks both
+the shipped engine and the remaining calibration work; it should not be read as a from-scratch rewrite
+plan.
 
 | Area | Status | Where |
 |---|---|---|
@@ -23,20 +24,25 @@ deferred:
 | ProMotion 120 Hz plist flag | ✅ Shipped | `SnipKeyboard/Info.plist` |
 | Trait/dark-mode color correctness | ✅ Already handled | `KeyLayerRenderer` |
 | 2D power-diagram resolver (Σ-norm argmin, anchor zone, anti-swallow) | ✅ Shipped, **default ON** | `ProbabilisticHitResolver` |
+| Adjacent-row letter scoring for vertical near-misses | ✅ Shipped | `KeyboardGestureCoordinator.probabilisticCandidateFrames` |
+| Runner-up candidate capture for telemetry / future hypothesis ranking | ✅ Shipped | `ProbabilisticHitResolver.Result`, `TypingTelemetry.TouchOutcome` |
 | Per-key weights + smoothing (EMA + deadband, word-boundary reset) | ✅ Shipped | `ProbabilisticTouchContext` |
 | Curated trigram boosts (high-confidence patterns) | ✅ Shipped | `TrigramEngine` (in `BigramEngine.swift`) |
 | Dynamic λ (β scaled by context confidence) | ✅ Shipped | `ProbabilisticTouchContext.confidence` + coordinator |
-| Online per-user offset learning (clustered, confidence-gated, persisted) | ✅ Shipped | `TouchOffsetModel` |
+| Online per-user offset learning (clustered, confidence/backspace-window gated, persisted) | ✅ Shipped | `TouchOffsetModel` |
 | Shadow-mode telemetry + report screen | ✅ Shipped (off by default) | `TypingTelemetry`, `ShadowTelemetryView` |
+| Responsiveness percentiles | ✅ Shipped (DEBUG telemetry, off by default) | `KeyboardResponsivenessTelemetry` |
 | Live Voronoi debug overlay | ✅ Shipped (off by default) | coordinator `updateVoronoiDebugOverlay` |
 | Settings toggles + version-string alignment | ✅ Shipped | `SettingsView`, `SettingsModel`, pbxproj |
-| **Data-driven tuning** of β / σ / offset sign-scale | ⏸️ **Optional future** — see §15 | — |
+| **Data-driven tuning** of β / σ / offset sign-scale | ⏸️ **Remaining work** — see §15 | — |
 | Population-prior fixed offsets (`PopulationOffset`) | ⏸️ Infra present, scale 0 (per-user learning preferred) | `PopulationOffset` |
+| Offline replay harness / CI corpus gates | ⏸️ Remaining work | host app or test target |
 | Full corpus-trained trigram / sequence decoding | ⏸️ Out of scope (needs a corpus) | — |
 | Haptics | 🚫 Excluded by product decision | — |
 
-Shipped defaults (research-shaped, conservative): `β = 0.5`, `σx = 13`, `σy = 16`, anchor inner
-`50%×60%`, offset learning `α = 0.06` over 6 clusters with a 30-sample trust ramp.
+Shipped defaults (research-shaped, conservative): `β = 0.35`, `σx = 13`, `σy = 16`, anchor inner
+`60%×70%`, offset learning `α = 0.06` over 6 clusters with a 30-sample trust ramp. Learning now waits
+for a 500 ms backspace-survival window before folding a touch into the per-user model.
 
 ---
 

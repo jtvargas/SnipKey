@@ -106,7 +106,8 @@ private struct ImageContentView: View {
     @Binding var selectedImage: PhotosPickerItem?
     @Binding var selectedImageData: Data?
     @Binding var selectedImageMimeType: String?
-    
+    @State private var showOversizeAlert = false
+
     var body: some View {
         VStack {
             ImagePicker(
@@ -117,10 +118,20 @@ private struct ImageContentView: View {
         .task(id: selectedImage) {
             await loadSelectedImage()
         }
+        .alert("Image too large", isPresented: $showOversizeAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Images up to \(SnippetPasteboard.maxFileSizeDescription) can be used from the keyboard.")
+        }
     }
-    
+
     private func loadSelectedImage() async {
         if let data = try? await selectedImage?.loadTransferable(type: Data.self) {
+            guard data.count <= SnippetPasteboard.maxFileByteCount else {
+                selectedImage = nil
+                showOversizeAlert = true
+                return
+            }
             selectedImageData = data
             selectedImageMimeType = selectedImage?.supportedContentTypes.first?.preferredMIMEType
         }
@@ -200,7 +211,8 @@ private struct FileContentView: View {
     @Binding var selectedFileMimeType: String?
     @State private var isFilePickerPresented = false
     @State private var showFilePicker = false
-    
+    @State private var showOversizeAlert = false
+
     var body: some View {
         if let selectedDocument = contentData {
             SelectedFileView(fileData: selectedDocument, removeAction: clearSelectedFile)
@@ -215,6 +227,12 @@ private struct FileContentView: View {
                     case .success(let files):
                         if let file = files.first, file.startAccessingSecurityScopedResource() {
                             defer { file.stopAccessingSecurityScopedResource() }
+                            // Size check BEFORE loading — an oversize PDF never touches memory.
+                            let fileSize = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                            guard fileSize <= SnippetPasteboard.maxFileByteCount else {
+                                showOversizeAlert = true
+                                return
+                            }
                             if let data = try? Data(contentsOf: file) {
                                 contentData = data
                                 selectedFileMimeType = "application/pdf"
@@ -223,6 +241,11 @@ private struct FileContentView: View {
                     case .failure(let error):
                         print("Error selecting file: \(error.localizedDescription)")
                     }
+                }
+                .alert("File too large", isPresented: $showOversizeAlert) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text("PDFs up to \(SnippetPasteboard.maxFileSizeDescription) can be used from the keyboard.")
                 }
         }
     }

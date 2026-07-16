@@ -15,7 +15,7 @@ import PhotosUI
 struct SnippetTypeSelector: View {
     @Binding var selection: SnipType
     let disabledItems: Set<SnipType>
-    
+
     var body: some View {
         VStack(spacing: 12) {
             // Segmented Picker with icons
@@ -30,13 +30,13 @@ struct SnippetTypeSelector: View {
                 let impactMed = UIImpactFeedbackGenerator(style: .light)
                 impactMed.impactOccurred()
             }
-            
+
             // Type label with icon below segmented control
             HStack(spacing: 6) {
                 Image(systemName: selection.snipTypeImage)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color.label)
-                
+
                 Text(selection.displayText)
                     .font(.custom("IBMPlexMono-Medium", size: 14))
                     .foregroundStyle(Color.label)
@@ -55,15 +55,15 @@ struct SnippetTypeSelector: View {
 struct TitleCharacterCounter: View {
     let title: String
     let limit: Int
-    
+
     private var remaining: Int {
         limit - title.count
     }
-    
+
     private var progress: CGFloat {
         CGFloat(title.count) / CGFloat(limit)
     }
-    
+
     private var progressColor: Color {
         if remaining <= 5 {
             return .red
@@ -72,14 +72,14 @@ struct TitleCharacterCounter: View {
         }
         return .secondary
     }
-    
+
     var body: some View {
         HStack(spacing: 8) {
             // Progress ring
             ZStack {
                 Circle()
                     .stroke(Color.tertiaryLabel.opacity(0.3), lineWidth: 3)
-                
+
                 Circle()
                     .trim(from: 0, to: min(progress, 1.0))
                     .stroke(progressColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
@@ -87,15 +87,15 @@ struct TitleCharacterCounter: View {
                     .animation(.easeInOut(duration: 0.2), value: progress)
             }
             .frame(width: 16, height: 16)
-            
+
             // Character count text
             Text("\(title.count)/\(limit)")
                 .font(.custom("IBMPlexMono-Regular", size: 11))
                 .foregroundStyle(progressColor)
                 .monospacedDigit()
-            
+
             Spacer()
-            
+
             // Warning when near limit
             if remaining <= 5 && remaining > 0 {
                 Text("\(remaining) left")
@@ -121,23 +121,31 @@ enum Field {
     case snippetContent
 }
 
+struct SnippetFormDraft {
+    let type: SnipType
+    let pasteClipboardOnAppear: Bool
+    var initialTitle: String = ""
+    var initialContent: String = ""
+    var initialTag: SnipTag? = nil
+}
+
 //struct CreateOrSelectTag: View {
-//   
-//    
+//
+//
 //    @Binding var isCreatingNewTag: Bool
 //    @Binding var snippetTag: SnipTag
-//    
+//
 //    @State private var tempTagName = ""
 //    @Binding var tagName: String
 //    @Binding var tagIcon: String
-//    
+//
 //    @State var selection: String = ""
 //    @State private var iconPickerPresented = false
-//    
+//
 //    @Environment(\.modelContext) var modelContext
 //    @Query( sort: \SnipTag.name) private var tags: [SnipTag]
-//    
-//    
+//
+//
 //    var body: some View {
 //        let customTagNameBinding = Binding(
 //            get: { snippetTag.name ?? "" }, // Default to false if nil
@@ -147,9 +155,9 @@ enum Field {
 //            get: { snippetTag.imageTag ?? "tag.fill" }, // Default to false if nil
 //            set: { newValue in snippetTag.imageTag = newValue }
 //        )
-//        
+//
 //        Toggle("Create New Tag", isOn: $isCreatingNewTag)
-//        
+//
 //        if isCreatingNewTag {
 //            HStack {
 //                Button {
@@ -172,7 +180,7 @@ enum Field {
 //                    SymbolPicker(symbol: customTagIconBinding)
 //                }
 //                Spacer()
-//                
+//
 //                VStack(alignment: .leading) {
 //                    TextField("Your Tag Name Here", text: customTagNameBinding)
 //                        .disableAutocorrection(true)
@@ -180,7 +188,7 @@ enum Field {
 //                    Text("Text Limit: \(tagCharLimit)")
 //                        .font(.custom("IBMPlexMono-Regular", size: 10))
 //                }
-//                
+//
 //            }
 //            .onAppear {
 //                tempTagName = tagName
@@ -189,7 +197,7 @@ enum Field {
 //            .onDisappear {
 //                tagName = tempTagName
 //            }
-//            
+//
 //        } else {
 //            if tags.isEmpty {
 //                Text("No tags available, create a new one")
@@ -213,7 +221,7 @@ enum Field {
 //                    impactMed.impactOccurred()
 //                }
 //            }
-//            
+//
 //        }
 //    }
 //}
@@ -221,49 +229,51 @@ enum Field {
 
 struct SnippetForm: View {
     @Environment(\.colorScheme) var colorScheme
-    
+
     let disabledItems: Set<SnipType> = []
-    
+
     let snippet: SnippetItem?
+    let initialDraft: SnippetFormDraft?
     let deviceBiometrics: DeviceBiometrics = DeviceBiometrics()
-    
+
     var isCreatingNewOne: Bool {
         return snippet == nil
     }
-    
+
     private var editorTitle: String {
         isCreatingNewOne ? "Add Snippet" : "Edit Snippet"
     }
-    
+
     @State private var type = SnipType.txt
     @State private var title = ""
     @State private var content = ""
     @State private var bulkContent: String = ""
     @State private var customTagName: String = ""
     @State private var customTagIconName: String = "tag.fill"
-    
+
     @State private var snippetTag: SnipTag = SnipTag(name: "", imageTag: "tag.fill")
-    
+
     //    Image File State
     @State var selectedImage: PhotosPickerItem?
-    
-    
+
+
     //    File State
     @State var contentFileData: Data?
     @State var contentFileFormatType: String?
 
-    
+
     @FocusState private var focusedField: Field?
     @Binding var isFormVisible: Bool
     @State var isCreatingNewTag: Bool = false
     @State var snippetViewModel = SnippetViewModel()
-    
+
     @State var isSecure: Bool = false
     @State private var isSecurityExpanded: Bool = false
-    
+    @State private var isApplyingInitialDraft = false
+
     @Environment(\.modelContext) var modelContext
     //    @Query(sort: \SnipTag.name) private var tags: [SnipTag]
-    
+
     //bulk creation
     @State private var isCreatingSnippets = false
     @State private var currentProgress = 0
@@ -273,15 +283,23 @@ struct SnippetForm: View {
     var isBulkCreation: Bool {
         formCreation == 1
     }
-    
 
-    
+    init(
+        snippet: SnippetItem?,
+        initialDraft: SnippetFormDraft? = nil,
+        isFormVisible: Binding<Bool>
+    ) {
+        self.snippet = snippet
+        self.initialDraft = initialDraft
+        self._isFormVisible = isFormVisible
+    }
+
     var bulkSnippetsToCreateCount: Int {
         bulkContent.split(separator: "\n")
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             .count
     }
-    
+
 
 
     var body: some View {
@@ -289,8 +307,8 @@ struct SnippetForm: View {
             ZStack {
                 VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
                     .edgesIgnoringSafeArea(.all)
-                
-                
+
+
                 VStack(spacing: 0) {
                     // Creation mode picker (only for new snippets)
                     if isCreatingNewOne {
@@ -304,24 +322,24 @@ struct SnippetForm: View {
                             .pickerStyle(.segmented)
                             .padding(.horizontal)
                             .padding(.top, 12)
-                            
+
                             // Mode description
                             Text(formCreation == 0 ? "Create one snippet at a time" : "Create multiple snippets from a list")
                                 .font(.custom("IBMPlexMono-Regular", size: 11))
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    
+
                     if formCreation == 0 {
                         SingleSnippetFormView()
                     } else {
                         BulkSnippetFormView()
                     }
                 }
-                
+
                 // Progress overlay
                 ProgressOverlay()
-                
+
                 // Success toast
                 SuccessToast()
             }
@@ -342,7 +360,7 @@ struct SnippetForm: View {
                         .foregroundStyle(Color.label)
                 }
             }
-            
+
             ToolbarItem(placement: .topBarLeading) {
                 Button(action: onClosePress) {
                     Text("Cancel")
@@ -350,12 +368,12 @@ struct SnippetForm: View {
                         .foregroundStyle(Color.label)
                 }
             }
-            
+
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 2) {
                     Text(editorTitle)
                         .font(.custom("IBMPlexMono-Bold", size: 16))
-                    
+
                     // Editing badge for edit mode
                     if !isCreatingNewOne {
                         Text("Editing")
@@ -368,7 +386,7 @@ struct SnippetForm: View {
                     }
                 }
             }
-            
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: save) {
                     HStack(spacing: 4) {
@@ -394,16 +412,21 @@ struct SnippetForm: View {
                 customTagName = snippet.customTag?.name ?? ""
                 customTagIconName = snippet.customTag?.imageTag ?? "tag.fill"
                 snippetTag = snippet.customTag ?? SnipTag(name: "", imageTag: "tag.fill")
+            } else if let initialDraft {
+                applyInitialDraft(initialDraft)
             }
-            
-            // Auto-focus title field for new snippets
+
+            // Auto-focus the next useful field for new snippets
             if isCreatingNewOne && formCreation == 0 {
+                let initialFocus: Field = initialDraft?.initialTitle.isEmpty == false ? .snippetContent : .snippetTitle
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    focusedField = .snippetTitle
+                    focusedField = initialFocus
                 }
             }
         }
         .onChange(of: type) { oldType , newType in
+            guard !isApplyingInitialDraft else { return }
+
             switch newType {
             case .txt:
                 content = ""
@@ -432,7 +455,7 @@ struct SnippetForm: View {
             }
         }
     }
-    
+
     @ViewBuilder
     func BulkSnippetFormView() -> some View {
         Form {
@@ -449,7 +472,7 @@ struct SnippetForm: View {
                     .foregroundStyle(.secondary)
             }
             .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
-            
+
             // MARK: - Bulk Content Section
             Section {
                 ZStack(alignment: .topLeading) {
@@ -457,11 +480,11 @@ struct SnippetForm: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Enter one snippet per line...")
                                 .foregroundStyle(.tertiary)
-                            
+
                             Text("Example:")
                                 .font(.custom("IBMPlexMono-Medium", size: 12))
                                 .foregroundStyle(Color.quaternaryLabel)
-                            
+
                             Text("Hello World\nLorem ipsum\nKaomoji\n٩(ˊᗜˋ*)و ♡")
                                 .font(.custom("IBMPlexMono-Regular", size: 13))
                                 .foregroundStyle(Color.quaternaryLabel)
@@ -469,7 +492,7 @@ struct SnippetForm: View {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 12)
                     }
-                    
+
                     TextEditor(text: $bulkContent)
                         .font(.custom("IBMPlexMono-Regular", size: 14))
                         .frame(minHeight: 200)
@@ -481,9 +504,9 @@ struct SnippetForm: View {
                     Label("Snippets", systemImage: "list.bullet.rectangle")
                         .font(.custom("IBMPlexMono-SemiBold", size: 12))
                         .textCase(.uppercase)
-                    
+
                     Spacer()
-                    
+
                     Button(action: pasteBulkContentFromClipboard) {
                         Label("Paste", systemImage: "doc.on.clipboard")
                             .font(.custom("IBMPlexMono-Medium", size: 12))
@@ -497,7 +520,7 @@ struct SnippetForm: View {
         }
         .scrollContentBackground(.hidden)
     }
-    
+
     // MARK: - Bulk Snippet Counter Component
     @ViewBuilder
     func BulkSnippetCounter(count: Int) -> some View {
@@ -505,13 +528,13 @@ struct SnippetForm: View {
             Image(systemName: count > 0 ? "checkmark.circle.fill" : "circle.dashed")
                 .foregroundStyle(count > 0 ? .green : .secondary)
                 .font(.system(size: 14))
-            
+
             Text("\(count) snippet\(count == 1 ? "" : "s") will be created")
                 .font(.custom("IBMPlexMono-Medium", size: 12))
                 .foregroundStyle(count > 0 ? Color.label : .secondary)
-            
+
             Spacer()
-            
+
             if count > 0 {
                 Text("Ready")
                     .font(.custom("IBMPlexMono-Bold", size: 10))
@@ -525,7 +548,7 @@ struct SnippetForm: View {
         .padding(.top, 8)
         .animation(.easeInOut, value: count)
     }
-    
+
     @ViewBuilder
     func SingleSnippetFormView() -> some View {
         Form {
@@ -538,7 +561,7 @@ struct SnippetForm: View {
                     .textCase(.uppercase)
             }
             .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
-            
+
             // MARK: - Title Section with always-visible character counter
             Section {
                 TextField("Enter a title for your snippet", text: $title)
@@ -552,7 +575,7 @@ struct SnippetForm: View {
                     Label("Title", systemImage: "textformat")
                         .font(.custom("IBMPlexMono-SemiBold", size: 12))
                         .textCase(.uppercase)
-                    
+
                     Text("*")
                         .foregroundStyle(.red)
                         .font(.custom("IBMPlexMono-Bold", size: 12))
@@ -561,7 +584,7 @@ struct SnippetForm: View {
                 TitleCharacterCounter(title: title, limit: titleCharLimit)
             }
             .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
-            
+
             // MARK: - Content Section with dynamic header
             Section {
                 SnippetContentForm(
@@ -576,9 +599,9 @@ struct SnippetForm: View {
                     Label("Content (\(type.displayText))", systemImage: type.snipTypeImage)
                         .font(.custom("IBMPlexMono-SemiBold", size: 12))
                         .textCase(.uppercase)
-                    
+
                     Spacer()
-                    
+
                     if type == .txt || type == .url {
                         Button(action: pasteContentFromClipboard) {
                             Label("Paste", systemImage: "doc.on.clipboard")
@@ -594,7 +617,7 @@ struct SnippetForm: View {
                 }
             }
             .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
-            
+
             // MARK: - Tag Section
             Section {
                 CreateOrSelectTag(snippetTag: $snippetTag)
@@ -608,7 +631,7 @@ struct SnippetForm: View {
                     .foregroundStyle(.secondary)
             }
             .listRowBackground(Color.tertiarySystemBackground.opacity(0.5))
-            
+
             // MARK: - Security Section (Bottom, Collapsible)
             Section {
                 DisclosureGroup(isExpanded: $isSecurityExpanded) {
@@ -619,11 +642,11 @@ struct SnippetForm: View {
                                     .font(.system(size: 18))
                                     .foregroundStyle(isSecure ? .green : .secondary)
                                     .animation(.easeInOut, value: isSecure)
-                                
+
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Require Authentication")
                                         .font(.custom("IBMPlexMono-Medium", size: 14))
-                                    
+
                                     Text("FaceID / TouchID")
                                         .font(.custom("IBMPlexMono-Regular", size: 11))
                                         .foregroundStyle(.secondary)
@@ -632,7 +655,7 @@ struct SnippetForm: View {
                         }
                         .disabled(!deviceBiometrics.hasBiometricsCapability)
                         .tint(.green)
-                        
+
                         if !deviceBiometrics.hasBiometricsCapability {
                             Label("Biometrics not available on this device", systemImage: "exclamationmark.triangle")
                                 .font(.custom("IBMPlexMono-Regular", size: 11))
@@ -645,10 +668,10 @@ struct SnippetForm: View {
                         Image(systemName: isSecure ? "lock.fill" : "lock.open")
                             .font(.system(size: 16))
                             .foregroundStyle(isSecure ? .green : .secondary)
-                        
+
                         Text("Security")
                             .font(.custom("IBMPlexMono-Medium", size: 14))
-                        
+
                         if isSecure {
                             Text("ON")
                                 .font(.custom("IBMPlexMono-Bold", size: 10))
@@ -666,18 +689,18 @@ struct SnippetForm: View {
         }
         .scrollContentBackground(.hidden)
     }
-    
+
     @ViewBuilder
     func SuccessToast() -> some View {
         if showSuccessToast {
             VStack {
                 Spacer()
-                
+
                 HStack(spacing: 12) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.title2)
-                    
+
                     Text("\(totalSnippets) snippet\(totalSnippets == 1 ? "" : "s") created")
                         .font(.subheadline)
                         .fontWeight(.medium)
@@ -692,32 +715,32 @@ struct SnippetForm: View {
             .animation(.spring(), value: showSuccessToast)
         }
     }
-    
+
     @ViewBuilder
     func ProgressOverlay() -> some View {
         if isCreatingSnippets {
             ZStack {
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
-                
+
                 VStack(spacing: 20) {
                     ZStack {
                         Circle()
                             .stroke(Color.gray.opacity(0.3), lineWidth: 8)
                             .frame(width: 80, height: 80)
-                        
+
                         Circle()
                             .trim(from: 0, to: CGFloat(currentProgress) / CGFloat(totalSnippets))
                             .stroke(Color.blue, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                             .frame(width: 80, height: 80)
                             .rotationEffect(.degrees(-90))
                             .animation(.linear(duration: 0.3), value: currentProgress)
-                        
+
                         Text("\(currentProgress)")
                             .font(.title2)
                             .fontWeight(.semibold)
                     }
-                    
+
                     VStack(spacing: 4) {
                         Text("Creating Snippets...")
                             .font(.headline)
@@ -733,24 +756,70 @@ struct SnippetForm: View {
             }
         }
     }
-    
 
-    
-    func toggleFormVisibility() {
-        isFormVisible.toggle()
+
+
+    func closeForm() {
+        isFormVisible = false
     }
-    
+
     func pasteContentFromClipboard(){
-        content = "\(content)\(pasteFromClipboard())"
+        let clipboardContent = pasteFromClipboard()
+        if !clipboardContent.isEmpty {
+            content = "\(content)\(clipboardContent)"
+            return
+        }
+
+        if let clipboardURL = UIPasteboard.general.url?.absoluteString {
+            content = "\(content)\(clipboardURL)"
+        }
     }
-    
+
     func pasteBulkContentFromClipboard(){
         bulkContent = "\(bulkContent)\(pasteFromClipboard())"
     }
-    
+
+    private func applyInitialDraft(_ draft: SnippetFormDraft) {
+        isApplyingInitialDraft = true
+        formCreation = 0
+        type = draft.type
+        title = draft.initialTitle
+        content = draft.initialContent
+        snippetTag = draft.initialTag ?? SnipTag(name: "", imageTag: "tag.fill")
+        contentFileData = nil
+        contentFileFormatType = nil
+
+        DispatchQueue.main.async {
+            isApplyingInitialDraft = false
+
+            guard draft.pasteClipboardOnAppear else { return }
+
+            switch draft.type {
+            case .txt, .url:
+                pasteContentFromClipboard()
+            case .image:
+                pasteImageFromClipboard()
+            case .file:
+                break
+            }
+        }
+    }
+
+    private func pasteImageFromClipboard() {
+        guard let image = UIPasteboard.general.image else { return }
+
+        if let pngData = image.pngData() {
+            contentFileData = pngData
+            contentFileFormatType = "image/png"
+        } else if let jpegData = image.jpegData(compressionQuality: 0.9) {
+            contentFileData = jpegData
+            contentFileFormatType = "image/jpeg"
+        }
+    }
+
     func getDisabledSaveAction() -> Bool {
         let needNewTagName = isCreatingNewTag ? snippetTag.name!.isEmpty : false
-        
+
         switch type {
         case .image, .file:
             return title.isEmpty || ((contentFileData?.isEmpty) != false) || needNewTagName
@@ -759,9 +828,9 @@ struct SnippetForm: View {
         default:
             return false
         }
-        
+
     }
-    
+
     func getBulkSnippetsToSnippetItems() -> [SnippetItem] {
         let snippetItems: [SnippetItem] = bulkContent
             .split(separator: "\n")
@@ -771,7 +840,7 @@ struct SnippetForm: View {
                 let title = content.count > titleCharLimit
                     ? String(content.prefix(titleCharLimit)) + "..."
                     : String(content)
-                
+
                 return SnippetItem(
                     title: title,
                     content: content,
@@ -779,21 +848,21 @@ struct SnippetForm: View {
                     isSecure: false
                 )
             }
-        
+
         return snippetItems
     }
-    
+
     func openURLContent() {
         if !content.isEmpty  && content.isValidURL(){
             UIApplication.shared.open(URL(string: content.getValidURLString())!)
         }
-        
+
     }
-    
+
     func onClosePress() {
-        self.toggleFormVisibility()
+        closeForm()
     }
-    
+
     func handleSecureSnippet(){
         deviceBiometrics.authenticate(successHandler: {
             // Handle successful authentication
@@ -809,14 +878,14 @@ struct SnippetForm: View {
             }
         })
     }
-    
+
     func addTagToSnippet(item: SnippetItem) {
         // Only add tag if one is selected (not empty)
         guard let tagName = snippetTag.name, !tagName.isEmpty else {
             item.customTag = nil
             return
         }
-        
+
         // Check if this is an existing tag or needs to be created
         if snippetTag.id == nil || modelContext.model(for: snippetTag.id) == nil {
             // Create new tag
@@ -828,30 +897,30 @@ struct SnippetForm: View {
             item.customTag = snippetTag
         }
     }
-    
+
     func addFileToSnippeet(item: SnippetItem) {
         if contentFileData != nil &&  contentFileFormatType != nil {
-            
+
             if let snippetFileId = item.file?.id {
                 snippetViewModel.deleteFile(fileId: snippetFileId)
             }
-            
+
             let newFile = snippetViewModel.createData(type: .image, data: contentFileData!, fileFormatType: contentFileFormatType!)
             newFile.snippet?.append(item)
             item.file = newFile
         }
-        
+
     }
-    
+
     private func saveBulk() {
         let snippetsToCreate = getBulkSnippetsToSnippetItems()
-        
+
         guard !snippetsToCreate.isEmpty else { return }
-        
+
         isCreatingSnippets = true
         currentProgress = 0
         totalSnippets = snippetsToCreate.count
-        
+
         // Use Task for async execution with UI updates
         Task {
             for (index, snippet) in snippetsToCreate.enumerated() {
@@ -861,28 +930,28 @@ struct SnippetForm: View {
                     type: snippet.type,
                     isSecure: snippet.isSecure
                 )
-                
+
                 addTagToSnippet(item: newSnippetCreated)
-                
+
                 if snippet.type == .image || snippet.type == .file {
                     addFileToSnippeet(item: newSnippetCreated)
                 }
-                
+
                 // Update progress
                 await MainActor.run {
                     currentProgress = index + 1
                 }
-                
+
                 // Small delay for better UX (optional, adjust as needed)
                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
             }
-            
+
             // Show success and dismiss
             await MainActor.run {
                 isCreatingSnippets = false
                 showSuccessToast = true
             }
-            
+
             // Dismiss after showing success
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
 //            await MainActor.run {
@@ -890,10 +959,10 @@ struct SnippetForm: View {
 //            }
         }
     }
-    
+
     private func save() {
         CreateSnippetTip.alreadyDiscovered = true
-        
+
         if getDisabledSaveAction() {
             print("cant save empty")
         } else {
@@ -905,7 +974,7 @@ struct SnippetForm: View {
                 snippet.updatedDate = Date.now
                 snippet.isSecure = isSecure
                 addTagToSnippet(item: snippet)
-                
+
                 if type == .image || type == .file  {
                     addFileToSnippeet(item: snippet)
                 }
@@ -916,26 +985,26 @@ struct SnippetForm: View {
                     // Create
                     let newSnippetCreated = snippetViewModel.createSnippet(title, content: content, type: type, isSecure: isSecure)
                     addTagToSnippet(item: newSnippetCreated)
-                    
+
                     if type == .image || type == .file {
                         addFileToSnippeet(item: newSnippetCreated)
                     }
                 }
-               
+
             }
-            toggleFormVisibility()
+            closeForm()
         }
-        
+
     }
-    
-    
+
+
 }
 
 struct SnippetFormBindingPreview: View {
     @State private var value = false
     @State private var tempSnippet: SnippetItem = SnippetItem(
         title: "", content: "", type: SnipType.txt, isSecure: false)
-    
+
     var body: some View {
         SnippetForm(snippet: tempSnippet, isFormVisible: $value)
     }

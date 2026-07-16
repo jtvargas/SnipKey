@@ -37,6 +37,8 @@
 		066E69DB2BB9831900D971E8 /* SnipKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 066E69D42BB9831900D971E8 /* SnipKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69E02BB985CF00D971E8 /* KeyboardView.swift */; };
 		066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69E02BB985CF00D971E8 /* KeyboardView.swift */; };
+		06AB20022F40B00200C2D002 /* SnippetPreviewOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */; };
+		06AB20032F40B00200C2D003 /* SnippetPreviewOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */; };
 		066E69E32BB9896400D971E8 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E69D62BB9831900D971E8 /* KeyboardViewController.swift */; };
 		066E69F42BB9CB7600D971E8 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */; };
 		066E69F52BB9CB7900D971E8 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FF2BB6270E00399C78 /* IBMPlexMono-Medium.ttf */; };
@@ -95,6 +97,8 @@
 		06E9A0432BDFE3DD00CF09BE /* SnippetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068C77CC2BB4C60C0008D9A1 /* SnippetViewModel.swift */; };
 		06EA76912BB4D2FC00E3E1F0 /* SnippetViewDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */; };
 		06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EA76932BB4DED000E3E1F0 /* Colors.swift */; };
+		06CC00112233445566778802 /* KeyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CC00112233445566778801 /* KeyStyle.swift */; };
+		06CC00112233445566778803 /* KeyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CC00112233445566778801 /* KeyStyle.swift */; };
 		06F4F2F72BB5CFDE00399C78 /* SnippetForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */; };
 		06F4F2FA2BB5F3BD00399C78 /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F4F2F92BB5F3BD00399C78 /* Strings.swift */; };
 		06F4F3092BB6270F00399C78 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */; };
@@ -132,6 +136,8 @@
 		854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
 		97D243C545AE5AC733FC26FB /* ModelContainerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */; };
 		9AD80476CD0C9C51C700F601 /* LocalNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */; };
+		BD5F1A2C3E4D5B6A79880103 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
+		BD5F1A2C3E4D5B6A79880104 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
 		9DFAAFBE4D41F82F980F94A2 /* TimerIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */; };
 		A6C27CA5DF7742F084A2061B /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
 		A7B8C9D0E1F2A3B4C5D6E7F8 /* TouchOffsetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */; };
@@ -217,6 +223,7 @@
 		066E69D62BB9831900D971E8 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		066E69D82BB9831900D971E8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		066E69E02BB985CF00D971E8 /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
+		06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetPreviewOverlay.swift; sourceTree = "<group>"; };
 		066FAF0A2BB216160086F135 /* SnipKey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnipKey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		066FAF0D2BB216160086F135 /* SnipKeyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnipKeyApp.swift; sourceTree = "<group>"; };
 		066FAF132BB216170086F135 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -252,6 +259,7 @@
 		06E7E2BF2BD998860058D11E /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		06EA76902BB4D2FC00E3E1F0 /* SnippetViewDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetViewDetail.swift; sourceTree = "<group>"; };
 		06EA76932BB4DED000E3E1F0 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
+		06CC00112233445566778801 /* KeyStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyStyle.swift; sourceTree = "<group>"; };
 		06F4F2F62BB5CFDE00399C78 /* SnippetForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetForm.swift; sourceTree = "<group>"; };
 		06F4F2F92BB5F3BD00399C78 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		06F4F2FB2BB6270E00399C78 /* IBMPlexMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Bold.ttf"; sourceTree = "<group>"; };
@@ -286,6 +294,7 @@
 		B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbabilisticTouchContext.swift; sourceTree = "<group>"; };
 		B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerIntegrationView.swift; sourceTree = "<group>"; };
 		BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalNotificationScheduler.swift; sourceTree = "<group>"; };
+		BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnippetPasteboard.swift; sourceTree = "<group>"; };
 		BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyLayerRenderer.swift; path = V2/KeyLayerRenderer.swift; sourceTree = "<group>"; };
 		C38FE722252F18F28A754009 /* KeyboardCommitPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardCommitPipeline.swift; path = V2/KeyboardCommitPipeline.swift; sourceTree = "<group>"; };
 		C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerParseEngine.swift; sourceTree = "<group>"; };
@@ -361,6 +370,7 @@
 				066E69D62BB9831900D971E8 /* KeyboardViewController.swift */,
 				066E69D82BB9831900D971E8 /* Info.plist */,
 				066E69E02BB985CF00D971E8 /* KeyboardView.swift */,
+				06AB20012F40B00200C2D001 /* SnippetPreviewOverlay.swift */,
 				06AA100F2F30A00100B1C000 /* QWERTY */,
 			);
 			path = SnipKeyboard;
@@ -586,6 +596,7 @@
 			isa = PBXGroup;
 			children = (
 				06EA76932BB4DED000E3E1F0 /* Colors.swift */,
+				06CC00112233445566778801 /* KeyStyle.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -658,11 +669,21 @@
 		AAFB51DEBD1B8B2B69F29261 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				BD5F1A2C3E4D5B6A79880105 /* Clipboard */,
 				13F01CB1874AC706164E3258 /* Notifications */,
 				112459B85F2A3E0B1DE8F239 /* Reminders */,
 			);
 			name = Shared;
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		BD5F1A2C3E4D5B6A79880105 /* Clipboard */ = {
+			isa = PBXGroup;
+			children = (
+				BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */,
+			);
+			name = Clipboard;
+			path = Clipboard;
 			sourceTree = "<group>";
 		};
 		FC5059CD7F2E4E4EDCE988EE /* Integrations */ = {
@@ -811,12 +832,14 @@
 				066E69D72BB9831900D971E8 /* KeyboardViewController.swift in Sources */,
 				06E9A0432BDFE3DD00CF09BE /* SnippetViewModel.swift in Sources */,
 				06C6FE2F2BB9EEBB00166AB0 /* Colors.swift in Sources */,
+				06CC00112233445566778802 /* KeyStyle.swift in Sources */,
 				06E7E2BA2BD97FB40058D11E /* Keyboard.swift in Sources */,
 				066E69FA2BB9CD9D00D971E8 /* SnippetModel.swift in Sources */,
 				061ED3CF2BC44384006A6E47 /* Biometrics.swift in Sources */,
 				0617D0762F22B90300E6480C /* TagColorIndicator.swift in Sources */,
 				0617D0732F22B8F200E6480C /* TagColorPicker.swift in Sources */,
 				066E69E12BB985CF00D971E8 /* KeyboardView.swift in Sources */,
+				06AB20022F40B00200C2D002 /* SnippetPreviewOverlay.swift in Sources */,
 				06C6FE2D2BB9E00900166AB0 /* SnipKeyDataManager.swift in Sources */,
 				06AE13132BBB0D8B008EAE98 /* SettingsModel.swift in Sources */,
 				0681F1D32C9A172E00459FD3 /* AppIconProvider.swift in Sources */,
@@ -853,6 +876,7 @@
 				E1A2B3C4D5E6F7A8B9C0D1E3 /* TypingTelemetry.swift in Sources */,
 				A7B8C9D0E1F2A3B4C5D6E7F8 /* TouchOffsetModel.swift in Sources */,
 				C2B69DCF6F147603AE4534CC /* LocalNotificationScheduler.swift in Sources */,
+				BD5F1A2C3E4D5B6A79880103 /* SnippetPasteboard.swift in Sources */,
 				E61BA06D36BBCF27D8463618 /* ReminderParseEngine.swift in Sources */,
 				F977E6660EB5E6D9FE1B2F3A /* ReminderDestination.swift in Sources */,
 				2EB6784CAE685D2E8A3EB0D8 /* EventKitReminderService.swift in Sources */,
@@ -873,6 +897,7 @@
 				06D454532BEE8E4C00D34782 /* TagsView.swift in Sources */,
 				06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */,
 				06EA76942BB4DED000E3E1F0 /* Colors.swift in Sources */,
+				06CC00112233445566778803 /* KeyStyle.swift in Sources */,
 				0630BC0E2C6E747100E8493B /* SnippetContentForm.swift in Sources */,
 				06CA671C2CA4E8A800CAD9E0 /* OnboardingStepperView.swift in Sources */,
 				066952992EBEFAD900CC89BC /* SearchView.swift in Sources */,
@@ -907,6 +932,7 @@
 				068C77D12BB4C7620008D9A1 /* SnippetListItem.swift in Sources */,
 				0617D0722F22B8F200E6480C /* TagColorPicker.swift in Sources */,
 				066E69E22BB985DD00D971E8 /* KeyboardView.swift in Sources */,
+				06AB20032F40B00200C2D003 /* SnippetPreviewOverlay.swift in Sources */,
 				06AE13102BBB0B61008EAE98 /* SettingsViewModel.swift in Sources */,
 				066B83122CA707FE00B95904 /* RevenueCatManager.swift in Sources */,
 				06F4F31B2BB67C9600399C78 /* KeyboardStatusView.swift in Sources */,
@@ -944,6 +970,7 @@
 				E1A2B3C4D5E6F7A8B9C0D1E4 /* TypingTelemetry.swift in Sources */,
 				A7B8C9D0E1F2A3B4C5D6E7F9 /* TouchOffsetModel.swift in Sources */,
 				9AD80476CD0C9C51C700F601 /* LocalNotificationScheduler.swift in Sources */,
+				BD5F1A2C3E4D5B6A79880104 /* SnippetPasteboard.swift in Sources */,
 				B89C0449762FBFE1BC7FB157 /* NotificationPresenter.swift in Sources */,
 				EBA12BC3F47C57B75EBA44F4 /* RemindersView.swift in Sources */,
 				D0F2F46440C35CB437608B91 /* ReminderParseEngine.swift in Sources */,

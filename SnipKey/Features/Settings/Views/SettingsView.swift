@@ -253,29 +253,6 @@ struct SettingsView: View {
                         AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
                     }
 
-                    Toggle(isOn: $currentSettings.autoSuggestionSpaceEnabled) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "space")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(width: 28, height: 28)
-                                .background(Color.blue)
-                                .cornerRadius(6)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Space Accepts Suggestion")
-                                    .font(.custom("IBMPlexMono-Medium", size: 15))
-                                Text("Accept high-confidence word suggestions with space")
-                                    .font(.custom("IBMPlexMono-Regular", size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .tint(.blue)
-                    .onChange(of: currentSettings.autoSuggestionSpaceEnabled) { _, newValue in
-                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.autoSuggestionSpaceEnabled)
-                    }
-
                     // DEBUG-only diagnostics: hit-test overlay, next-gen touch engine, shadow logging,
                     // and the shadow telemetry report. Release locks the engines ON and these OFF
                     // (via KeyboardFeatureFlags), so none of these appear in shipping builds.
@@ -539,10 +516,6 @@ struct SettingsView: View {
                         forKey: AppGroupSettings.Key.autoCapitalizationEnabled
                     )
                     AppGroupSettings.setBool(
-                        myCurrentSettings.autoSuggestionSpaceEnabled,
-                        forKey: AppGroupSettings.Key.autoSuggestionSpaceEnabled
-                    )
-                    AppGroupSettings.setBool(
                         myCurrentSettings.debugHitOverlayEnabled,
                         forKey: AppGroupSettings.Key.debugHitOverlayEnabled
                     )
@@ -588,7 +561,6 @@ struct SettingsView: View {
         currentSettings.useNativeKeyboardV2 = true
         currentSettings.probabilisticTouchEnabled = true
         currentSettings.autoCapitalizationEnabled = true
-        currentSettings.autoSuggestionSpaceEnabled = false
         currentSettings.debugHitOverlayEnabled = false
         currentSettings.useProbabilisticHitResolver = true
         currentSettings.shadowLoggingEnabled = false
@@ -598,7 +570,6 @@ struct SettingsView: View {
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
-        AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.autoSuggestionSpaceEnabled)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.shadowLoggingEnabled)

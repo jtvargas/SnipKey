@@ -161,10 +161,11 @@ smartResolved(rawKey, point)                         [eligible letter tap]
   ProbabilisticHitResolver.resolve:
      t', c_k′ = Σ-normalize(point, center + siteOffset(k))   σx=13, σy=16
      anchor zone? → keep rawKey                       deliberate center taps never overridden
-     k* = argmin_k ‖t'−c_k′‖² − β·clip(log P(k|ctx))  ~30-key argmin, ~150 ns
+     k* = argmin_k ‖t'−c_k′‖² − β·clip(log P(k|ctx))  raw row + adjacent letter rows
+     runner-up captured for telemetry / future hypothesis ranking
      anti-swallow? → fall back to rawKey
   → commit-on-touch-down (unchanged)
-  → TouchOffsetModel: confirmPending() + record(k, point)   learn off the hot path
+  → TouchOffsetModel: record(k, point), then fold after a 500ms no-backspace survival window
   (backspace → TouchOffsetModel.discardPending())
 
 P(k|ctx)  = smoothedWeights (EMA, deadband, word-boundary reset) of:

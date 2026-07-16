@@ -31,16 +31,10 @@ struct PredictiveCandidate: Identifiable, Equatable, Sendable {
     let source: PredictiveCandidateSource
     let confidence: Float
     let replacementLength: Int
-    let autoCommitEligible: Bool
 
     var id: String {
         "\(role.rawValue):\(text.lowercased())"
     }
-}
-
-struct PredictiveCorrectionSnapshot: Equatable, Sendable {
-    let original: String
-    let replacement: String
 }
 
 // MARK: - Predictive Text Tracker (NOT @Observable — no view re-renders)
@@ -50,7 +44,8 @@ struct PredictiveCorrectionSnapshot: Equatable, Sendable {
 /// Runs on every relevant keystroke but mutates only plain properties —
 /// zero SwiftUI re-renders. Only promotes to @Observable state when
 /// the candidates actually change.
-final class PredictiveTextTracker {
+// Access is serialized by `PredictiveTextEngineAsync`'s private queue.
+final class PredictiveTextTracker: @unchecked Sendable {
     private let textChecker = UITextChecker()
 
     /// Cached supplementary lexicon from UIInputViewController.
@@ -62,10 +57,6 @@ final class PredictiveTextTracker {
     private var lastCandidates: [PredictiveCandidate] = []
     /// Last known partial word
     private var lastPartialWord: String = ""
-
-    /// Correction pairs the user rejected during this keyboard session via immediate
-    /// backspace. Kept here so future evaluations stop offering the same auto-commit.
-    private var rejectedCorrections: Set<String> = []
 
     /// Evaluate the current text context and generate candidates.
     /// Returns (changed, candidates, partialWord) — only signals change
@@ -104,11 +95,6 @@ final class PredictiveTextTracker {
     func reset() {
         lastCandidates = []
         lastPartialWord = ""
-    }
-
-    func rejectCorrection(original: String, replacement: String) {
-        rejectedCorrections.insert(Self.rejectionKey(original: original, replacement: replacement))
-        reset()
     }
 
     // MARK: - Word Extraction
@@ -158,8 +144,7 @@ final class PredictiveTextTracker {
                     role: .completion,
                     source: .textCheckerCompletion,
                     confidence: confidence,
-                    replacementLength: partialWord.count,
-                    autoCommitEligible: false
+                    replacementLength: partialWord.count
                 )
             )
         }
@@ -189,9 +174,7 @@ final class PredictiveTextTracker {
                         role: .correction,
                         source: .textCheckerGuess,
                         confidence: confidence,
-                        replacementLength: partialWord.count,
-                        autoCommitEligible: confidence >= Self.autoCommitThreshold
-                            && !isRejected(original: partialWord, replacement: corrected)
+                        replacementLength: partialWord.count
                     )
                 )
             }
@@ -209,8 +192,7 @@ final class PredictiveTextTracker {
                             role: .textReplacement,
                             source: .lexicon,
                             confidence: 0.98,
-                            replacementLength: partialWord.count,
-                            autoCommitEligible: !isRejected(original: partialWord, replacement: docText)
+                            replacementLength: partialWord.count
                         )
                     )
                 } else if input.hasPrefix(lowerPartial) && input != lowerPartial {
@@ -220,8 +202,7 @@ final class PredictiveTextTracker {
                             role: .completion,
                             source: .lexicon,
                             confidence: 0.76,
-                            replacementLength: partialWord.count,
-                            autoCommitEligible: false
+                            replacementLength: partialWord.count
                         )
                     )
                 }
@@ -230,19 +211,6 @@ final class PredictiveTextTracker {
 
         let ranked = deduplicatedRankedCandidates(rawCandidates, typedWord: partialWord)
         guard !ranked.isEmpty else { return [] }
-
-        let typedCandidate = PredictiveCandidate(
-            text: partialWord,
-            role: .typed,
-            source: .typed,
-            confidence: 1,
-            replacementLength: partialWord.count,
-            autoCommitEligible: false
-        )
-
-        if let primary = ranked.first, primary.autoCommitEligible {
-            return Array(([typedCandidate, primary] + ranked.dropFirst()).prefix(3))
-        }
 
         return Array(ranked.prefix(3))
     }
@@ -273,9 +241,6 @@ final class PredictiveTextTracker {
     }
 
     private func betterCandidate(_ lhs: PredictiveCandidate, _ rhs: PredictiveCandidate) -> PredictiveCandidate {
-        if lhs.autoCommitEligible != rhs.autoCommitEligible {
-            return lhs.autoCommitEligible ? lhs : rhs
-        }
         if lhs.confidence != rhs.confidence {
             return lhs.confidence > rhs.confidence ? lhs : rhs
         }
@@ -287,9 +252,6 @@ final class PredictiveTextTracker {
         score += Float(rolePriority(candidate.role)) * 8
         if candidate.text.lowercased().hasPrefix(typedWord.lowercased()) {
             score += 12
-        }
-        if candidate.autoCommitEligible {
-            score += 18
         }
         return score
     }
@@ -326,16 +288,6 @@ final class PredictiveTextTracker {
         }
         return candidate.lowercased()
     }
-
-    private func isRejected(original: String, replacement: String) -> Bool {
-        rejectedCorrections.contains(Self.rejectionKey(original: original, replacement: replacement))
-    }
-
-    private static func rejectionKey(original: String, replacement: String) -> String {
-        "\(original.lowercased())>\(replacement.lowercased())"
-    }
-
-    private static let autoCommitThreshold: Float = 0.84
 
     static func editDistance(_ lhs: String, _ rhs: String, maxDistance: Int = Int.max) -> Int {
         if lhs == rhs { return 0 }
@@ -419,10 +371,6 @@ class PredictiveTextState {
 
     var suggestions: [String] { candidates.map(\.text) }
 
-    var autoCommitCandidate: PredictiveCandidate? {
-        candidates.first { $0.autoCommitEligible }
-    }
-
     /// Non-isolated initializer so the `@Entry` macro can call it from a non-isolated context.
     /// All stored properties use literal defaults that don't touch main-actor state.
     nonisolated init() {}
@@ -446,8 +394,7 @@ class PredictiveTextState {
                 role: .completion,
                 source: .textCheckerCompletion,
                 confidence: 0.7,
-                replacementLength: partialWord.count,
-                autoCommitEligible: false
+                replacementLength: partialWord.count
             )
         }
         updateCandidates(candidates, partialWord: partialWord)
