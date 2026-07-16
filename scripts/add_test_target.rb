@@ -35,6 +35,9 @@ test_target.build_configurations.each do |config|
   config.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
   config.build_settings['SWIFT_VERSION'] = '5.0'
   config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
+  # Same team as the app/extension targets — an automatic-signing target with no team
+  # makes Xcode Cloud stop with "action required" during signing resolution.
+  config.build_settings['DEVELOPMENT_TEAM'] = 'J7K9Z79S5F'
   config.build_settings['TARGETED_DEVICE_FAMILY'] = '1,2'
   config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '26.0'
 end
