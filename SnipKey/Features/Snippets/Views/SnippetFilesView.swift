@@ -40,8 +40,11 @@ struct SnippetFilesView: View {
                             if let snippetItem = files[index].snippet?.first ,let imageData = files[index].fileData , let uiImage = UIImage(data: imageData) {
                                 
                                 Button {
-                                    if let fileCopied = copyImageToClipboard(snippet: snippetItem) {
-                                        showToast.toggle()
+                                    if SnippetPasteboard.copyFile(
+                                        data: imageData,
+                                        mimeType: files[index].fileFormatType,
+                                        hasFullAccess: true) == .success {
+                                        showToast = true
                                     }
                                 } label: {
                                     Image(uiImage: uiImage)

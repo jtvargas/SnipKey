@@ -58,7 +58,6 @@ struct KeyboardView: View {
     @State private var isUnlocked: Bool = false
     @State private var showCreateSnippetCTA = false
     @State private var showCreatedToast = false
-    @State private var showToast = false
     @State private var showCopiedToast = false
     @State private var copyToastText = ""
     @State private var selectedText: String = ""
@@ -258,20 +257,6 @@ struct KeyboardView: View {
             removeNotificationObservers()
             stopRapidDeletion()
         }
-        .toast(isPresenting: $showToast) {
-            AlertToast(
-                displayMode: .banner(.pop),
-                type: .systemImage("doc.on.clipboard", KeyStyle.solidSurfaceText(isDark: isDark)),
-                title: !checkFullAccess()
-                    ? "Enable full keyboard access to copy/paste images."
-                    : "File copied to your clipboard. Paste to use it.",
-                style: .style(
-                    backgroundColor: KeyStyle.solidSurface(isDark: isDark),
-                    titleColor: KeyStyle.solidSurfaceText(isDark: isDark),
-                    titleFont: .custom("IBMPlexMono-Medium", size: 14)
-                )
-            )
-        }
         .toast(isPresenting: $showCreatedToast) {
             AlertToast(
                 displayMode: .banner(.pop),
@@ -377,7 +362,7 @@ struct KeyboardView: View {
     @ViewBuilder
     private func CreateSnippetCTA() -> some View {
         if showCreateSnippetCTA {
-            if checkFullAccess() {
+            if keyboardActions.hasFullAccess() {
                 Button {
                     createNewSnippetFromKeyboard(content: selectedText)
                 } label: {
@@ -490,7 +475,7 @@ struct KeyboardView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(SnippetPressStyle())
-                if checkFullAccess() {
+                if keyboardActions.hasFullAccess() {
                     Text("Select text and tap Save as snippet")
                         .font(.custom("IBMPlexMono-Regular", size: 11))
                         .foregroundStyle(KeyStyle.tertiaryGlyph(isDark: isDark))
@@ -754,37 +739,62 @@ struct KeyboardView: View {
     /// Copy from the preview overlay. Secure content only ever reaches this
     /// function post-auth (the overlay is only presentable after biometrics).
     private func copySnippetToClipboard(_ snippet: SnippetItem) {
-        guard keyboardActions.hasFullAccess() else {
-            copyToastText = "Enable Full Access to copy snippets."
-            showCopiedToast = true
-            return
-        }
-
-        switch snippet.type ?? .txt {
-        case .txt, .url:
-            UIPasteboard.general.string = snippet.content ?? ""
-        case .image:
-            // copyImageToClipboard force-unwraps fileData — guard first.
-            guard snippet.file?.fileData != nil else { return }
-            _ = copyImageToClipboard(snippet: snippet)
-        case .file:
-            guard let data = snippet.file?.fileData else { return }
-            UIPasteboard.general.setData(data, forPasteboardType: UTType.pdf.identifier)
-        }
-
         suppressNextTap = false
         withAnimation(.easeIn(duration: 0.12)) { previewedSnippet = nil }
-        copyToastText = "Copied to clipboard"
+
+        let type = snippet.type ?? .txt
+        switch type {
+        case .txt, .url:
+            presentCopyResult(
+                SnippetPasteboard.copyText(
+                    snippet.content ?? "", hasFullAccess: keyboardActions.hasFullAccess()),
+                type: type)
+        case .image, .file:
+            Task { @MainActor in
+                presentCopyResult(await keyboardActions.copySnippetFile(snippet), type: type)
+            }
+        }
+    }
+
+    /// Single toast pipeline for every copy outcome — the message always reflects
+    /// what actually happened (the old "File copied" toast showed unconditionally,
+    /// even when the write silently failed without Full Access).
+    private func presentCopyResult(_ result: SnippetCopyResult, type: SnipType) {
+        switch result {
+        case .success:
+            switch type {
+            case .file:
+                copyToastText = "PDF copied — long-press the text field and tap Paste to attach it."
+            case .image:
+                copyToastText = "Image copied — long-press the text field and tap Paste."
+            case .txt, .url:
+                copyToastText = "Copied to clipboard"
+            }
+        case .noFullAccess:
+            copyToastText = "Enable Full Access in Settings to copy snippets."
+        case .missingData:
+            copyToastText = "File not available yet. Open SnipKey to finish syncing."
+        case .tooLarge:
+            copyToastText = "Files over \(SnippetPasteboard.maxFileSizeDescription) can't be copied from the keyboard."
+        case .unsupportedType:
+            copyToastText = "This file type can't be copied."
+        }
         showCopiedToast = true
     }
 
     private func sentValueToKeyboard(snippet: SnippetItem) {
-        NotificationCenter.default.post(
-            name: NSNotification.Name(rawValue: "addKey"), object: snippet)
-
         if snippet.type == .image || snippet.type == .file {
-            showToast = true
+            // Files can't be inserted through textDocumentProxy (text-only API) —
+            // copy to the pasteboard and tell the user the true outcome. File-capable
+            // apps (Messages, Mail, Notes…) attach the file on paste; others can't
+            // paste it, and the file simply stays on the clipboard.
+            let type = snippet.type ?? .file
+            Task { @MainActor in
+                presentCopyResult(await keyboardActions.copySnippetFile(snippet), type: type)
+            }
         } else {
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "addKey"), object: snippet)
             actionKeyboardAfterPaste(actionKey: currentKeyboardSettings.afterPasteAction)
         }
     }

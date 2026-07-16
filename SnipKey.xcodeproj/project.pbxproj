@@ -136,6 +136,8 @@
 		854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
 		97D243C545AE5AC733FC26FB /* ModelContainerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */; };
 		9AD80476CD0C9C51C700F601 /* LocalNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */; };
+		BD5F1A2C3E4D5B6A79880103 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
+		BD5F1A2C3E4D5B6A79880104 /* SnippetPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */; };
 		9DFAAFBE4D41F82F980F94A2 /* TimerIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */; };
 		A6C27CA5DF7742F084A2061B /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
 		A7B8C9D0E1F2A3B4C5D6E7F8 /* TouchOffsetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F7 /* TouchOffsetModel.swift */; };
@@ -292,6 +294,7 @@
 		B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbabilisticTouchContext.swift; sourceTree = "<group>"; };
 		B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerIntegrationView.swift; sourceTree = "<group>"; };
 		BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalNotificationScheduler.swift; sourceTree = "<group>"; };
+		BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnippetPasteboard.swift; sourceTree = "<group>"; };
 		BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyLayerRenderer.swift; path = V2/KeyLayerRenderer.swift; sourceTree = "<group>"; };
 		C38FE722252F18F28A754009 /* KeyboardCommitPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardCommitPipeline.swift; path = V2/KeyboardCommitPipeline.swift; sourceTree = "<group>"; };
 		C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerParseEngine.swift; sourceTree = "<group>"; };
@@ -666,11 +669,21 @@
 		AAFB51DEBD1B8B2B69F29261 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				BD5F1A2C3E4D5B6A79880105 /* Clipboard */,
 				13F01CB1874AC706164E3258 /* Notifications */,
 				112459B85F2A3E0B1DE8F239 /* Reminders */,
 			);
 			name = Shared;
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		BD5F1A2C3E4D5B6A79880105 /* Clipboard */ = {
+			isa = PBXGroup;
+			children = (
+				BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */,
+			);
+			name = Clipboard;
+			path = Clipboard;
 			sourceTree = "<group>";
 		};
 		FC5059CD7F2E4E4EDCE988EE /* Integrations */ = {
@@ -863,6 +876,7 @@
 				E1A2B3C4D5E6F7A8B9C0D1E3 /* TypingTelemetry.swift in Sources */,
 				A7B8C9D0E1F2A3B4C5D6E7F8 /* TouchOffsetModel.swift in Sources */,
 				C2B69DCF6F147603AE4534CC /* LocalNotificationScheduler.swift in Sources */,
+				BD5F1A2C3E4D5B6A79880103 /* SnippetPasteboard.swift in Sources */,
 				E61BA06D36BBCF27D8463618 /* ReminderParseEngine.swift in Sources */,
 				F977E6660EB5E6D9FE1B2F3A /* ReminderDestination.swift in Sources */,
 				2EB6784CAE685D2E8A3EB0D8 /* EventKitReminderService.swift in Sources */,
@@ -956,6 +970,7 @@
 				E1A2B3C4D5E6F7A8B9C0D1E4 /* TypingTelemetry.swift in Sources */,
 				A7B8C9D0E1F2A3B4C5D6E7F9 /* TouchOffsetModel.swift in Sources */,
 				9AD80476CD0C9C51C700F601 /* LocalNotificationScheduler.swift in Sources */,
+				BD5F1A2C3E4D5B6A79880104 /* SnippetPasteboard.swift in Sources */,
 				B89C0449762FBFE1BC7FB157 /* NotificationPresenter.swift in Sources */,
 				EBA12BC3F47C57B75EBA44F4 /* RemindersView.swift in Sources */,
 				D0F2F46440C35CB437608B91 /* ReminderParseEngine.swift in Sources */,

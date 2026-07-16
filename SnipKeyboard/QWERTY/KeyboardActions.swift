@@ -88,8 +88,6 @@ struct KeyboardActions {
     let openApp: () -> Void
 
     /// Authoritative Full Access check (UIInputViewController.hasFullAccess).
-    /// Prefer this over the pasteboard-probing `checkFullAccess()` helper, which
-    /// false-negatives on an empty pasteboard.
     let hasFullAccess: () -> Bool
 
     /// Schedule a generic local notification from the keyboard (🔔 quick button). The controller
@@ -108,6 +106,11 @@ struct KeyboardActions {
     /// The controller guards Full Access; the `.string` read here is the one pasteboard
     /// call that can trigger the iOS 16 "Allow Paste" prompt.
     let pasteFromClipboard: () -> Void
+
+    /// Copy a file/image snippet's stored blob to the general pasteboard and return
+    /// the true outcome. The externalStorage disk read runs off the main thread; the
+    /// pasteboard write happens back on main. Toast messaging is the caller's job.
+    let copySnippetFile: @MainActor (SnippetItem) async -> SnippetCopyResult
 
     /// Evaluate the current text context for slash command patterns.
     /// Called after character insertion, deletion, and other key events.
@@ -161,6 +164,7 @@ struct KeyboardActions {
         createReminder: { _, _ in },
         createTimer: { _, _ in },
         pasteFromClipboard: {},
+        copySnippetFile: { _ in .noFullAccess },
         evaluateSlashCommand: {},
         evaluatePredictiveText: {},
         scheduleSideEffects: {},

@@ -7,6 +7,7 @@
 
 import UIKit
 import SwiftUI
+import SwiftData
 
 import MobileCoreServices
 import UniformTypeIdentifiers
@@ -222,6 +223,23 @@ class KeyboardViewController: UIInputViewController {
                 self.qwertyState.inputTracking.pendingSmartSpace = false
                 self.scheduleSideEffectFlush()
             },
+            copySnippetFile: { [weak self] snippet in
+                guard let self, self.hasFullAccess else { return .noFullAccess }
+                // Cheap metadata reads stay on the main actor (main-context model).
+                let mimeType = snippet.file?.fileFormatType
+                guard let fileID = snippet.file?.persistentModelID else { return .missingData }
+                // The externalStorage blob is a disk read — fault it on a background
+                // ModelContext so a multi-MB PDF never stalls the key/touch path.
+                let data: Data? = await Task.detached(priority: .userInitiated) {
+                    let container = await ModelContainerProvider.shared.get()
+                    let context = ModelContext(container)
+                    var descriptor = FetchDescriptor<SnippetFile>(
+                        predicate: #Predicate { $0.persistentModelID == fileID })
+                    descriptor.fetchLimit = 1
+                    return (try? context.fetch(descriptor))?.first?.fileData
+                }.value
+                return SnippetPasteboard.copyFile(data: data, mimeType: mimeType, hasFullAccess: true)
+            },
             evaluateSlashCommand: { [weak self] in
                 // V1 path: read context and evaluate synchronously.
                 guard let self = self else { return }
@@ -267,45 +285,6 @@ class KeyboardViewController: UIInputViewController {
         super.updateViewConstraints()
         
         // Add custom view sizing constraints here
-    }
-    
-    // Helper method to check if full access is enabled
-    func hasFullAccess() -> Bool {
-        return self.hasFullAccess
-    }
-    
-    func sendImageData(snippet: SnippetItem) {
-        if self.hasFullAccess {
-            guard
-                let newImage = UIImage(data: (snippet.file?.fileData)!)
-            else { return }
-            
-            var imageData: Data?
-            
-            if snippet.file?.fileFormatType == "image/png"{
-                imageData = newImage.pngData()
-            }
-            
-            if snippet.file?.fileFormatType == "image/jpeg"{
-                imageData = newImage.jpegData(compressionQuality: 0.5)
-            }
-            
-            
-            let clipboard = UIPasteboard.general
-            UIPasteboard.general.string = " "
-            clipboard.setData(imageData!, forPasteboardType: UTType.png.identifier)
-        }
-    }
-    
-    func sendPDFData(snippet: SnippetItem) {
-        if self.hasFullAccess {
-            guard let pdfData = snippet.file?.fileData else { return }
-            
-            let clipboard = UIPasteboard.general
-            clipboard.string = " "
-            clipboard.colors = [UIColor(Color(.red))]
-            clipboard.setData(pdfData, forPasteboardType: UTType.pdf.identifier)
-        }
     }
     
     func getSelectedText() -> String {
@@ -436,16 +415,10 @@ class KeyboardViewController: UIInputViewController {
         NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: "addKey"), object: nil, queue: nil){ [weak self] notification in
             guard let self = self else { return }
 
+            // Text-only channel: file/image snippets go through the
+            // `copySnippetFile` action so the caller gets a real result.
             if let snippet = notification.object as? SnippetItem {
-                switch snippet.type {
-                case .image:
-                    self.sendImageData(snippet: snippet)
-                case .file:
-                    self.sendPDFData(snippet: snippet)
-                default:
-                    self.textDocumentProxy.insertText(snippet.content!)
-                }
-
+                self.textDocumentProxy.insertText(snippet.content ?? "")
             }
 
             if let text = notification.object as? String {
