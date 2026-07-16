@@ -175,6 +175,10 @@ enum AppGroupSettings {
         /// DEBUG-only kill switch for A/B feel comparison against the legacy optimistic
         /// commit-on-touch-DOWN. Bool.
         static let nativeCommitTiming = "nativeCommitTiming"
+        /// Full-fidelity calibration capture (DEBUG dev tool): records raw tap geometry +
+        /// committed characters to the App Group for the offline replay harness. Records
+        /// typed text — developer's own device only. Default OFF; RELEASE-locked off. Bool.
+        static let calibrationCaptureEnabled = "calibrationCaptureEnabled"
         /// Master enable for the Reminders integration. When false, the keyboard behaves exactly
         /// as today (SnipKey local notifications only). Bool.
         static let remindersIntegrationEnabled = "remindersIntegrationEnabled"
@@ -257,6 +261,14 @@ enum KeyboardFeatureFlags {
         AppGroupSettings.bool(forKey: AppGroupSettings.Key.nativeCommitTiming, default: true)
         #else
         true
+        #endif
+    }
+
+    static var calibrationCaptureEnabled: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.calibrationCaptureEnabled, default: false)
+        #else
+        false
         #endif
     }
 }

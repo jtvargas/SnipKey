@@ -120,6 +120,7 @@
 		1B89BCF6E55C957D694FFC9F /* SpaceBarCursorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */; };
 		1C42A37DBDFADA2C7CAC9C4F /* KeyboardCalloutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C830E3C63663CCF65E72BF1 /* KeyboardCalloutView.swift */; };
 		1F37BE6C7F110517BEBB4D46 /* AccentMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE452F555419A6F46984CBBC /* AccentMap.swift */; };
+		1F6BAD1F43E88D59C5638277 /* ReplayEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E4D723A1CD32CCD8D7DB20 /* ReplayEngineTests.swift */; };
 		2442C0CA741CAA2D7A8250C9 /* SpaceBarCursorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */; };
 		25B6CF74129974BEF158F5F0 /* ResolverSelfTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */; };
 		2DBFAE70D96145748A557295 /* KeyboardLayoutItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C12EC5363837C2A8630F8D3 /* KeyboardLayoutItem.swift */; };
@@ -135,7 +136,9 @@
 		5AA1CF567B54EAE8DFCBAF2F /* ReminderDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0863C40DC54F8B0573428C40 /* ReminderDestination.swift */; };
 		5AA259C84646E2C6725970F5 /* KeyboardLayoutFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */; };
 		5F658D6000CB59E3322A6785 /* CalloutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCB146313BAC73C4D3C608 /* CalloutController.swift */; };
+		80E271102E4872F73685829F /* CalibrationLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA709295AF93424995345899 /* CalibrationLabView.swift */; };
 		83E827CBB3A447C9194F1669 /* CalloutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCB146313BAC73C4D3C608 /* CalloutController.swift */; };
+		841E0DA42C3D9F6A2A83006B /* ResolverReplayEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */; };
 		854327AED4F785FEDFB5F7ED /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
 		8580E351A1E27239207E109F /* KeyboardSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */; };
 		97D243C545AE5AC733FC26FB /* ModelContainerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */; };
@@ -158,11 +161,14 @@
 		C2D3E4F5A6B7C8D9E0F1A1B1 /* BigramEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A1 /* BigramEngine.swift */; };
 		C2D3E4F5A6B7C8D9E0F1A1B2 /* DynamicHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */; };
 		C2D3E4F5A6B7C8D9E0F1A1B3 /* ProbabilisticTouchContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */; };
+		C2E798470841C581DCDD7687 /* CalibrationCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */; };
 		C499471BC1178E27BCE65613 /* SmartTouchResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6CF1A5234FE05C7A7F015 /* SmartTouchResolver.swift */; };
+		C67BF68846AC7970ACE1CB05 /* ResolverReplayEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */; };
 		C6C79CE1B8ACC91139B273DD /* KeyboardGestureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */; };
 		CC72D06329CE5A0FD24F039D /* KeyboardLayoutFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */; };
 		D0F2F46440C35CB437608B91 /* ReminderParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263A76D1D20C5D99E80711F8 /* ReminderParseEngine.swift */; };
 		D4F176DB438B2BCE533956F6 /* KeyboardLayoutResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */; };
+		D59BAAF0D552AA91E0BE20F9 /* CalibrationCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */; };
 		D9C3F52B5184326361EAE3B6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AD1001DDF6C6C8B28781E4D8 /* Foundation.framework */; };
 		D9F1A2B3C4D5E6F708192A3C /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
 		D9F1A2B3C4D5E6F708192A3D /* ProbabilisticHitResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A2B3C4D5E6F708192A3B /* ProbabilisticHitResolver.swift */; };
@@ -294,6 +300,7 @@
 		3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardLayoutResolver.swift; path = V2/KeyboardLayoutResolver.swift; sourceTree = "<group>"; };
 		426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardGestureCoordinator.swift; path = V2/KeyboardGestureCoordinator.swift; sourceTree = "<group>"; };
 		46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResolverSelfTests.swift; sourceTree = "<group>"; };
+		624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalibrationCapture.swift; path = V2/CalibrationCapture.swift; sourceTree = "<group>"; };
 		67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventKitReminderService.swift; sourceTree = "<group>"; };
 		717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardSignposts.swift; path = V2/KeyboardSignposts.swift; sourceTree = "<group>"; };
 		798750497DFA1BA776EFACC9 /* SpaceBarCursorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpaceBarCursorController.swift; path = V2/SpaceBarCursorController.swift; sourceTree = "<group>"; };
@@ -311,6 +318,7 @@
 		B1C2D3E4F5A6B7C8D9E0F1A2 /* DynamicHitResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicHitResolver.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A3 /* ProbabilisticTouchContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbabilisticTouchContext.swift; sourceTree = "<group>"; };
 		B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerIntegrationView.swift; sourceTree = "<group>"; };
+		B7E4D723A1CD32CCD8D7DB20 /* ReplayEngineTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReplayEngineTests.swift; sourceTree = "<group>"; };
 		BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalNotificationScheduler.swift; sourceTree = "<group>"; };
 		BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyLayerRenderer.swift; path = V2/KeyLayerRenderer.swift; sourceTree = "<group>"; };
 		BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnippetPasteboard.swift; sourceTree = "<group>"; };
@@ -323,8 +331,10 @@
 		EE452F555419A6F46984CBBC /* AccentMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AccentMap.swift; path = V2/AccentMap.swift; sourceTree = "<group>"; };
 		EF089EAFB6EA396476658409 /* ModelContainerProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ModelContainerProvider.swift; path = V2/ModelContainerProvider.swift; sourceTree = "<group>"; };
 		F2B3C4D5E6F7A8B9C0D1E2F3 /* ShadowTelemetryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowTelemetryView.swift; sourceTree = "<group>"; };
+		F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResolverReplayEngine.swift; path = V2/ResolverReplayEngine.swift; sourceTree = "<group>"; };
 		F7FCB146313BAC73C4D3C608 /* CalloutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalloutController.swift; path = V2/CalloutController.swift; sourceTree = "<group>"; };
 		F9F559D4F5BD052FAD0F47B8 /* RemindersView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemindersView.swift; sourceTree = "<group>"; };
+		FA709295AF93424995345899 /* CalibrationLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationLabView.swift; sourceTree = "<group>"; };
 		FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PredictiveTextEngineAsync.swift; path = V2/PredictiveTextEngineAsync.swift; sourceTree = "<group>"; };
 		FEE8DB50F5227711F0A44F2E /* IntegrationsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -534,6 +544,8 @@
 				C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */,
 				717856F6879A699AEB5A0639 /* KeyboardSignposts.swift */,
 				314D660CC6FE8B02931C5358 /* ResolverTuning.swift */,
+				624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */,
+				F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -554,6 +566,7 @@
 			children = (
 				06AE13112BBB0D16008EAE98 /* SettingsView.swift */,
 				F2B3C4D5E6F7A8B9C0D1E2F3 /* ShadowTelemetryView.swift */,
+				FA709295AF93424995345899 /* CalibrationLabView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -709,6 +722,7 @@
 			isa = PBXGroup;
 			children = (
 				46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */,
+				B7E4D723A1CD32CCD8D7DB20 /* ReplayEngineTests.swift */,
 			);
 			name = SnipKeyTests;
 			path = SnipKeyTests;
@@ -957,6 +971,8 @@
 				4357CA1F7209133EF8A7BB31 /* TimerParseEngine.swift in Sources */,
 				163B8ED5BE60161637D33C1D /* KeyboardSignposts.swift in Sources */,
 				3903C47C0AC60946D90B8D0D /* ResolverTuning.swift in Sources */,
+				C2E798470841C581DCDD7687 /* CalibrationCapture.swift in Sources */,
+				C67BF68846AC7970ACE1CB05 /* ResolverReplayEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -969,6 +985,7 @@
 				063E4EAE2C757C5B000DAF1F /* EditTagView.swift in Sources */,
 				06AE13122BBB0D16008EAE98 /* SettingsView.swift in Sources */,
 				F2B3C4D5E6F7A8B9C0D1E2F4 /* ShadowTelemetryView.swift in Sources */,
+				80E271102E4872F73685829F /* CalibrationLabView.swift in Sources */,
 				06CA671E2CA5B6BF00CAD9E0 /* AboutApp.swift in Sources */,
 				06D454532BEE8E4C00D34782 /* TagsView.swift in Sources */,
 				06C6FE312BBA060B00166AB0 /* KeyboardHelpGuideView.swift in Sources */,
@@ -1059,6 +1076,8 @@
 				47E09081072FF9E2DEC87BA3 /* TimerParseEngine.swift in Sources */,
 				8580E351A1E27239207E109F /* KeyboardSignposts.swift in Sources */,
 				FF36A9DA1C13EC27D1D755F0 /* ResolverTuning.swift in Sources */,
+				D59BAAF0D552AA91E0BE20F9 /* CalibrationCapture.swift in Sources */,
+				841E0DA42C3D9F6A2A83006B /* ResolverReplayEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1067,6 +1086,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				25B6CF74129974BEF158F5F0 /* ResolverSelfTests.swift in Sources */,
+				1F6BAD1F43E88D59C5638277 /* ReplayEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

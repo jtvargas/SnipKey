@@ -10,7 +10,7 @@ import Foundation
 /// Tunables for the prior pipeline (blend factor + confidence mapping). Internal so the
 /// calibration replay harness and unit tests can sweep them; the live keyboard always
 /// uses `.current`.
-struct ContextTuning {
+struct ContextTuning: Codable, Equatable {
     /// Prior's share of the blend; the bigram gets the remainder.
     var priorBlendFactor: Float = 0.45
     /// Floor so β is never fully zeroed.
@@ -59,7 +59,7 @@ final class ProbabilisticTouchContext {
     /// Whether the current input language is English. The bigram tables
     /// (`BigramEngine`) are English-only, so for non-English contexts the blend
     /// drops the bigram term and uses the (language-correct) prior alone.
-    private var isEnglishContext: Bool = true
+    private(set) var isEnglishContext: Bool = true
 
     /// Whether `predictivePrior` was computed for the CURRENT character context.
     /// `recordCharacter` clears it: at that instant the prior still predicts the
@@ -69,7 +69,7 @@ final class ProbabilisticTouchContext {
     /// excluded from the blend (fresh bigram+trigram only); a stale non-English
     /// prior is kept, because a stale right-language prior still beats a fresh
     /// wrong-language bigram.
-    private var priorIsFresh = false
+    private(set) var priorIsFresh = false
 
     /// Blend/confidence tunables. `.current` on the live keyboard; the calibration replay
     /// harness constructs contexts with sweep variants.

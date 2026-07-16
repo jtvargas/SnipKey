@@ -41,7 +41,8 @@ enum ProbabilisticHitResolver {
 
     /// Tunable parameters. Defaults are conservative starting points; calibrate `beta`,
     /// `sigmaX/Y`, and the anchor fractions on the touch corpus (plan §11, §14).
-    struct Config {
+    /// Codable so calibration capture can snapshot the acting config into session headers.
+    struct Config: Codable, Equatable {
         /// Language weight β = 2σ²λ (a single identifiable scalar — do NOT expose σ and λ
         /// separately). 0 ⇒ pure spatial (nearest-center). Higher ⇒ stronger language pull.
         var beta: Float
@@ -295,6 +296,12 @@ enum PopulationOffset {
 
     /// Per-key site offset in points. `.zero` when disabled or for non-character keys.
     static func offset(for frame: KeyFrame) -> CGVector {
+        offset(for: frame, scale: scale)
+    }
+
+    /// Scale-parameterized variant — the pure form the replay harness sweeps
+    /// (scale ∈ {−1, 0, +1} to settle the sign question on captured data).
+    static func offset(for frame: KeyFrame, scale: CGFloat) -> CGVector {
         guard scale != 0, frame.isCharacterKey, frame.rowIndex >= 0 else { return .zero }
         let row = min(frame.rowIndex, verticalFractionByRow.count - 1)
         // POSITIVE dy moves the site DOWN (screen-y grows downward) — toward where touch

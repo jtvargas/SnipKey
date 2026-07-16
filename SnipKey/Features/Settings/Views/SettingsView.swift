@@ -354,6 +354,48 @@ struct SettingsView: View {
                         }
                     }
 
+                    NavigationLink {
+                        CalibrationDrillView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "target")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Calibration Drill")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Type scripted phrases to capture resolver-tuning sessions")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
+                    NavigationLink {
+                        ReplayLabView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Replay Lab")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Re-run captured sessions under a parameter sweep")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
                     Toggle(isOn: $nativeCommitTiming) {
                         HStack(spacing: 12) {
                             Image(systemName: "hand.tap")

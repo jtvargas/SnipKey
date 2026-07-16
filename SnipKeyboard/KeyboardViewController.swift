@@ -530,6 +530,9 @@ class KeyboardViewController: UIInputViewController {
         TypingTelemetry.shared.flush()
         KeyboardResponsivenessTelemetry.shared.flush()
         TouchOffsetModel.shared.flush()
+        #if DEBUG
+        CalibrationCapture.shared.flush()
+        #endif
     }
 
     // MARK: - Clipboard Polling

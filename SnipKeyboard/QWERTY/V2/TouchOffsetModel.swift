@@ -27,7 +27,9 @@ final class TouchOffsetModel {
     static let shared = TouchOffsetModel()
 
     /// Mean fractional offset (fraction of key width/height) + sample count for one cluster.
-    private struct Cluster: Codable {
+    /// Internal (not private) so calibration session headers can snapshot cluster state and
+    /// the replay harness can recompute offsets bit-exact.
+    struct Cluster: Codable, Equatable {
         var fx: Float = 0
         var fy: Float = 0
         var n: Int = 0
@@ -72,15 +74,39 @@ final class TouchOffsetModel {
     /// from the literature bias instead of nothing.
     func offset(for frame: KeyFrame, keyboardWidth: CGFloat, rowCount: Int) -> CGVector {
         guard enabled, frame.isCharacterKey else { return .zero }
-        let pop = PopulationOffset.offset(for: frame)
-        guard let cs = clusters[key(currentLayout)] else { return pop }  // cold start
+        return Self.computeOffset(
+            clusters: clusters[key(currentLayout)],
+            frame: frame,
+            keyboardWidth: keyboardWidth,
+            rowCount: rowCount,
+            population: PopulationOffset.offset(for: frame)
+        )
+    }
+
+    /// The pure crossfade math, shared by the live path above and the offline replay
+    /// harness (which feeds a session-header cluster snapshot + a sweep-scaled population
+    /// offset). `clusters == nil` (unseen layout) or an untrusted cluster ⇒ population.
+    nonisolated static func computeOffset(
+        clusters: [Cluster]?,
+        frame: KeyFrame,
+        keyboardWidth: CGFloat,
+        rowCount: Int,
+        population: CGVector
+    ) -> CGVector {
+        guard let cs = clusters, cs.count == clusterCount else { return population }  // cold start
         let latFrac = Float(frame.rect.midX / max(keyboardWidth, 1))
         let idx = clusterIndex(row: frame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
         let c = cs[idx]
-        let trust = CGFloat(min(Float(c.n) / Self.learnThreshold, 1))
+        let trust = CGFloat(min(Float(c.n) / learnThreshold, 1))
         // Population dx is 0, so only dy blends.
         return CGVector(dx: CGFloat(c.fx) * trust * frame.rect.width,
-                        dy: CGFloat(c.fy) * trust * frame.rect.height + pop.dy * (1 - trust))
+                        dy: CGFloat(c.fy) * trust * frame.rect.height + population.dy * (1 - trust))
+    }
+
+    /// Snapshot of the learned clusters for one layout hash (nil if never seen) — captured
+    /// into calibration session headers so replay reproduces the acting offsets exactly.
+    func clusterSnapshot(forLayout layout: Int) -> [Cluster]? {
+        clusters[key(layout)]
     }
 
     // MARK: - Learning
@@ -113,7 +139,7 @@ final class TouchOffsetModel {
 
     private func stage(keyFrame: KeyFrame, fx: Float, fy: Float, keyboardWidth: CGFloat, rowCount: Int) {
         let latFrac = Float(keyFrame.rect.midX / max(keyboardWidth, 1))
-        let idx = clusterIndex(row: keyFrame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
+        let idx = Self.clusterIndex(row: keyFrame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
         nextPendingID &+= 1
         let id = nextPendingID
         let task = Task { @MainActor [weak self] in
@@ -175,7 +201,7 @@ final class TouchOffsetModel {
 
     // MARK: - Clustering
 
-    private func clusterIndex(row: Int, rowCount: Int, lateralFraction: Float) -> Int {
+    nonisolated static func clusterIndex(row: Int, rowCount: Int, lateralFraction: Float) -> Int {
         let band = rowCount <= 1 ? 1 : min(Int(Float(max(row, 0)) / Float(rowCount) * 3), 2)
         let lateral = lateralFraction < 0.5 ? 0 : 1
         return band * 2 + lateral

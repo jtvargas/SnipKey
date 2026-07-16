@@ -57,6 +57,9 @@ final class KeyboardGestureCoordinator: UIView {
     /// corpus; the flag gates activation independently so the path can be exercised first.
     private var probabilisticConfig = ProbabilisticHitResolver.Config.default
 
+    /// Cadence/fat-touch modulation tuning (the shipping values).
+    private let resolverTuning = ResolverTuning.current
+
     /// Typing-cadence EMA, fed by every touch-down (space/backspace are part of the typing
     /// rhythm; rapid-delete repeats are a single touch-down so they can't spam it). Modulates
     /// β and the anchor zone per tap in `smartResolvedResult` — see `ResolverTuning`.
@@ -68,6 +71,8 @@ final class KeyboardGestureCoordinator: UIView {
 
     #if DEBUG
     private static var didRunResolverSelfTest = false
+    /// Full-fidelity calibration capture (dev tool; frozen offset learning while on).
+    private var calibrationCaptureEnabled = false
     #endif
 
     /// Caret-move callback (only used in cursor mode).
@@ -263,6 +268,8 @@ final class KeyboardGestureCoordinator: UIView {
         KeyboardResponsivenessTelemetry.shared.enabled = shadowLoggingEnabled
         #if DEBUG
         KeyboardSignposts.enabled = shadowLoggingEnabled
+        calibrationCaptureEnabled = KeyboardFeatureFlags.calibrationCaptureEnabled
+        CalibrationCapture.shared.enabled = calibrationCaptureEnabled
         #endif
         // Per-user offset learning is part of the next-gen engine — on when it is.
         TouchOffsetModel.shared.enabled = useProbabilisticHitResolver
@@ -611,11 +618,85 @@ final class KeyboardGestureCoordinator: UIView {
             point: point,
             confidence: state?.inputTracking.touchContext.confidence ?? 0,
             margin: resolved.margin,
-            betaMult: KeyboardCadenceTracker.betaMultiplier(forEmaMs: cadence.emaMs)
-                * ResolverTuning.fatTouchBetaMultiplier(radius: touch.majorRadius)
+            betaMult: resolverTuning.cadenceBetaMultiplier(forEmaMs: cadence.emaMs)
+                * resolverTuning.fatTouchBetaMultiplier(radius: touch.majorRadius)
         )
+        #if DEBUG
+        captureCalibrationTap(touch: touch, point: point, rawKey: rawKey, resolved: key)
+        #endif
         beginPress(touch: touch, key: key, rawKey: rawKey, at: point)
     }
+
+    #if DEBUG
+    /// Record one tap for the offline replay harness. Placed AFTER resolution and BEFORE
+    /// `beginPress`, so the captured context/prior/confidence state is exactly what the
+    /// resolver just consumed (commits mutate the context only later — at rollover flush
+    /// or lift). NOTE: char taps capture the touch-DOWN decision; a subsequent slide can
+    /// retarget the actual commit — rare enough that the replayed context stream tolerates
+    /// it, and slides carry their own gold-label path.
+    private func captureCalibrationTap(touch: UITouch, point: CGPoint, rawKey: KeyFrame, resolved: KeyFrame) {
+        guard calibrationCaptureEnabled, currentPage == .letters, let state else { return }
+        let tc = state.inputTracking.touchContext
+        CalibrationCapture.shared.beginSessionIfNeeded {
+            CalibrationCapture.SessionHeader(
+                capturedAtEpoch: Date().timeIntervalSince1970,
+                screenWidth: Double(max(bounds.width, 1)),
+                keysW: Double(bounds.width),
+                keysH: Double(bounds.height),
+                profile: String(describing: state.layoutProfile),
+                layoutHash: currentLayoutHash,
+                config: probabilisticConfig,
+                tuning: resolverTuning,
+                contextTuning: tc.tuning,
+                populationScale: Double(PopulationOffset.scale),
+                clusters: TouchOffsetModel.shared.clusterSnapshot(forLayout: currentLayoutHash),
+                nativeCommitTiming: nativeCommitTiming
+            )
+        }
+
+        let allowsTransforms = actions?.inputTraits().allowsSmartTransforms ?? true
+        let engineActed = useProbabilisticHitResolver && rawKey.isCharacterKey && allowsTransforms
+        let action: String
+        switch resolved.action {
+        case .character(let c):
+            action = (engineActed ? "c:" : "cx:") + c.lowercased()
+        case .insertText(_, let output):
+            if output.count == 1, let f = output.first, f.isLetter {
+                action = "cx:" + output.lowercased()
+            } else {
+                action = "text"
+            }
+        case .space: action = "space"
+        case .backspace: action = "backspace"
+        case .returnKey: action = "return"
+        case .shift: action = "shift"
+        case .modeChange: action = "mode"
+        case .snippetToggle: action = "other"
+        }
+
+        var priorDict: [String: Float]?
+        if let p = tc.predictivePrior {
+            var d: [String: Float] = [:]
+            for (k, v) in p { d[String(k)] = v }
+            priorDict = d
+        }
+        CalibrationCapture.shared.record(CalibrationCapture.TapRecord(
+            tMs: touch.timestamp * 1000,
+            x: Double(point.x),
+            y: Double(point.y),
+            radius: Double(touch.majorRadius),
+            rawRow: rawKey.rowIndex,
+            rawCol: rawKey.columnIndex,
+            actingRow: resolved.rowIndex,
+            actingCol: resolved.columnIndex,
+            action: action,
+            confidence: tc.confidence,
+            prior: priorDict,
+            priorFresh: tc.priorIsFresh,
+            priorIsEnglish: tc.isEnglishContext
+        ))
+    }
+    #endif
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
@@ -695,7 +776,11 @@ final class KeyboardGestureCoordinator: UIView {
                     KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
                     KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
                 }
-                if useProbabilisticHitResolver, currentPage == .letters,
+                var learningFrozen = false
+                #if DEBUG
+                learningFrozen = calibrationCaptureEnabled
+                #endif
+                if !learningFrozen, useProbabilisticHitResolver, currentPage == .letters,
                    shouldLearnTouchOffset(rawKey: rawKey, resolvedKey: key, point: point) {
                     TouchOffsetModel.shared.record(keyFrame: key, point: point,
                                                    keyboardWidth: bounds.width, rowCount: currentRowCount)
@@ -792,6 +877,11 @@ final class KeyboardGestureCoordinator: UIView {
     /// plausible-aim-error check instead. Mode/shift-origin slides teach nothing (the down
     /// point aimed at the mode/shift key, not the slid-to character).
     private func learnOffsetIfEligible(for press: ActivePress) {
+        #if DEBUG
+        // Calibration capture freezes learning so the session header's cluster snapshot
+        // stays exact for every tap in the session.
+        if calibrationCaptureEnabled { return }
+        #endif
         guard useProbabilisticHitResolver, currentPage == .letters else { return }
         if !press.didSlideOffOriginal {
             if shouldLearnTouchOffset(rawKey: press.rawKey, resolvedKey: press.key, point: press.startPoint) {
@@ -1122,21 +1212,14 @@ final class KeyboardGestureCoordinator: UIView {
             // Dynamic λ: scale the language pull by how confident the context is (word-start
             // taps lean on geometry, mid-word taps get the full prior) AND by typing cadence
             // (sustained fast bursts lean harder on the prior; slow deliberate taps resolve
-            // almost purely geometrically — native feel). Composed and clamped here; the
-            // resolver math itself is untouched.
-            var cfg = probabilisticConfig
-            let cadenceMult = KeyboardCadenceTracker.betaMultiplier(forEmaMs: cadence.emaMs)
-            // Fat touch: a large contact patch means the centroid is less trustworthy —
-            // lean a bit harder on the prior (σ-scaling expressed as a β multiplier).
-            let fatMult = ResolverTuning.fatTouchBetaMultiplier(radius: radius)
-            cfg.beta = min(cfg.beta * touchContext.confidence * cadenceMult * fatMult,
-                           ResolverTuning.betaCeiling)
-            // During sustained bursts, shrink the prior-immune anchor zone (60%×70% →
-            // 50%×60% at full burst) so the prior can rescue sloppier taps. Dead-center
-            // taps stay immune; slow taps keep the full anchor (shrink only when mult > 1).
-            let shrinkT = CGFloat(max(0, min(1, (cadenceMult - 1) / (ResolverTuning.cadenceMultMax - 1))))
-            cfg.anchorFracW -= ResolverTuning.anchorShrinkMaxW * shrinkT
-            cfg.anchorFracH -= ResolverTuning.anchorShrinkMaxH * shrinkT
+            // almost purely geometrically — native feel). `composedConfig` is the single
+            // shared implementation with the offline replay harness — keep them one.
+            let cfg = resolverTuning.composedConfig(
+                base: probabilisticConfig,
+                confidence: touchContext.confidence,
+                cadenceEmaMs: cadence.emaMs,
+                touchRadius: radius
+            )
             return ProbabilisticHitResolver.resolveWithCandidates(
                 rawKey: rawKey,
                 point: point,
