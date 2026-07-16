@@ -854,17 +854,24 @@ final class KeyboardGestureCoordinator: UIView {
     /// The single deferred-commit block, shared by the rollover flush and `endPress`.
     private func commitPendingPress(_ press: inout ActivePress, touchID id: ObjectIdentifier) {
         guard let state, let actions else { return }
+        // Timing capture is DEBUG-only end to end — RELEASE pays not even the clock read.
+        #if DEBUG
         let commitStart = CACurrentMediaTime()
+        #endif
         switch press.key.action {
         case .character(let c):
             KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
             KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
+            #if DEBUG
             KeyboardResponsivenessTelemetry.shared.recordCommitDispatch(startedAt: commitStart)
+            #endif
             learnOffsetIfEligible(for: press)
         case .insertText(_, let output):
             KeyboardCommitPipeline.commitText(output, state: state, actions: actions)
             KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
+            #if DEBUG
             KeyboardResponsivenessTelemetry.shared.recordCommitDispatch(startedAt: commitStart)
+            #endif
         default:
             break
         }
