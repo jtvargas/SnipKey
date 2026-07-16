@@ -145,6 +145,56 @@ enum KeyboardCommitPipeline {
         actions.scheduleSideEffects()
     }
 
+    /// One word-tier backspace tick (native's escalated hold-to-delete): removes the
+    /// trailing whitespace run plus the word before it in a single visual chunk. One
+    /// synchronous cross-process context read per tick — word ticks run at ~350ms, far off
+    /// the per-keystroke hot path. Returns the number of deletions performed; always ≥ 1
+    /// when any context text might exist (empty/unavailable context falls back to a single
+    /// delete so a held backspace never stalls, even when the host exposes no context).
+    @discardableResult
+    static func commitWordBackspace(
+        state: QWERTYKeyboardState,
+        actions: KeyboardActions
+    ) -> Int {
+        state.inputTracking.pendingSmartSpace = false
+        let context = actions.documentContextBeforeInput() ?? ""
+        let chunk = wordDeletionChunk(context: context)
+        for _ in 0..<chunk { actions.deleteBackward() }
+        state.inputTracking.recordAction(.other)
+        state.inputTracking.touchContext.recordNonCharacter()
+        actions.scheduleSideEffects()
+        return chunk
+    }
+
+    /// Number of `Character`s (grapheme-safe — emoji count as one deleteBackward each) one
+    /// word-tier tick removes: the trailing whitespace/newline run, then the non-whitespace
+    /// run before it, clamped to [1, 30] so a pathological chunk can't monopolize the main
+    /// thread with XPC deletes. Pure — self-testable.
+    static func wordDeletionChunk(context: String) -> Int {
+        guard !context.isEmpty else { return 1 }
+        var count = 0
+        var idx = context.endIndex
+        while idx > context.startIndex {
+            let prev = context.index(before: idx)
+            if context[prev].isWhitespace || context[prev].isNewline {
+                count += 1
+                idx = prev
+            } else {
+                break
+            }
+        }
+        while idx > context.startIndex {
+            let prev = context.index(before: idx)
+            if !(context[prev].isWhitespace || context[prev].isNewline) {
+                count += 1
+                idx = prev
+            } else {
+                break
+            }
+        }
+        return min(max(count, 1), 30)
+    }
+
     /// Commit return.
     static func commitReturn(
         state: QWERTYKeyboardState,
@@ -290,3 +340,42 @@ enum KeyboardCommitPipeline {
         actions.insertText("I ")
     }
 }
+
+#if DEBUG
+extension KeyboardCommitPipeline {
+    /// Invariant check for the word-tier backspace chunk math. Returns violations so
+    /// XCTest can assert; the runtime wrapper logs (does not crash).
+    static func wordDeleteSelfTestFailures() -> [String] {
+        var failures: [String] = []
+        let cases: [(context: String, expected: Int, label: String)] = [
+            ("hello world", 5, "plain trailing word"),
+            ("hello world ", 6, "word + one trailing space"),
+            ("say hi   ", 5, "word + trailing space run"),
+            ("hi 👋👋", 2, "emoji graphemes count once each"),
+            ("", 1, "empty context still deletes one"),
+            ("   ", 3, "pure whitespace deletes the run"),
+            ("line one\n", 4, "newline run + the word before it"),
+            ("end.", 4, "punctuation rides with the word"),
+            ("x", 1, "single char"),
+            (String(repeating: "a", count: 60), 30, "clamped at 30"),
+        ]
+        for c in cases {
+            let got = wordDeletionChunk(context: c.context)
+            if got != c.expected {
+                failures.append("\(c.label): wordDeletionChunk(\"\(c.context)\") = \(got), expected \(c.expected)")
+            }
+        }
+        return failures
+    }
+
+    /// One-time runtime wrapper — logs instead of crashing, keyboard-extension safe.
+    static func runWordDeleteSelfTest() {
+        let failures = wordDeleteSelfTestFailures()
+        if failures.isEmpty {
+            NSLog("[SnipKeyboard] word-delete self-test passed")
+        } else {
+            for f in failures { NSLog("[SnipKeyboard] word-delete SELF-TEST FAILED: %@", f) }
+        }
+    }
+}
+#endif

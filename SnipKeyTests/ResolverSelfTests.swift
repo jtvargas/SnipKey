@@ -37,4 +37,17 @@ final class ResolverSelfTests: XCTestCase {
     func testOffsetCrossfade() {
         XCTAssertEqual(TouchOffsetModel.crossfadeSelfTestFailures(), [])
     }
+
+    /// Press-phase state machine: initial phase per action under native + legacy commit
+    /// timing, slide-retarget mapping, gold-label plausibility gate.
+    @MainActor
+    func testCommitPhaseTables() {
+        XCTAssertEqual(KeyboardGestureCoordinator.commitPhaseSelfTestFailures(), [])
+    }
+
+    /// Word-tier backspace chunk math (whitespace run + word, grapheme-safe, clamped).
+    @MainActor
+    func testWordDeletionChunk() {
+        XCTAssertEqual(KeyboardCommitPipeline.wordDeleteSelfTestFailures(), [])
+    }
 }

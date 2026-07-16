@@ -92,6 +92,26 @@ final class TouchOffsetModel {
         let h = max(keyFrame.rect.height, 1)
         let fx = Float((point.x - keyFrame.rect.midX) / w)
         let fy = Float((point.y - keyFrame.rect.midY) / h)
+        stage(keyFrame: keyFrame, fx: fx, fy: fy, keyboardWidth: keyboardWidth, rowCount: rowCount)
+    }
+
+    /// Slide-corrected gold label: the user touched down at `point`, slid to `keyFrame` and
+    /// committed it — direct evidence of where a tap aimed at this key actually lands.
+    /// Bypasses the coordinator's anchor/confidence gates (the correction IS the evidence)
+    /// but clamps the fractional offset to ±0.3: a raw correction can exceed the ±0.5
+    /// divergence guard (which would void a first-sample seed), and direction matters more
+    /// than magnitude for the EMA. Same pending/backspace-survival path as `record`.
+    func recordCorrected(keyFrame: KeyFrame, point: CGPoint, keyboardWidth: CGFloat, rowCount: Int) {
+        guard enabled, keyFrame.isCharacterKey else { return }
+        let cap: Float = 0.3
+        let w = max(keyFrame.rect.width, 1)
+        let h = max(keyFrame.rect.height, 1)
+        let fx = min(max(Float((point.x - keyFrame.rect.midX) / w), -cap), cap)
+        let fy = min(max(Float((point.y - keyFrame.rect.midY) / h), -cap), cap)
+        stage(keyFrame: keyFrame, fx: fx, fy: fy, keyboardWidth: keyboardWidth, rowCount: rowCount)
+    }
+
+    private func stage(keyFrame: KeyFrame, fx: Float, fy: Float, keyboardWidth: CGFloat, rowCount: Int) {
         let latFrac = Float(keyFrame.rect.midX / max(keyboardWidth, 1))
         let idx = clusterIndex(row: keyFrame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
         nextPendingID &+= 1

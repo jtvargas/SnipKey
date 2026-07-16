@@ -54,8 +54,11 @@ final class CalloutController {
         self.parentBoundsWidth = width
     }
 
-    /// Show the input bubble above a character key.
-    func presentInput(for key: KeyFrame, character: String, casedByShift: Bool) {
+    /// Show the input bubble above a character key. `slide: true` marks a finger-slide
+    /// retarget: the bubble GLIDES from the previous key to the new one (native balloon
+    /// follow) instead of snapping. New presses always snap/pop — a rolling-type keystroke
+    /// must never read as the balloon flying across the keyboard.
+    func presentInput(for key: KeyFrame, character: String, casedByShift: Bool, slide: Bool = false) {
         guard let view = calloutView, case .character = key.action else {
             dismiss()
             return
@@ -67,7 +70,8 @@ final class CalloutController {
         }
         mode = .input(key)
         let rectInCalloutSpace = convertRect(key.rect)
-        view.show(.input(character: display, keyFrame: rectInCalloutSpace), isDark: isDark, in: parentBoundsWidth, animated: false)
+        view.show(.input(character: display, keyFrame: rectInCalloutSpace), isDark: isDark,
+                  in: parentBoundsWidth, animated: false, moveAnimated: slide)
     }
 
     /// Begin showing the long-press accent menu.

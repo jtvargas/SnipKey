@@ -69,6 +69,13 @@ struct SettingsView: View {
     @State private var showingAlert = false
     @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .rtrn)
     @State private var isPresentedGuide: Bool = false
+    #if DEBUG
+    /// DEBUG A/B kill switch for the native commit-timing gesture model. Bound straight to
+    /// the App Group (not the SwiftData settings model) — it is a temporary rollout lever,
+    /// locked ON in RELEASE by `KeyboardFeatureFlags.nativeCommitTiming`.
+    @State private var nativeCommitTiming = AppGroupSettings.bool(
+        forKey: AppGroupSettings.Key.nativeCommitTiming, default: true)
+    #endif
     
     private var selectedAppearance: AppAppearance {
         AppAppearance(rawValue: appAppearance) ?? .system
@@ -345,6 +352,29 @@ struct SettingsView: View {
                                     .foregroundColor(.secondary)
                             }
                         }
+                    }
+
+                    Toggle(isOn: $nativeCommitTiming) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "hand.tap")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Native Commit Timing")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Letters commit on lift/rollover with slide-to-correct; off = legacy commit-on-down (reopen keyboard to apply)")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.purple)
+                    .onChange(of: nativeCommitTiming) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.nativeCommitTiming)
                     }
                     #endif
                 } header: {

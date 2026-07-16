@@ -15,7 +15,12 @@ a third-party `UIInputViewController` by removing SwiftUI from the touch and ren
   routed by one multi-touch state machine; keys are drawn as `CAShapeLayer` + glyph layers.
 - **SwiftUI is used only for the suggestion toolbar** (slash snippets + predictive text), where it
   keeps its `@Query`/`@Environment` bindings.
-- **Characters commit on touch-DOWN** (like native iOS), not on release.
+- **Characters commit on touch-UP or rollover flush** (`nativeCommitTiming`, default ON) —
+  the system keyboard's actual semantics: highlight + callout at touch-down, the character
+  lands at lift OR the instant the next finger touches down. This is what enables
+  slide-to-correct, slide-off-cancel, shift-slide-capital and 123-slide-symbol. (The old
+  optimistic commit-on-touch-DOWN — previously mislabeled "like native iOS" — remains as a
+  DEBUG kill switch.)
 - **Dead zones are eliminated** by tiling invisible `KeyHitView` hit cells over every key's hit
   rect and resolving touches through a binary-search `HitGrid`.
 - **The hot path is tiny and XPC-frugal:** an `ownCharacterInsertInFlight` guard skips redundant
@@ -164,7 +169,7 @@ smartResolved(rawKey, point)                         [eligible letter tap]
      k* = argmin_k ‖t'−c_k′‖² − β·clip(log P(k|ctx))  raw row + adjacent letter rows
      runner-up captured for telemetry / future hypothesis ranking
      anti-swallow? → fall back to rawKey
-  → commit-on-touch-down (unchanged)
+  → commit at lift / rollover flush (native timing; legacy commit-on-down behind the kill switch)
   → TouchOffsetModel: record(k, point), then fold after a 500ms no-backspace survival window
   (backspace → TouchOffsetModel.discardPending())
 
@@ -197,7 +202,7 @@ fast typing (~10–12 chars/sec, faster on bursts) never drops a character or st
 | **Glyph cache** | SF Symbol renders memoized by `(name, size, weight, tintRGBA)`. Bounded by the ~6-symbol set. | `KeyLayerRenderer.swift:343–376`. |
 | **Instant highlight** | All immediate-feedback layer mutations wrapped in `CATransaction.setDisableActions(true)`; only fade-outs animate. | `KeyLayerRenderer.swift:136,185`; `KeyboardCalloutView.swift:130`. |
 | **Observable split** | Hot-path bookkeeping lives in non-`@Observable` `QWERTYInputTracking`; keystrokes cause **zero** SwiftUI invalidation until visible state changes. | `QWERTYKeyboardState.swift:30–77`. |
-| **Commit on touch-DOWN** | Character lands at finger-down, removing the ~80–150ms press-duration latency of touch-up commits. | `KeyboardGestureCoordinator.swift:387–389`. |
+| **Native commit timing** | Highlight/callout at finger-down (perceived latency unchanged); the character commits at lift or on the next finger-down (rollover flush) — native semantics enabling slide-to-correct. `commitDispatch` telemetry keeps the pure XPC cost visible. | `KeyboardGestureCoordinator` `flushPendingCharacterPresses` / `commitPendingPress`. |
 
 ### 4.2 XPC / IPC surfaces
 - **App Group UserDefaults** (`group.snipkey`) — synchronous settings reads (`useNativeKeyboardV2`,
@@ -251,11 +256,13 @@ Two complementary mechanisms guarantee every point resolves to exactly one key:
 - **Space:** commits on touch-UP (must distinguish tap from cursor mode). Hold 250ms or drift 14pt →
   `SpaceBarCursorController` cursor-drag (12pt/char, ProMotion-smooth via `coalescedTouches`),
   suppresses the space on lift. Double-space → auto-period `". "`.
-- **Backspace:** deletes on touch-down; after 350ms hold, accelerating repeat via structured-
-  concurrency `Task` — burst `1→2→3` chars, interval `max(45, 110 - count*6)` ms. (V1 used a fixed
-  100ms `Timer`.)
-- **Accent menu:** 400ms long-press → undo the optimistic touch-down commit (`deleteBackward`) →
-  open menu → drag to select → insert on release. URL/email fields get `.` → domain menu.
+- **Backspace:** deletes on touch-down; after a 500ms hold, repeats at ~100ms/char for 15 ticks,
+  then escalates to whole-WORD chunks at ~350ms/tick (`KeyboardCommitPipeline.commitWordBackspace`,
+  grapheme-safe, clamped 1–30) — native pacing. (Legacy kill-switch path keeps the old
+  accelerating `1→2→3` burst ramp.)
+- **Accent menu:** 400ms long-press on a still-pending press → open menu (nothing was committed,
+  so nothing to undo — no ghost-character flicker) → drag to select → insert on release. URL/email
+  fields get `.` → domain menu. (Legacy timing still undoes its optimistic commit first.)
 - **Smart space / punctuation:** predictive insert adds a "smart" trailing space consumed if the next
   char is `. , ! ? ; : ' ) } ] " ``; `--`→em-dash, `...`→ellipsis, typographic quotes by context;
   lone `i`→`I` after space (gated by setting + `allowsSmartTransforms`).
