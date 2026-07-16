@@ -35,6 +35,51 @@ enum BigramEngine {
         return bigrams[lower] ?? wordInitialFrequencies
     }
 
+    // MARK: - Fixed-buffer fast path (hot-path allocation-free reads)
+
+    /// Buffer index for a lowercase ASCII letter (a=0 … z=25), nil otherwise.
+    @inline(__always)
+    static func letterIndex(_ c: Character) -> Int? {
+        guard let ascii = c.asciiValue, ascii >= 97, ascii <= 122 else { return nil }
+        return Int(ascii - 97)
+    }
+
+    /// The dictionaries above, baked once into a dense 27×26 row-major Float table:
+    /// rows 0–25 = P(next | prev letter), row 26 = word-initial frequencies. Missing
+    /// dictionary entries bake as the 1/26 uniform fallback — exactly what the old
+    /// dictionary reads returned for absent keys. Baked lazily on first use, which happens
+    /// at `ProbabilisticTouchContext.init` (controller setup, off the touch path).
+    static let table26: ContiguousArray<Float> = {
+        var table = ContiguousArray<Float>(repeating: 1.0 / 26.0, count: 27 * 26)
+        for prev in 0..<26 {
+            let prevChar = Character(UnicodeScalar(UInt8(97 + prev)))
+            guard let row = bigrams[prevChar] else { continue }  // absent row stays uniform
+            for next in 0..<26 {
+                let nextChar = Character(UnicodeScalar(UInt8(97 + next)))
+                table[prev * 26 + next] = row[nextChar] ?? 1.0 / 26.0
+            }
+        }
+        for next in 0..<26 {
+            let nextChar = Character(UnicodeScalar(UInt8(97 + next)))
+            table[26 * 26 + next] = wordInitialFrequencies[nextChar] ?? 1.0 / 26.0
+        }
+        return table
+    }()
+
+    /// Copy the row for `prev` (nil / non-letter ⇒ word-initial) into a caller-owned
+    /// 26-slot buffer. One memcpy-sized loop, zero allocations — the per-keystroke
+    /// replacement for `weights(after:)`.
+    static func fill26(after prev: Character?, into buffer: inout ContiguousArray<Float>) {
+        let row: Int
+        if let prev, let idx = letterIndex(Character(prev.lowercased())) {
+            row = idx
+        } else {
+            row = 26
+        }
+        let base = row * 26
+        for i in 0..<26 { buffer[i] = table26[base + i] }
+    }
+
     // MARK: - Word-Initial Letter Frequencies
 
     /// Frequency of each letter as the first character of an English word.

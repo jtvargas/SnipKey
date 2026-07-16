@@ -192,10 +192,16 @@ struct KeyboardToolbarView: View {
             actions.insertText(content)
         }
 
-        // 3. Track usage
+        // 3. Track usage. The save is deferred off the insert path — a synchronous
+        //    SQLite write here would ride the same main-thread turn as the text insert
+        //    and grows with store size. SwiftData autosaves too; this just bounds the loss
+        //    window without blocking the keystroke.
         snippet.lastTimeUsed = Date.now
         snippet.usedCount += 1
-        try? modelContext.save()
+        let context = modelContext
+        Task { @MainActor in
+            try? context.save()
+        }
 
         // 4. Dismiss slash command mode
         slashState.dismiss()

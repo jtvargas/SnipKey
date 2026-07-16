@@ -57,7 +57,8 @@ enum KeyboardCommitPipeline {
         // Smart-punctuation transforms — only run if the host field allows them.
         let traits = actions.inputTraits()
         if traits.allowsSmartTransforms {
-            applySmartPunctuation(justInserted: textToInsert, traits: traits, actions: actions)
+            applySmartPunctuation(justInserted: textToInsert, traits: traits,
+                                  state: state, actions: actions)
         }
 
         // Defer slash + predictive evaluation off the synchronous touch path. The
@@ -119,7 +120,7 @@ enum KeyboardCommitPipeline {
         // keyboard type (URL/email skip smart transforms regardless).
         let traits = actions.inputTraits()
         if traits.autoCapitalizationEnabled && traits.allowsSmartTransforms {
-            applyAutoCapitalizationOfI(actions: actions)
+            applyAutoCapitalizationOfI(state: state, actions: actions)
         }
 
         // Native iOS: typing space on the numbers or symbols page returns to the
@@ -228,16 +229,18 @@ enum KeyboardCommitPipeline {
     // MARK: - Smart Punctuation
 
     /// Run en-US smart-punctuation transforms based on what was just inserted.
-    /// Operates on `documentContextBeforeInput` snapshots — modifies the document by
-    /// `deleteBackward` + `insertText` to swap straight characters for typographic ones.
+    /// Modifies the document by `deleteBackward` + `insertText` to swap straight
+    /// characters for typographic ones.
     ///
-    /// Returns `true` if it mutated the document. Early-returns BEFORE reading the
-    /// (cross-process) context unless the inserted character can actually trigger a
-    /// transform — so plain letters do zero context reads on the hot path.
+    /// Returns `true` if it mutated the document. Early-returns unless the inserted
+    /// character can actually trigger a transform, and prefers the keyboard-side context
+    /// mirror over the synchronous cross-process `documentContextBeforeInput` read — so
+    /// even the four trigger characters usually cost zero XPC on the touch path.
     @discardableResult
     private static func applySmartPunctuation(
         justInserted: String,
         traits: HostInputTraits,
+        state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) -> Bool {
         // Only these four characters can trigger a smart-punctuation transform.
@@ -248,7 +251,15 @@ enum KeyboardCommitPipeline {
         default:
             return false
         }
-        guard let context = actions.documentContextBeforeInput(), !context.isEmpty else { return false }
+        let context: String
+        if let fast = state.inputTracking.trailingContextFast {
+            context = fast
+        } else if let real = actions.documentContextBeforeInput() {
+            context = real
+        } else {
+            return false
+        }
+        guard !context.isEmpty else { return false }
 
         switch justInserted {
         case "-" where traits.smartDashesEnabled:
@@ -316,9 +327,10 @@ enum KeyboardCommitPipeline {
 
     /// If the cursor now sits right after `" i "` (or `"i "` at start of doc), replace
     /// the lone lowercase "i" with "I". Mirrors Apple's auto-cap heuristic for the English
-    /// first-person pronoun.
-    private static func applyAutoCapitalizationOfI(actions: KeyboardActions) {
-        guard let context = actions.documentContextBeforeInput() else { return }
+    /// first-person pronoun. Prefers the keyboard-side context mirror (zero XPC).
+    private static func applyAutoCapitalizationOfI(state: QWERTYKeyboardState, actions: KeyboardActions) {
+        guard let context = state.inputTracking.trailingContextFast
+                ?? actions.documentContextBeforeInput() else { return }
         // We just inserted a space, so the context ends with " ". Pattern: "...{word_break}i ".
         guard context.hasSuffix("i ") else { return }
         let withoutTrailingSpace = context.dropLast()        // "...i"
