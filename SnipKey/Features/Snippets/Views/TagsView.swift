@@ -28,6 +28,17 @@ struct TagsView: View {
     @State private var newTagName = ""
     @State private var newTagIcon = "tag.fill"
     @State private var newTagColorHex: String? = nil
+
+    // Tag name search
+    @State private var searchText = ""
+
+    /// Tags matching the search query (case/diacritic-insensitive); all tags when empty.
+    private var filteredTags: [SnipTag] {
+        guard !searchText.isEmpty else { return tags }
+        return tags.filter {
+            ($0.name ?? "").localizedStandardContains(searchText)
+        }
+    }
     
     var body: some View {
         VStack {
@@ -45,7 +56,7 @@ struct TagsView: View {
                 Form {
                     Section {
                         List {
-                            ForEach(tags, id: \.self) { tag in
+                            ForEach(filteredTags, id: \.self) { tag in
                                 HStack(alignment: .center, spacing: 10) {
                                     TagColorIndicator(colorHex: tag.colorHex, size: 10)
                                     
@@ -74,6 +85,11 @@ struct TagsView: View {
                         }
                     }
                 }
+                .overlay {
+                    if !searchText.isEmpty && filteredTags.isEmpty {
+                        ContentUnavailableView.search(text: searchText)
+                    }
+                }
             }
         }
         .sheet(item: $selectedTag) { selected in
@@ -93,6 +109,11 @@ struct TagsView: View {
         }
         .navigationTitle("Tags")
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(
+            text: $searchText,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search Tags"
+        )
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -139,7 +160,8 @@ struct TagsView: View {
     }
     
     func handleDeleteTags(offsets: IndexSet) {
-        viewModel.deleteTag(offsets: offsets, tags: tags)
+        // Offsets come from the ForEach over `filteredTags` — delete against the same array.
+        viewModel.deleteTag(offsets: offsets, tags: filteredTags)
     }
 }
 
