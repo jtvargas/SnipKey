@@ -80,6 +80,17 @@ struct SettingsView: View {
     private var selectedAppearance: AppAppearance {
         AppAppearance(rawValue: appAppearance) ?? .system
     }
+
+    // MARK: - Feedback & Support URLs
+    /// Public repository — SnipKey is open source.
+    private static let githubRepoURL = URL(string: "https://github.com/jtvargas/SnipKey")!
+    /// GitHub "Choose Template" page (bug report / feature request templates live in
+    /// .github/ISSUE_TEMPLATE). Both the Feature Requests and Report a Bug rows land here.
+    private static let githubNewIssueURL = URL(string: "https://github.com/jtvargas/SnipKey/issues/new/choose")!
+    /// The policy is the versioned PRIVACY_POLICY.md in the open-source repo.
+    private static let privacyPolicyURL = URL(string: "https://github.com/jtvargas/SnipKey/blob/main/PRIVACY_POLICY.md")!
+    /// Contact goes to the developer's GitHub profile README.
+    private static let contactURL = URL(string: "https://github.com/jtvargas/jtvargas/blob/main/README.md")!
     
     var body: some View {
         NavigationStack {
@@ -187,55 +198,8 @@ struct SettingsView: View {
                     }
                     .tint(.orange)
 
-                    // DEBUG-only: Native Keyboard V2 + Smart Touch Targeting. Release builds always
-                    // run V2 with smart touch ON (locked via KeyboardFeatureFlags), so no toggles.
-                    #if DEBUG
-                    Toggle(isOn: $currentSettings.useNativeKeyboardV2) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(width: 28, height: 28)
-                                .background(Color.indigo)
-                                .cornerRadius(6)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Native Keyboard V2 (Beta)")
-                                    .font(.custom("IBMPlexMono-Medium", size: 15))
-                                Text("KeyboardKit-style with finger-slide & accents")
-                                    .font(.custom("IBMPlexMono-Regular", size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .tint(.indigo)
-                    .onChange(of: currentSettings.useNativeKeyboardV2) { _, newValue in
-                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
-                    }
-
-                    Toggle(isOn: $currentSettings.probabilisticTouchEnabled) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "target")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(width: 28, height: 28)
-                                .background(Color.teal)
-                                .cornerRadius(6)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Smart Touch Targeting")
-                                    .font(.custom("IBMPlexMono-Medium", size: 15))
-                                Text("Improves accuracy when typing fast")
-                                    .font(.custom("IBMPlexMono-Regular", size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .tint(.teal)
-                    .onChange(of: currentSettings.probabilisticTouchEnabled) { _, newValue in
-                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
-                    }
-                    #endif
+                    // DEBUG-only experimental toggles follow. The V2 keyboard and Smart Touch
+                    // Targeting are no longer toggleable — they are the only implementation.
 
                     Toggle(isOn: $currentSettings.autoCapitalizationEnabled) {
                         HStack(spacing: 12) {
@@ -453,6 +417,46 @@ struct SettingsView: View {
                 } header: {
                     Text("Help & Support")
                 }
+
+                // MARK: - Feedback & Support Section
+                Section {
+                    Button {
+                        openURL(Self.githubRepoURL)
+                    } label: {
+                        SettingsRow(
+                            icon: "chevron.left.forwardslash.chevron.right",
+                            iconColor: .purple,
+                            title: "Source Code"
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        openURL(Self.githubNewIssueURL)
+                    } label: {
+                        SettingsRow(
+                            icon: "lightbulb.fill",
+                            iconColor: .yellow,
+                            title: "Feature Requests"
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        openURL(Self.githubNewIssueURL)
+                    } label: {
+                        SettingsRow(
+                            icon: "ladybug.fill",
+                            iconColor: .red,
+                            title: "Report a Bug"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Feedback & Support")
+                } footer: {
+                    Text("SnipKey is open source. Browse the code, request features, or report bugs on GitHub.")
+                }
                 
                 // MARK: - About Section
                 Section {
@@ -481,35 +485,7 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                     
                     Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online") {
-                            openURL(url)
-                        }
-                    } label: {
-                        SettingsRow(
-                            icon: "globe",
-                            iconColor: .teal,
-                            title: "SnipKey Website"
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button {
-                        if let url = URL(string: "https://github.com/jtvargas/SnipKey") {
-                            openURL(url)
-                        }
-                    } label: {
-                        SettingsRow(
-                            icon: "chevron.left.forwardslash.chevron.right",
-                            iconColor: .purple,
-                            title: "Source Code (GitHub)"
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
-                            openURL(url)
-                        }
+                        openURL(Self.privacyPolicyURL)
                     } label: {
                         SettingsRow(
                             icon: "hand.raised.fill",
@@ -518,25 +494,9 @@ struct SettingsView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    
+
                     Button {
-                        let urlString = "https://snipkey.jrtv.online/feedback-login?companyID=6611dc80cc35d4304dff22cd&redirect=https%3A%2F%2Fsnipkey.canny.io"
-                        if let url = URL(string: urlString) {
-                            openURL(url)
-                        }
-                    } label: {
-                        SettingsRow(
-                            icon: "lightbulb.fill",
-                            iconColor: .yellow,
-                            title: "Suggest Feature"
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online/contact-us") {
-                            openURL(url)
-                        }
+                        openURL(Self.contactURL)
                     } label: {
                         SettingsRow(
                             icon: "envelope.fill",
@@ -575,14 +535,6 @@ struct SettingsView: View {
                     currentSettings = myCurrentSettings
                     // Mirror SwiftData settings to the App Group so the keyboard extension
                     // can read them synchronously at launch.
-                    AppGroupSettings.setBool(
-                        myCurrentSettings.useNativeKeyboardV2,
-                        forKey: AppGroupSettings.Key.useNativeKeyboardV2
-                    )
-                    AppGroupSettings.setBool(
-                        myCurrentSettings.probabilisticTouchEnabled,
-                        forKey: AppGroupSettings.Key.probabilisticTouchEnabled
-                    )
                     AppGroupSettings.setBool(
                         myCurrentSettings.autoCapitalizationEnabled,
                         forKey: AppGroupSettings.Key.autoCapitalizationEnabled
@@ -630,8 +582,6 @@ struct SettingsView: View {
     private func resetKeyboardSettings() {
         currentSettings.afterPasteAction = .space
         currentSettings.isQWERTYKeyboardEnabled = false
-        currentSettings.useNativeKeyboardV2 = true
-        currentSettings.probabilisticTouchEnabled = true
         currentSettings.autoCapitalizationEnabled = true
         currentSettings.debugHitOverlayEnabled = false
         currentSettings.useProbabilisticHitResolver = true
@@ -639,8 +589,6 @@ struct SettingsView: View {
         currentSettings.remindersIntegrationEnabled = false
         currentSettings.reminderDestination = .snipKey
         currentSettings.timerIntegrationEnabled = false
-        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
-        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)

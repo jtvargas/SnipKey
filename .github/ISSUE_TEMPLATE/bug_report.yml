@@ -1,0 +1,120 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in SnipKey.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this issue. Please fill in as much detail as possible so we can reproduce and fix it.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear, one-sentence description of the bug.
+      placeholder: "The keyboard drops the first letter when typing fast after switching apps."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide the shortest steps to reliably reproduce the issue.
+      placeholder: |
+        1. Open Notes and switch to the SnipKey keyboard
+        2. Type "/remind call mom at 5pm"
+        3. Tap the Create reminder pill
+        4. No notification is scheduled
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen.
+      placeholder: "A reminder notification should be scheduled for 5 PM."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead.
+      placeholder: "The pill disappears but no reminder shows up in RemindersView."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where does it happen?
+      description: Which part of SnipKey does this affect?
+      multiple: true
+      options:
+        - Keyboard extension — QWERTY typing
+        - Keyboard extension — snippet list
+        - Main app — snippets / tags
+        - Main app — settings
+        - iCloud sync
+        - Reminders / timers
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: full_access
+    attributes:
+      label: Full Access
+      description: Is "Allow Full Access" enabled for the SnipKey keyboard?
+      options:
+        - Enabled
+        - Disabled
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: The device where the bug occurs.
+      placeholder: "iPhone 17 Pro Max"
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: iOS version
+      description: The iOS version where the bug occurs.
+      placeholder: "iOS 26.2"
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: SnipKey version
+      description: Settings → About the App, or the App Store listing.
+      placeholder: "5.5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Attach any relevant logs, crash reports, or screenshots. Never include snippet contents you consider private.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else that might help us diagnose the issue.
+      placeholder: "Only happens in Safari text fields; Notes works fine."

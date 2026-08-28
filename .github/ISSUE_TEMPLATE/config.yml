@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/jtvargas/SnipKey#readme
+    about: Read the README for setup instructions and project overview.
+  - name: Developer Reference
+    url: https://github.com/jtvargas/SnipKey/blob/main/AGENTS.md
+    about: See AGENTS.md for architecture details and coding conventions.
+  - name: SnipKey Website
+    url: https://snipkey.jrtv.online
+    about: App website, privacy policy, and contact form.

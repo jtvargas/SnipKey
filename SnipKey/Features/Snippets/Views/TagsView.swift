@@ -28,6 +28,18 @@ struct TagsView: View {
     @State private var newTagName = ""
     @State private var newTagIcon = "tag.fill"
     @State private var newTagColorHex: String? = nil
+
+    // Tag name search
+    @State private var searchText = ""
+
+    /// Tags in user-defined order, narrowed by the search query (case/diacritic-insensitive).
+    private var filteredTags: [SnipTag] {
+        let ordered = tags.userOrdered
+        guard !searchText.isEmpty else { return ordered }
+        return ordered.filter {
+            ($0.name ?? "").localizedStandardContains(searchText)
+        }
+    }
     
     var body: some View {
         VStack {
@@ -38,14 +50,14 @@ struct TagsView: View {
                     description: Text("Create your first tag to organize your snippets")
                 )
             } else {
-                Text("Press the edit button to delete any tags")
+                Text("Press the edit button to delete or re-arrange tags")
                     .foregroundColor(.secondary)
                     .font(.custom("IBMPlexMono-Regular", size: 12))
                 
                 Form {
                     Section {
                         List {
-                            ForEach(tags, id: \.self) { tag in
+                            ForEach(filteredTags, id: \.self) { tag in
                                 HStack(alignment: .center, spacing: 10) {
                                     TagColorIndicator(colorHex: tag.colorHex, size: 10)
                                     
@@ -71,7 +83,15 @@ struct TagsView: View {
                             .onDelete(perform: { indexSet in
                                 self.handleDeleteTags(offsets: indexSet)
                             })
+                            // Reordering only makes sense against the full list — offsets
+                            // from a search-narrowed list would scramble other tags.
+                            .onMove(perform: searchText.isEmpty ? handleMoveTags : nil)
                         }
+                    }
+                }
+                .overlay {
+                    if !searchText.isEmpty && filteredTags.isEmpty {
+                        ContentUnavailableView.search(text: searchText)
                     }
                 }
             }
@@ -93,6 +113,11 @@ struct TagsView: View {
         }
         .navigationTitle("Tags")
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(
+            text: $searchText,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search Tags"
+        )
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -139,7 +164,20 @@ struct TagsView: View {
     }
     
     func handleDeleteTags(offsets: IndexSet) {
-        viewModel.deleteTag(offsets: offsets, tags: tags)
+        // Offsets come from the ForEach over `filteredTags` — delete against the same array.
+        viewModel.deleteTag(offsets: offsets, tags: filteredTags)
+    }
+
+    /// Persist a drag-reorder: apply the move to the full ordered list, then renumber
+    /// every tag 0..n so the order is total (nil sortOrders become explicit) and the
+    /// filter menu in Snippets renders the exact same sequence.
+    func handleMoveTags(from source: IndexSet, to destination: Int) {
+        var ordered = tags.userOrdered
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (index, tag) in ordered.enumerated() where tag.sortOrder != index {
+            tag.sortOrder = index
+        }
+        try? modelContext.save()
     }
 }
 

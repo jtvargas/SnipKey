@@ -37,14 +37,8 @@ class KeyboardViewController: UIInputViewController {
     
     /// Track last known screen width to avoid redundant updateQWERTYState() calls from viewWillLayoutSubviews
     private var lastKnownWidth: CGFloat = 0
-    
-    /// Character pop-up balloon — V1 single reusable UIKit view, positioned above pressed keys.
-    /// Pure CALayer operations, zero SwiftUI state changes.
-    private let popupView = KeyPopupView()
-
     /// V2 callout overlay — mounted on the root view so it can overlap the toolbar and
-    /// draw above the top row of keys (which the V1 path achieves with `popupView`).
-    /// Created always; only added to the view hierarchy when V2 is enabled.
+    /// draw above the top row of keys.
     private let v2CalloutView = KeyboardCalloutView()
 
     /// V2 keys area, mounted as a DIRECT UIKit child of the input view (not inside the
@@ -177,12 +171,6 @@ class KeyboardViewController: UIInputViewController {
             screenWidthProvider: { [weak self] in
                 self?.cachedScreenWidth ?? 393
             },
-            showPopup: { [weak self] character, keyFrame, isDark in
-                self?.popupView.show(character: character, keyFrame: keyFrame, isDark: isDark)
-            },
-            hidePopup: { [weak self] in
-                self?.popupView.hide()
-            },
             openApp: { [weak self] in
                 if let url = URL(string: "snipkey://open") {
                     self?.openURL(url)
@@ -259,12 +247,12 @@ class KeyboardViewController: UIInputViewController {
                 return SnippetPasteboard.copyFile(data: data, mimeType: mimeType, hasFullAccess: true)
             },
             evaluateSlashCommand: { [weak self] in
-                // V1 path: read context and evaluate synchronously.
+                // Toolbar path (slash trigger button): read context and evaluate synchronously.
                 guard let self = self else { return }
                 self.runSlashEvaluation(context: self.textDocumentProxy.documentContextBeforeInput)
             },
             evaluatePredictiveText: { [weak self] in
-                // V1 path: read context and schedule synchronously.
+                // Toolbar path (predictive dismiss): read context and schedule synchronously.
                 guard let self = self else { return }
                 self.runPredictiveEvaluation(context: self.textDocumentProxy.documentContextBeforeInput)
             },
@@ -382,32 +370,26 @@ class KeyboardViewController: UIInputViewController {
         view.addKeyboardSubview(contentView.view)
 
         // V2 keys area as a direct UIKit child of the input view, ABOVE the SwiftUI host but
-        // BELOW the popup/callout overlays. The SwiftUI side (`NativeKeyboardV2View_SwiftUI`)
-        // now renders only the toolbar; this view draws and handles touches for all the keys.
+        // BELOW the callout overlay. The SwiftUI side (`NativeKeyboardV2View_SwiftUI`)
+        // renders only the toolbar; this view draws and handles touches for all the keys.
         // This removes SwiftUI's hit-testing from the keys touch path — the native model —
         // so taps in the gaps between keys always reach the gesture coordinator.
-        if KeyboardFeatureFlags.useNativeKeyboardV2 {
-            let keysView = NativeKeyboardV2View(state: qwertyState, actions: keyboardActionsStruct)
-            keysView.setCaretAdjustment(keyboardActionsStruct.adjustCaret)
-            keysView.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(keysView)
-            let toolbarH = KeyboardDimensions(screenWidth: keyboardScreenWidth()).toolbarHeight
-            NSLayoutConstraint.activate([
-                keysView.topAnchor.constraint(equalTo: view.topAnchor, constant: toolbarH),
-                keysView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                keysView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                keysView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            ])
-            self.nativeV2KeysView = keysView
-            // Hidden while the snippet grid is showing (SwiftUI renders the grid full-screen);
-            // visible when the keyboard is showing. Kept in sync via observation.
-            keysView.isHidden = qwertyState.showingSnippets
-            observeSnippetsForKeysVisibility()
-        }
-
-        // Add popup view on top of the SwiftUI content (renders above all keys)
-        popupView.translatesAutoresizingMaskIntoConstraints = true
-        view.addSubview(popupView)
+        let keysView = NativeKeyboardV2View(state: qwertyState, actions: keyboardActionsStruct)
+        keysView.setCaretAdjustment(keyboardActionsStruct.adjustCaret)
+        keysView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(keysView)
+        let toolbarH = KeyboardDimensions(screenWidth: keyboardScreenWidth()).toolbarHeight
+        NSLayoutConstraint.activate([
+            keysView.topAnchor.constraint(equalTo: view.topAnchor, constant: toolbarH),
+            keysView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            keysView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            keysView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        self.nativeV2KeysView = keysView
+        // Hidden while the snippet grid is showing (SwiftUI renders the grid full-screen);
+        // visible when the keyboard is showing. Kept in sync via observation.
+        keysView.isHidden = qwertyState.showingSnippets
+        observeSnippetsForKeysVisibility()
 
         // V2 callout overlay — mounted on the root view so it can overlap the toolbar
         // and draw above the top row of keys. The V2 gesture coordinator references this

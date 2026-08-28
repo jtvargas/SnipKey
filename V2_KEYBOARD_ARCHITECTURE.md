@@ -39,7 +39,7 @@ All paths are under `/SnipKeyboard/`. V2 code lives in `QWERTY/V2/`; shared code
 ### Core V2 (touch + render + state machine)
 | File | Role |
 |---|---|
-| `KeyboardViewController.swift` | `UIInputViewController` root. Mounts `NativeKeyboardV2View` directly on the input view, hydrates state, owns `textDocumentProxy`, coalesces side-effects, V1/V2 toggle. |
+| `KeyboardViewController.swift` | `UIInputViewController` root. Mounts `NativeKeyboardV2View` directly on the input view, hydrates state, owns `textDocumentProxy`, coalesces side-effects. |
 | `QWERTY/V2/NativeKeyboardV2View.swift` | Pure-UIKit host. Bridges `@Observable` state into the coordinator via `withObservationTracking`; SwiftUI body renders only the toolbar + a `Spacer` for the keys region. |
 | `QWERTY/V2/KeyboardGestureCoordinator.swift` | **The single multi-touch state machine** (~833 lines). Per-touch press tracking, finger-slide, highlight, callouts, accent menus, space-cursor drag, rapid backspace. Owns `KeyLayerRenderer`, `HitGrid`, `KeyHitView` tiles. |
 | `QWERTY/V2/KeyLayerRenderer.swift` | CALayer renderer. `CAShapeLayer` backgrounds + glyph layers (`CATextLayer` / SF Symbol images), glyph cache, instant highlight, shift/case updates. |
@@ -57,7 +57,7 @@ All paths are under `/SnipKeyboard/`. V2 code lives in `QWERTY/V2/`; shared code
 ### Input pipeline & features
 | File | Role |
 |---|---|
-| `QWERTY/V2/KeyboardCommitPipeline.swift` | Stateless `@MainActor enum` of commit functions: character insert w/ casing, smart space-eating, auto-period, smart punctuation, auto-cap "I". Shared by V1 & V2. |
+| `QWERTY/V2/KeyboardCommitPipeline.swift` | Stateless `@MainActor enum` of commit functions: character insert w/ casing, smart space-eating, auto-period, smart punctuation, auto-cap "I". |
 | `QWERTY/V2/KeyboardCalloutView.swift` | Tooth-shaped input bubble + flat accent menu. Path caching/morphing, spring-vs-instant by burst detection. |
 | `QWERTY/V2/CalloutController.swift` | Thin coordinator between gesture stream and `KeyboardCalloutView`; coord conversion + burst window. |
 | `QWERTY/V2/SpaceBarCursorController.swift` | Space long-press → caret drag mode (250ms / 14pt to engage). |
@@ -84,12 +84,12 @@ All paths are under `/SnipKeyboard/`. V2 code lives in `QWERTY/V2/`; shared code
 | `QWERTY/KeyboardActions.swift` | Value-type struct of ~14 closures wrapping `textDocumentProxy` ops. UIKit↔SwiftUI bridge; includes the `insertCharacter` fast path. |
 | `QWERTY/V2/ModelContainerProvider.swift` | Actor providing the App-Group SwiftData `ModelContainer`; `warmup()` started early in `viewDidLoad`. |
 
-### Legacy V1 (still intact behind the flag)
+### Shared QWERTY infrastructure (V1 removed — V2 is the only keyboard)
 | File | Role |
 |---|---|
-| `QWERTY/QWERTYKeyboardLayout.swift` | Static V1 key rows. |
-| `QWERTY/KeyButtonView.swift` | V1 per-key SwiftUI renderer + `KeyTouchArea` (`UIControl`) hack + V1 haptics. |
-| `QWERTY/KeyRowView.swift` | V1 `HStack` row layout with duplicated width math. |
+| `QWERTY/QWERTYKeyboardLayout.swift` | Static key rows consumed by the V2 layout factory. |
+| `QWERTY/QWERTYKeyboardView.swift` | `KeyboardToolbarView` (slash/predictive/reminder pills) + shared `KeyboardHaptics`. |
+| `QWERTY/DynamicHitResolver.swift` | 1D boundary-shift math used by the legacy `SmartTouchResolver` path. |
 
 ---
 
@@ -98,7 +98,6 @@ All paths are under `/SnipKeyboard/`. V2 code lives in `QWERTY/V2/`; shared code
 ### 3.1 Mount & ownership chain
 ```
 KeyboardViewController (UIInputViewController)
- ├─ reads AppGroupSettings.useNativeKeyboardV2 (default true)
  ├─ builds KeyboardActions (closures over textDocumentProxy)
  ├─ owns QWERTYKeyboardState (@Observable) + QWERTYInputTracking (plain)
  ├─ mounts NativeKeyboardV2View  ── UIKit keys, addSubview directly on input view
@@ -205,8 +204,8 @@ fast typing (~10–12 chars/sec, faster on bursts) never drops a character or st
 | **Native commit timing** | Highlight/callout at finger-down (perceived latency unchanged); the character commits at lift or on the next finger-down (rollover flush) — native semantics enabling slide-to-correct. `commitDispatch` telemetry keeps the pure XPC cost visible. | `KeyboardGestureCoordinator` `flushPendingCharacterPresses` / `commitPendingPress`. |
 
 ### 4.2 XPC / IPC surfaces
-- **App Group UserDefaults** (`group.snipkey`) — synchronous settings reads (`useNativeKeyboardV2`,
-  `probabilisticTouchEnabled`, `autoCapitalizationEnabled`, `debugHitOverlayEnabled`). Read at
+- **App Group UserDefaults** (`group.snipkey`) — synchronous settings reads
+  (`autoCapitalizationEnabled`, `debugHitOverlayEnabled`, DEBUG engine toggles). Read at
   launch / on commit, generally not per-keystroke (see opportunity 6.1).
 - **`documentContextBeforeInput`** — the expensive cross-process text read (~0.5–5ms). Minimized to:
   one coalesced flush per burst; skipped via the insert guard for `.words`/`.sentences`; read on the
@@ -319,9 +318,9 @@ equivalent for debouncing; technically structured concurrency, not a `DispatchQu
 **Fragile coupling / debt to watch:**
 - **NotificationCenter holdovers** (`addKey`/`switchKey`/`deleteKey`) remain live from V1; a snippet
   inserted via that path doesn't clear `pendingSmartSpace`, so a stale smart-space could linger.
-- **Width-math duplication across three places:** `KeyRowView.visualKeyWidth` (V1),
-  `KeyboardDimensions.visualKeyWidth` (popup positioning), and `KeyboardLayoutResolver.computeWidths`
-  (V2). They agree today; divergent edits would misalign popups or hit cells.
+- **Width-math duplication:** `KeyboardLayoutResolver.computeWidths` is now the single
+  source of key widths (V1 `KeyRowView` math and the popup-positioning duplicate in
+  `KeyboardDimensions` were removed with V1).
 - **`UIColor.label` trap (handled):** `CATextLayer` has no trait collection, so dynamic colors
   resolve against `UITraitCollection.current` (often dark in an extension). The renderer deliberately
   uses explicit `white`/`black` indexed on its own `isDark` flag.
@@ -330,9 +329,9 @@ equivalent for debouncing; technically structured concurrency, not a `DispatchQu
 
 ---
 
-## 8. V1 → V2 Evolution
+## 8. V1 → V2 Evolution (V1 removed 2026-08; table kept for design rationale)
 
-| Area | V1 | V2 |
+| Area | V1 (removed) | V2 |
 |---|---|---|
 | Keys rendering | SwiftUI view tree (40+ views) | CALayer sublayers on one UIView |
 | Touch routing | One `UIControl` per key (`KeyTouchArea`) | Single coordinator, multi-touch |
@@ -344,8 +343,9 @@ equivalent for debouncing; technically structured concurrency, not a `DispatchQu
 | Callout | Static-path `KeyPopupView` | Morphing tooth path, burst-suppressed spring |
 | Accent menu / space cursor | None | `CalloutController` actions / `SpaceBarCursorController` |
 
-Flag: `AppGroupSettings.Key.useNativeKeyboardV2` (default `true`), read in
-`KeyboardViewController`. Both paths fully coexist.
+The V2 keyboard is the only implementation — the `useNativeKeyboardV2` flag and the V1
+per-key SwiftUI path were removed. Smart Touch Targeting is likewise always on
+(`probabilisticTouchEnabled` flag removed).
 
 ---
 
@@ -353,8 +353,6 @@ Flag: `AppGroupSettings.Key.useNativeKeyboardV2` (default `true`), read in
 
 | Setting | Key | Default | Effect |
 |---|---|---|---|
-| Native V2 keyboard | `useNativeKeyboardV2` | `true` | V2 coordinator vs V1 per-key SwiftUI |
-| Probabilistic touch | `probabilisticTouchEnabled` | `true` | Master gate for touch correction (legacy + next-gen) |
 | **Next-gen touch engine** | `useProbabilisticHitResolver` | `true` | 2D power-diagram resolver + per-user learning vs legacy 1D shift |
 | Auto-capitalization | `autoCapitalizationEnabled` | `true` | Sentence/word auto-cap + auto-"I" |
 | Debug hit overlay | `debugHitOverlayEnabled` | `false` | Red hit-cell outlines; + live Voronoi cells when the engine is on |

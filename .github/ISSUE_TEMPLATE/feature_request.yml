@@ -1,0 +1,67 @@
+name: Feature Request
+description: Propose a new feature or improvement for SnipKey.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Help us understand the use case and your proposed solution.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear, one-sentence description of the feature.
+      placeholder: "Add emoji shortcodes so typing :tada: inserts 🎉."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What user need does this address? Why is the current behavior insufficient?
+      placeholder: "Inserting emojis requires switching to the system emoji keyboard, which breaks the typing flow."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe how you'd like this to work. Be as specific as possible.
+      placeholder: "Typing :name shows matching emojis in the toolbar, like Slack/Discord/GitHub shortcodes."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you considered and why they are less ideal.
+      placeholder: "Creating a snippet per emoji works but pollutes the snippet list."
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Feature scope
+      description: Which part of SnipKey should this feature target?
+      multiple: true
+      options:
+        - Keyboard extension — QWERTY typing
+        - Keyboard extension — snippet list
+        - Main app — snippets / tags
+        - Main app — settings
+        - Integrations (Reminders, Timers, ...)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any mockups, examples, or references that help illustrate the feature.
+      placeholder: "Similar to how Slack renders shortcode suggestions inline."

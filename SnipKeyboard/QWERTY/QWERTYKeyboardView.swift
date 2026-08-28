@@ -8,34 +8,28 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Main QWERTY Keyboard View
+// MARK: - Haptic Feedback Manager
 
-struct QWERTYKeyboardView: View {
-    @Environment(QWERTYKeyboardState.self) private var state
-    @Environment(\.keyboardActions) private var actions
+/// Lightweight haptic feedback for key presses (shared by the toolbar and snippet grid).
+/// Uses UIImpactFeedbackGenerator which works without Full Access.
+/// Re-prepares after each call for consistent low-latency response.
+enum KeyboardHaptics {
+    private static let lightGenerator = UIImpactFeedbackGenerator(style: .light)
+    private static let mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
 
-    var body: some View {
-        let dimensions = KeyboardDimensions(screenWidth: actions.screenWidth)
+    static func prepare() {
+        lightGenerator.prepare()
+        mediumGenerator.prepare()
+    }
 
-        VStack(spacing: 0) {
-            KeyboardToolbarView(dimensions: dimensions)
+    static func keyPress() {
+        lightGenerator.impactOccurred()
+        lightGenerator.prepare() // Re-arm for next press
+    }
 
-            VStack(spacing: dimensions.rowGap) {
-                let rows = QWERTYKeyboardLayout.rows(for: state.currentPage, profile: state.layoutProfile)
-                ForEach(Array(rows.enumerated()), id: \.element) { index, row in
-                    KeyRowView(
-                        actions: row,
-                        rowIndex: index,
-                        dimensions: dimensions
-                    )
-                }
-            }
-            .padding(.top, dimensions.topEdge)
-            .padding(.bottom, dimensions.bottomEdge)
-        }
-        .frame(height: dimensions.totalHeight)
-        .reminderToast()
-        .timerToast()
+    static func specialKey() {
+        mediumGenerator.impactOccurred()
+        mediumGenerator.prepare() // Re-arm for next press
     }
 }
 

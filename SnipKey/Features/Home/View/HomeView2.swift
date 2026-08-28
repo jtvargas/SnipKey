@@ -250,6 +250,7 @@ struct HomeView2: View {
                 }
             }
             .navigationTitle("Snippets")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationSubtitle(navigationSubtitleText)
             
         } else {
@@ -296,6 +297,7 @@ struct HomeView2: View {
                 SnippetViewDetail(item: item)
             }
             .navigationTitle("Snippets")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationSubtitle(navigationSubtitleText)
             // also support subtitle if filter is selected show the name of the filter as well, like filtered by "..."
 //            .navigationSubtitle("\(snippetsSelection.count > 1 ? "Selected: \(snippetsSelection.count)") : """)
@@ -388,18 +390,11 @@ struct HomeView2: View {
             Menu(
                 content: {
                     Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
-                        ForEach(tags, id: \.id) { tag in
+                        ForEach(tags.userOrdered, id: \.id) { tag in
                             Label {
-                                Text(tag.name!)
+                                Text(tag.name ?? "")
                             } icon: {
-                                HStack(spacing: 4) {
-                                    if tag.colorHex != nil {
-                                        Image(systemName: "circle.fill")
-                                            .foregroundColor(Color(hex: tag.colorHex!) ?? .gray)
-                                            .font(.system(size: 8))
-                                    }
-                                    Image(systemName: tag.imageTag!)
-                                }
+                                tagFilterIcon(for: tag)
                             }
                             .tag(Optional(tag))
                         }
@@ -420,6 +415,20 @@ struct HomeView2: View {
         }
         
         
+    }
+
+    /// Menu/Picker rows ignore SwiftUI `foregroundColor` on symbol images — UIKit renders
+    /// every item with the app accent (the "all yellow" bug). UIKit menus DO honor a
+    /// UIImage with `.alwaysOriginal`, so bake the tag's color into the image itself.
+    private func tagFilterIcon(for tag: SnipTag) -> Image {
+        let symbol = (tag.imageTag?.isEmpty == false ? tag.imageTag! : "tag.fill")
+        if let hex = tag.colorHex,
+           let color = Color(hex: hex),
+           let ui = UIImage(systemName: symbol)?
+               .withTintColor(UIColor(color), renderingMode: .alwaysOriginal) {
+            return Image(uiImage: ui)
+        }
+        return Image(systemName: symbol)
     }
     
     

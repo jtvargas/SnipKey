@@ -170,10 +170,7 @@ SnipKeyboard/                           # Keyboard Extension Target
     ├── QWERTYKeyboardState.swift       # @Observable render state + plain input tracking
     ├── KeyboardActions.swift           # textDocumentProxy closures via SwiftUI environment
     ├── QWERTYKeyboardLayout.swift      # Static key definitions for letters/numbers/symbols
-    ├── KeyButtonView.swift             # Key rendering with UIKit KeyTouchArea (touch lifecycle)
-    ├── KeyRowView.swift                # HStack row with zero-dead-zone padding + probabilistic data
-    ├── QWERTYKeyboardView.swift        # Main keyboard view + toolbar + slash suggestions
-    ├── KeyPopupView.swift              # UIKit balloon popup for key press visual feedback
+    ├── QWERTYKeyboardView.swift        # Keyboard toolbar + slash suggestions + shared haptics
     ├── SlashCommandEngine.swift        # Slash command tracker + state + fuzzy matching engine
     ├── PredictiveTextEngine.swift      # Predictive text tracker + state + suggestion engine
     ├── BigramEngine.swift              # Static English bigram frequency table (26x26)
@@ -421,15 +418,15 @@ The keyboard extension (`SnipKeyboard` target) is a `UIInputViewController` that
 1. `KeyboardViewController` subclasses `UIInputViewController` and owns:
    - `QWERTYKeyboardState` (`@Observable`) — shared render state injected into SwiftUI environment
    - `KeyboardActions` (struct of closures) — wraps `textDocumentProxy` operations, passed via SwiftUI `@Environment`
-   - `KeyPopupView` (UIKit) — singleton balloon popup added as a subview above the SwiftUI hosting controller
+   - `KeyboardCalloutView` (UIKit) — shared callout/balloon overlay mounted on the root view
    - Explicit `NSLayoutConstraint` for keyboard height (no GeometryReader)
-2. `KeyboardViewExt` (SwiftUI) conditionally renders `QWERTYKeyboardView` or the snippet grid based on `qwertyState.showingSnippets`
+2. `KeyboardViewExt` (SwiftUI) renders the V2 toolbar (`NativeKeyboardV2View_SwiftUI`) or the snippet grid based on `qwertyState.showingSnippets`; the V2 keys area (`NativeKeyboardV2View`) is mounted directly on the input view by `KeyboardViewController`
 3. Text is inserted via `textDocumentProxy.insertText()` — this bypasses paste restrictions
 4. Images and PDFs are copied to `UIPasteboard.general` (requires Full Access)
 
 ### QWERTY Keyboard Design
 
-The QWERTY keyboard is built in `SnipKeyboard/QWERTY/` with 13 files. Key architecture decisions:
+The QWERTY keyboard is the **Native V2** implementation (`SnipKeyboard/QWERTY/V2/`) — the only one; the old per-key SwiftUI V1 was removed. Key architecture decisions:
 
 **State management:**
 - `QWERTYKeyboardState` (`@Observable`) holds only view-affecting properties: `currentPage`, `shiftState`, `returnKeyLabel`, `returnKeyIsProminent`, `appearanceMode`, `needsInputModeSwitchKey`, `showingSnippets`
@@ -437,22 +434,19 @@ The QWERTY keyboard is built in `SnipKeyboard/QWERTY/` with 13 files. Key archit
 - All `@Observable` mutations from `KeyboardViewController` use equality guards (`if value != newValue`) to prevent unnecessary re-renders.
 - `viewWillLayoutSubviews()` only calls `updateQWERTYState()` when screen width changes; `textDidChange()` handles per-keystroke updates.
 
-**Touch handling:**
-- Character keys and the space bar use `KeyTouchArea` — a `UIViewRepresentable` wrapping `UIControl` with full touch lifecycle (`touchDown`/`touchUpInside`/`touchUpOutside`/`touchCancel`).
-- Character insertion fires on `.touchDown` (not `.touchUpInside`) for ~30-80ms lower latency.
-- `KeyTouchArea.onTouchDown` provides both the touch X position and the control's actual frame in keyboard coordinates (via `UIEvent` parameter + `convert(bounds, to: nil)`). Character keys use the touch X for probabilistic hit resolution; the actual frame is used for popup positioning.
-- `KeyTouchArea` also handles visual highlight via `UIControl.backgroundColor` changes — pure CALayer, no SwiftUI state.
-- On the letters page, character keys run `DynamicHitResolver` inline on each touch-down (~100ns) to check if the touch should redirect to an adjacent key based on bigram probabilities. See **Probabilistic Touch Targeting** section below.
-- Special keys (shift, backspace, snippet toggle) use SwiftUI `Button` for long-press gesture support.
+**Touch handling (V2):**
+- All key touches route through `KeyboardGestureCoordinator` — a single UIKit view with `isMultipleTouchEnabled`, one `ActivePress` state machine per `UITouch` (`PressPhase`: pending → committed / cancelled / accent-menu).
+- Highlight + callout fire at touch-down; the character commits at finger-lift or rollover flush (native commit timing), enabling slide-to-correct, slide-off-cancel, shift-slide-capital, and 123-slide-symbol.
+- Transparent `KeyHitView` tiles cover every key's `hitRect` so UIKit hit-testing never drops a touch in the gaps; resolution runs on a precomputed `HitGrid` (binary search).
+- Touch-downs on letters resolve through `ProbabilisticHitResolver` (2D power-diagram, next-gen engine) or the legacy 1D `SmartTouchResolver`/`DynamicHitResolver` boundary shift — smart touch targeting is always on.
 
 **Key press visual feedback (balloon popup):**
-- `KeyPopupView` is a single `UIView` instance reused for all keys. It contains a `UILabel` + `CAShapeLayer` drawing a balloon shape with a downward-pointing tail.
+- `KeyboardCalloutView` is a single `UIView` instance reused for all keys (V2 callout overlay). It draws the balloon body with `CAShapeLayer` paths.
 - Show/hide is done via `CALayer` property changes (`isHidden`, `frame`, `transform`) — zero SwiftUI state mutations, zero layout passes.
 - Spring scale animation runs on the Core Animation render server, not the main thread.
-- Character/digit/symbol keys get balloon popup + background highlight on press.
-- Space bar gets background highlight only (no popup), and dismisses any active popup.
-- Special keys (shift, backspace, return, etc.) have no visual feedback currently.
-- Popup is positioned using the `UIControl`'s actual frame from UIKit layout (via `convert(bounds, to: nil)`), not duplicated arithmetic. This eliminates drift between SwiftUI layout and popup positioning.
+- Character/digit/symbol keys get balloon callout + background highlight on press.
+- Space bar gets background highlight only (no callout), and dismisses any active callout.
+- The callout is positioned from the key's resolved `KeyFrame` rect converted to root-view coordinates by `CalloutController`.
 
 ### Slash Command Architecture
 
@@ -477,24 +471,20 @@ The slash command system detects `/query` patterns during typing and shows match
 - `KeyboardActions.swift` — `evaluateSlashCommand` closure
 - `KeyboardViewController.swift` — creates tracker/state, wires evaluation closure
 - `QWERTYKeyboardView.swift` — `KeyboardToolbarView` with suggestions UI + `SlashTriggerButton`
-- `KeyButtonView.swift` — calls `evaluateSlashCommand()` after character/backspace/return/space
+- `KeyboardGestureCoordinator.swift` / `KeyboardCommitPipeline.swift` — evaluation scheduled via the coalesced side-effect flush after character/backspace/return/space
 
 ### Probabilistic Touch Targeting
 
 After typing a character, the invisible touch boundaries between adjacent keys dynamically shift based on English bigram frequencies. For example, after typing "t", the hit area for "h" expands because "th" is extremely common. Visual keys don't change — only touch resolution logic changes. This is an inline per-key approach (no overlay or separate touch layer).
 
-**Architecture (inline per-key resolution):**
-- `KeyRowView` pre-computes `ProbabilisticRowData` once per layout pass for letters-page rows 0-2. This contains `keyRects` (centerX, width per character key in row coordinate space), `characters` (row's character strings), and `keyOffsets` (each key's tappable left edge X offset).
-- Each character `KeyButtonView` receives this data as optional properties (`rowKeyRects`, `rowCharacters`, `characterIndex`, `keyOffsetInRow`). On numbers/symbols pages these are nil (zero overhead).
-- On touch-down, `KeyTouchArea` passes both the touch X and the control's actual UIKit frame. The character key's closure calls `resolveCharacter()` which converts local touch X to row-space X (`localTouchX + keyOffsetInRow`), fetches bigram weights from `ProbabilisticTouchContext`, and runs `DynamicHitResolver.resolve()`.
-- If the resolved key differs from the tapped key, the neighbor's character is inserted instead. The popup always appears above the tapped key's actual position (better UX — matches where the finger is).
+**Architecture (V2 resolver stack):**
+- Touch-downs resolve through `KeyboardGestureCoordinator.smartResolvedResult`: the 2D power-diagram `ProbabilisticHitResolver` (next-gen engine, letters page) or the legacy 1D `SmartTouchResolver`/`DynamicHitResolver` boundary shift.
+- If the resolved key differs from the tapped key, the neighbor's character is committed instead. The callout always appears above the tapped key's actual position (matches where the finger is).
 
 **Key files:**
 - `BigramEngine.swift` — Static `enum` with pre-computed 26x26 English bigram conditional probability table. `weights(after:)` returns `[Character: Float]`. Also has `wordInitialFrequencies` for after space/punctuation. All `static let` data, zero allocations.
 - `DynamicHitResolver.swift` — Static `enum` with `resolve(touchX:keyRects:weights:keyGap:)`. Computes shifted boundaries between adjacent keys proportional to weight ratios. Clamps so no key shrinks below 60% of original width. Pure arithmetic, ~100ns.
-- `ProbabilisticTouchContext.swift` — Plain `final class` (NOT `@Observable` — zero SwiftUI re-renders). Tracks `lastCharacter` and pre-computes `currentWeights`. Updated per keystroke via `recordCharacter()` / `recordNonCharacter()`. Read by `KeyButtonView.resolveCharacter()`.
-- `KeyRowView.swift` — `probabilisticRowData()` method computes row geometry during SwiftUI layout.
-- `KeyButtonView.swift` — `resolveCharacter()`, `handleCharacterTap()` methods.
+- `ProbabilisticTouchContext.swift` — Plain `final class` (NOT `@Observable` — zero SwiftUI re-renders). Tracks `lastCharacter` and pre-computes fixed 26-float weight buffers. Updated per keystroke via `recordCharacter()` / `recordNonCharacter()`. Read by the gesture coordinator's resolver path.
 - `QWERTYKeyboardState.swift` — `QWERTYInputTracking.touchContext` stores the `ProbabilisticTouchContext` instance.
 
 **Performance:**
@@ -663,7 +653,6 @@ When modifying `KeyboardView.swift` or `KeyboardViewController.swift`:
 |---|---|---|
 | Dead code: unused ContentView | `ContentView.swift` | Default Xcode template, references nonexistent `Item` model |
 | Dead code: legacy home view | `HomeView.swift` | Replaced by `HomeView2.swift` |
-| Dead code: KeyboardHaptics enum | `KeyButtonView.swift` | Haptic feedback disabled for iOS 26; enum kept for future settings toggle |
 | No tests | — | Test targets exist in scheme but have no test files |
 | Minimal error handling | Throughout | Most errors use `print()` and `try?` |
 | Missing privacy manifest | — | `.xcprivacy` file not present; may be needed for App Store (UIPasteboard, UserDefaults declarations) |
@@ -691,5 +680,5 @@ See the [Roadmap & Vision](README.md#roadmap--vision) section in `README.md` for
 | **App Store** | https://apps.apple.com/us/app/snipkey/id6480381137 |
 | **GitHub** | https://github.com/jtvargas/SnipKey |
 | **Website** | https://snipkey.jrtv.online |
-| **Privacy Policy** | https://snipkey.jrtv.online/privacy-policy |
-| **Feature Requests** | https://snipkey.canny.io |
+| **Privacy Policy** | [PRIVACY_POLICY.md](PRIVACY_POLICY.md) |
+| **Feature Requests / Bug Reports** | https://github.com/jtvargas/SnipKey/issues/new/choose |
