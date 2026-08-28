@@ -1,5 +1,5 @@
 {
-  "originHash" : "8c85c23ec6f1877401f672d83c00de5331bca4f740a09ca806c413ef3369b422",
+  "originHash" : "3c7b42cf76fe5d1b5ffa8a4d64cf7eac7f604d12896881b1ecf37ca33fc382f4",
   "pins" : [
     {
       "identity" : "alerttoast",
@@ -24,8 +24,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/EmergeTools/Pow",
       "state" : {
-        "revision" : "cc014eba4b65f689cadc281ad925de5607f2adc9",
-        "version" : "1.0.3"
+        "revision" : "1b4b1dda28c50b95f0872927ee2226fe8b58950e"
       }
     },
     {
