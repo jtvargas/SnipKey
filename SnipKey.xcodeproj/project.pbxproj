@@ -699,7 +699,6 @@
 				0863C40DC54F8B0573428C40 /* ReminderDestination.swift */,
 				67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */,
 			);
-			name = Reminders;
 			path = Reminders;
 			sourceTree = "<group>";
 		};
@@ -708,7 +707,6 @@
 			children = (
 				BB499AC652FABA524AB96360 /* LocalNotificationScheduler.swift */,
 			);
-			name = Notifications;
 			path = Notifications;
 			sourceTree = "<group>";
 		};
@@ -718,7 +716,6 @@
 				9A617BC51EE90BF0174CD25F /* NotificationPresenter.swift */,
 				F9F559D4F5BD052FAD0F47B8 /* RemindersView.swift */,
 			);
-			name = Notifications;
 			path = Notifications;
 			sourceTree = "<group>";
 		};
@@ -738,7 +735,6 @@
 				F6374B40A047164AF651131A /* CharacterTrigramLMTests.swift */,
 				2C24E64B7EF2BD93BCEB121D /* SyntheticResolverSuiteTests.swift */,
 			);
-			name = SnipKeyTests;
 			path = SnipKeyTests;
 			sourceTree = "<group>";
 		};
@@ -749,7 +745,6 @@
 				13F01CB1874AC706164E3258 /* Notifications */,
 				112459B85F2A3E0B1DE8F239 /* Reminders */,
 			);
-			name = Shared;
 			path = Shared;
 			sourceTree = "<group>";
 		};
@@ -758,7 +753,6 @@
 			children = (
 				BD5F1A2C3E4D5B6A79880102 /* SnippetPasteboard.swift */,
 			);
-			name = Clipboard;
 			path = Clipboard;
 			sourceTree = "<group>";
 		};
@@ -770,7 +764,6 @@
 				88B761651C894AA3B2981C82 /* RemindersIntegrationView.swift */,
 				B3D8E0747E327AD847D6FA30 /* TimerIntegrationView.swift */,
 			);
-			name = Integrations;
 			path = Integrations;
 			sourceTree = "<group>";
 		};
@@ -1329,7 +1322,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 6.2;
+				MARKETING_VERSION = 6.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1371,7 +1364,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 6.2;
+				MARKETING_VERSION = 6.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "jrtv-projects.SnipKey";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
