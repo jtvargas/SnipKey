@@ -548,7 +548,7 @@ struct KeyboardView: View {
     @ViewBuilder
     private func TagFilterMenu() -> some View {
         Menu {
-            ForEach(tags, id: \.id) { tag in
+            ForEach(tags.userOrdered, id: \.id) { tag in
                 Button {
                     selectedFilter = tag
                 } label: {
