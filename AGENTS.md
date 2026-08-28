@@ -680,5 +680,5 @@ See the [Roadmap & Vision](README.md#roadmap--vision) section in `README.md` for
 | **App Store** | https://apps.apple.com/us/app/snipkey/id6480381137 |
 | **GitHub** | https://github.com/jtvargas/SnipKey |
 | **Website** | https://snipkey.jrtv.online |
-| **Privacy Policy** | https://snipkey.jrtv.online/privacy-policy |
-| **Feature Requests** | https://snipkey.canny.io |
+| **Privacy Policy** | [PRIVACY_POLICY.md](PRIVACY_POLICY.md) |
+| **Feature Requests / Bug Reports** | https://github.com/jtvargas/SnipKey/issues/new/choose |
