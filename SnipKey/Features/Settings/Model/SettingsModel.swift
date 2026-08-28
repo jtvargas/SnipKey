@@ -170,6 +170,19 @@ enum AppGroupSettings {
         /// it disagrees with the acting one (privacy-safe aggregates). Default OFF. Drives
         /// the rollout gate + β/offset calibration in V2_KEYBOARD_NEXTGEN_PLAN §11–§12.
         static let shadowLoggingEnabled = "shadowLoggingEnabled"
+        /// Native commit timing: letters commit on touch-UP / rollover flush (system-keyboard
+        /// semantics — enables slide-to-correct, shift-slide, 123-slide). Default ON;
+        /// DEBUG-only kill switch for A/B feel comparison against the legacy optimistic
+        /// commit-on-touch-DOWN. Bool.
+        static let nativeCommitTiming = "nativeCommitTiming"
+        /// Full-fidelity calibration capture (DEBUG dev tool): records raw tap geometry +
+        /// committed characters to the App Group for the offline replay harness. Records
+        /// typed text — developer's own device only. Default OFF; RELEASE-locked off. Bool.
+        static let calibrationCaptureEnabled = "calibrationCaptureEnabled"
+        /// Corpus-trained character trigram prior (bundled trigram-en.bin) instead of the
+        /// legacy bigram + curated boosts. DEBUG default ON for dogfooding; RELEASE-locked
+        /// OFF until the replay/shadow gates pass (V2_KEYBOARD_NEXTGEN_PLAN §12). Bool.
+        static let useCorpusTrigram = "useCorpusTrigram"
         /// Master enable for the Reminders integration. When false, the keyboard behaves exactly
         /// as today (SnipKey local notifications only). Bool.
         static let remindersIntegrationEnabled = "remindersIntegrationEnabled"
@@ -242,6 +255,30 @@ enum KeyboardFeatureFlags {
     static var shadowLoggingEnabled: Bool {
         #if DEBUG
         AppGroupSettings.bool(forKey: AppGroupSettings.Key.shadowLoggingEnabled, default: false)
+        #else
+        false
+        #endif
+    }
+
+    static var nativeCommitTiming: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.nativeCommitTiming, default: true)
+        #else
+        true
+        #endif
+    }
+
+    static var calibrationCaptureEnabled: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.calibrationCaptureEnabled, default: false)
+        #else
+        false
+        #endif
+    }
+
+    static var useCorpusTrigram: Bool {
+        #if DEBUG
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.useCorpusTrigram, default: true)
         #else
         false
         #endif

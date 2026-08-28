@@ -35,6 +35,51 @@ enum BigramEngine {
         return bigrams[lower] ?? wordInitialFrequencies
     }
 
+    // MARK: - Fixed-buffer fast path (hot-path allocation-free reads)
+
+    /// Buffer index for a lowercase ASCII letter (a=0 … z=25), nil otherwise.
+    @inline(__always)
+    static func letterIndex(_ c: Character) -> Int? {
+        guard let ascii = c.asciiValue, ascii >= 97, ascii <= 122 else { return nil }
+        return Int(ascii - 97)
+    }
+
+    /// The dictionaries above, baked once into a dense 27×26 row-major Float table:
+    /// rows 0–25 = P(next | prev letter), row 26 = word-initial frequencies. Missing
+    /// dictionary entries bake as the 1/26 uniform fallback — exactly what the old
+    /// dictionary reads returned for absent keys. Baked lazily on first use, which happens
+    /// at `ProbabilisticTouchContext.init` (controller setup, off the touch path).
+    static let table26: ContiguousArray<Float> = {
+        var table = ContiguousArray<Float>(repeating: 1.0 / 26.0, count: 27 * 26)
+        for prev in 0..<26 {
+            let prevChar = Character(UnicodeScalar(UInt8(97 + prev)))
+            guard let row = bigrams[prevChar] else { continue }  // absent row stays uniform
+            for next in 0..<26 {
+                let nextChar = Character(UnicodeScalar(UInt8(97 + next)))
+                table[prev * 26 + next] = row[nextChar] ?? 1.0 / 26.0
+            }
+        }
+        for next in 0..<26 {
+            let nextChar = Character(UnicodeScalar(UInt8(97 + next)))
+            table[26 * 26 + next] = wordInitialFrequencies[nextChar] ?? 1.0 / 26.0
+        }
+        return table
+    }()
+
+    /// Copy the row for `prev` (nil / non-letter ⇒ word-initial) into a caller-owned
+    /// 26-slot buffer. One memcpy-sized loop, zero allocations — the per-keystroke
+    /// replacement for `weights(after:)`.
+    static func fill26(after prev: Character?, into buffer: inout ContiguousArray<Float>) {
+        let row: Int
+        if let prev, let idx = letterIndex(Character(prev.lowercased())) {
+            row = idx
+        } else {
+            row = 26
+        }
+        let base = row * 26
+        for i in 0..<26 { buffer[i] = table26[base + i] }
+    }
+
     // MARK: - Word-Initial Letter Frequencies
 
     /// Frequency of each letter as the first character of an English word.
@@ -298,11 +343,38 @@ enum TrigramEngine {
         "ng": ["e": 0.10] // mostly precedes space; weak boost only
     ]
 
-    /// Boost map for the given two-character context, or nil when there's no curated entry.
-    static func boost(prev2: Character?, prev1: Character?) -> [Character: Float]? {
-        guard let a = prev2, let b = prev1 else { return nil }
-        let key = String([Character(a.lowercased()), Character(b.lowercased())])
-        guard let m = boosts[key], !m.isEmpty else { return nil }
+    /// `boosts` baked onto an integer key (`prev2Index * 26 + prev1Index`) once at first
+    /// use, so the per-keystroke lookup below allocates nothing. The string-keyed literal
+    /// above stays as the single readable source of truth.
+    private static let boostsByIndex: [Int: [Character: Float]] = {
+        var m = [Int: [Character: Float]](minimumCapacity: boosts.count)
+        for (key, map) in boosts where !map.isEmpty {
+            let chars = Array(key)
+            guard chars.count == 2,
+                  let a = BigramEngine.letterIndex(chars[0]),
+                  let b = BigramEngine.letterIndex(chars[1]) else { continue }
+            m[a * 26 + b] = map
+        }
         return m
+    }()
+
+    /// Case-folding a–z index without allocating (`Character.lowercased()` returns a new
+    /// String — the old key construction heap-allocated twice per keystroke here).
+    @inline(__always)
+    private static func foldedIndex(_ c: Character?) -> Int? {
+        guard let v = c?.asciiValue else { return nil }
+        switch v {
+        case 97...122: return Int(v - 97)   // a-z
+        case 65...90:  return Int(v - 65)   // A-Z
+        default:       return nil
+        }
+    }
+
+    /// Boost map for the given two-character context, or nil when there's no curated entry.
+    /// Hot path (`ProbabilisticTouchContext.recordCharacter`) — zero allocations: integer
+    /// key lookup, returned dictionary is a CoW reference into the static table.
+    static func boost(prev2: Character?, prev1: Character?) -> [Character: Float]? {
+        guard let a = foldedIndex(prev2), let b = foldedIndex(prev1) else { return nil }
+        return boostsByIndex[a * 26 + b]
     }
 }

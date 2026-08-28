@@ -96,6 +96,65 @@ final class QWERTYInputTracking {
     /// Plain class (not @Observable) — mutations cause zero SwiftUI re-renders.
     let touchContext = ProbabilisticTouchContext()
 
+    // MARK: Document context mirror (smart-punctuation fast path)
+
+    /// Keyboard-side mirror of the trailing document text. Smart punctuation (`- . " '`)
+    /// and auto-cap-"I" need only the last few characters, but historically paid a
+    /// synchronous cross-process `documentContextBeforeInput` read on the touch path to
+    /// get them. The mirror tracks every mutation WE make (append on insert, pop on
+    /// delete), is invalidated by anything external (host edits, caret moves, snippet
+    /// notifications), and is re-seeded from the real context at each coalesced
+    /// side-effect flush — so a valid mirror is always byte-exact with the proxy.
+    private(set) var contextMirror = ""
+    private(set) var contextMirrorValid = false
+
+    private static let mirrorCapacity = 8
+
+    /// Re-seed from a real `documentContextBeforeInput` read (coalesced flush only).
+    func mirrorSeed(_ context: String?) {
+        contextMirror = String((context ?? "").suffix(Self.mirrorCapacity))
+        contextMirrorValid = true
+    }
+
+    /// Track our own insert. No-op while invalid (the next flush re-seeds).
+    func mirrorAppend(_ text: String) {
+        guard contextMirrorValid else { return }
+        contextMirror.append(text)
+        if contextMirror.count > Self.mirrorCapacity {
+            contextMirror = String(contextMirror.suffix(Self.mirrorCapacity))
+        }
+    }
+
+    /// Track our own single backward deletion. Deleting past the mirrored window means
+    /// unknown text now trails the caret — invalidate rather than guess. A non-ASCII tail
+    /// also invalidates: `deleteBackward()` granularity is host-defined for composed
+    /// clusters (jamo, Indic sequences, emoji ZWJ), so the proxy may remove less than one
+    /// Swift `Character` — popping one grapheme could desync the mirror. The next
+    /// coalesced flush re-seeds it byte-exact either way.
+    func mirrorDeleteBackward() {
+        guard contextMirrorValid else { return }
+        guard let last = contextMirror.last, last.isASCII else {
+            invalidateMirror()
+            return
+        }
+        contextMirror.removeLast()
+    }
+
+    /// The document changed under us (host edit, caret move, direct proxy write).
+    func invalidateMirror() {
+        contextMirrorValid = false
+        contextMirror = ""
+    }
+
+    /// The trailing context if the mirror can vouch for it; nil forces the XPC read.
+    /// Requires ≥4 mirrored characters: after deletes the mirror can be shorter than the
+    /// real document tail (it only knows its own window), and the deepest suffix any
+    /// transform inspects is 4 characters — a shorter mirror could answer the
+    /// quote-direction check with truncated context, so it abstains instead.
+    var trailingContextFast: String? {
+        (contextMirrorValid && contextMirror.count >= 4) ? contextMirror : nil
+    }
+
     /// Record a key action for auto-period detection
     func recordAction(_ action: KeyActionType) {
         secondLastAction = lastAction

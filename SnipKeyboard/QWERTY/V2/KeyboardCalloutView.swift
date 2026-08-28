@@ -124,9 +124,17 @@ final class KeyboardCalloutView: UIView {
 
     /// Show or update the callout. Idempotent — call with a new mode to switch instantly.
     /// All CALayer mutations happen inside a single CATransaction with implicit animations
-    /// disabled, so transitions between keys do not cross-fade.
-    func show(_ mode: CalloutMode, isDark: Bool, in parentWidth: CGFloat, animated: Bool = true) {
+    /// disabled, so transitions between keys do not cross-fade. `moveAnimated: true`
+    /// (finger-slide retarget) glides the bubble's position to the new key when the bubble
+    /// is already visible at the same size — the native balloon-follow feel.
+    func show(_ mode: CalloutMode, isDark: Bool, in parentWidth: CGFloat, animated: Bool = true, moveAnimated: Bool = false) {
         currentIsDark = isDark
+        let wasInputMode: Bool = { if case .input = currentMode { return true }; return false }()
+        // `presentation()` copies the layer — only pay for it on the glide path that
+        // consumes `oldPosition`. Fresh shows (every touch-down) pass moveAnimated: false.
+        let oldPosition = moveAnimated ? (layer.presentation()?.position ?? layer.position) : layer.position
+        let oldSize = frame.size
+
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
@@ -145,6 +153,23 @@ final class KeyboardCalloutView: UIView {
         layer.removeAnimation(forKey: "calloutFade")
         layer.opacity = 1
         currentMode = mode
+
+        // Slide glide: same mode, same bubble size, already visible → animate position
+        // from where the bubble (visually) was to its new home. Label swapped instantly
+        // above. Size change (edge-clamped path differences aside, sizes match across a
+        // row) or a fresh show snaps as before.
+        if moveAnimated, !wasHidden, wasInputMode, case .input = mode, oldSize == frame.size {
+            let distance = hypot(layer.position.x - oldPosition.x, layer.position.y - oldPosition.y)
+            if distance > 1 {
+                let move = CABasicAnimation(keyPath: "position")
+                move.fromValue = NSValue(cgPoint: oldPosition)
+                move.toValue = NSValue(cgPoint: layer.position)
+                move.duration = 0.07
+                move.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                layer.removeAnimation(forKey: "calloutMove")
+                layer.add(move, forKey: "calloutMove")
+            }
+        }
 
         guard wasHidden else { return }
 

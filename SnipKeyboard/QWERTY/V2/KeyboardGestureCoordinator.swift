@@ -20,95 +20,8 @@
 
 import UIKit
 
-/// Tunables for cadence/fat-touch β modulation and the burst anchor shrink. Grouped so
-/// data-driven calibration (shadow telemetry, plan §15) edits one block. All modulation
-/// composes in the coordinator — `ProbabilisticHitResolver` math is untouched, so the
-/// β=0 equivalence self-test keeps holding.
-private enum ResolverTuning {
-    // Typing cadence (EMA over inter-tap intervals, ms).
-    static let cadenceAlpha: Double = 0.5          // converges in 2–3 taps — real burst lengths
-    static let cadenceMinIntervalMs: Double = 40   // rollover floor: overlap dt ≈ 0 can't max the EMA
-    static let cadenceResetGapMs: Double = 800     // a pause longer than this ⇒ cold (deliberate)
-    static let cadenceFastKneeMs: Double = 140     // sustained ≤ this ⇒ full fast multiplier
-    static let cadenceNeutralKneeMs: Double = 240  // multiplier crosses 1.0 — ordinary typing keeps today's pull
-    static let cadenceSlowKneeMs: Double = 450     // ≥ this ⇒ floor (deliberate taps resolve geometrically)
-    static let cadenceMultMax: Float = 1.45
-    static let cadenceMultMin: Float = 0.35
-
-    // Anchor shrink at full burst: 60%×70% → 50%×60%, linear in the cadence boost above 1.
-    // Dead-center taps stay immune (the betaCeiling proof below covers the shrunken floor).
-    // Set both to 0 to kill the shrink (static anchor).
-    static let anchorShrinkMaxW: CGFloat = 0.10
-    static let anchorShrinkMaxH: CGFloat = 0.10
-
-    // Fat touch (UITouch.majorRadius, pt). Uniform σ scaling is argmin-equivalent to a β
-    // multiplier (the anchor zone is raw-coords and the anti-swallow ratio is invariant),
-    // so it composes as one multiply here instead of touching the resolver. multMax = 1
-    // is the kill switch. The simulator reports a constant radius — device-only signal.
-    static let fatTouchBaselineRadius: CGFloat = 16
-    static let fatTouchMaxRadius: CGFloat = 28
-    static let fatTouchMultMax: Float = 1.6
-
-    /// Global clamp on the composed β. Worst-case boundary shift at 0.9 is
-    /// βceil·Δlogp/(2d̂) ≈ 0.9·2.7/(2·2.5σ) ≈ 6.2pt — still short of the 8.25pt
-    /// half-width protected by the shrunken 50% anchor floor, so even the maximal
-    /// multiplier stack can never pull a tap out of the anchor.
-    static let betaCeiling: Float = 0.9
-
-    /// 1.0 for fingertip-sized contacts (≤ baseline), linear up to `fatTouchMultMax` at
-    /// `fatTouchMaxRadius`. Pure — self-testable.
-    static func fatTouchBetaMultiplier(radius: CGFloat) -> Float {
-        guard fatTouchMultMax > 1 else { return 1 }  // kill switch
-        guard radius > fatTouchBaselineRadius else { return 1 }
-        let t = min((radius - fatTouchBaselineRadius) / (fatTouchMaxRadius - fatTouchBaselineRadius), 1)
-        return 1 + Float(t) * (fatTouchMultMax - 1)
-    }
-}
-
-/// Typing-cadence tracker: an EMA over inter-tap intervals. Two stored values, zero
-/// allocations, updated once per touch-down from `UITouch.timestamp` (event time on the
-/// `CACurrentMediaTime` clock — immune to main-thread delivery jitter).
-private struct KeyboardCadenceTracker {
-    /// Smoothed inter-tap interval in ms. 0 = cold (session start or post-pause): the
-    /// next tap is treated as deliberate.
-    private(set) var emaMs: Double = 0
-    private var lastTimestamp: TimeInterval = 0
-
-    mutating func registerTouchDown(at t: TimeInterval) {
-        defer { lastTimestamp = t }
-        guard lastTimestamp > 0 else { return }
-        let dtMs = (t - lastTimestamp) * 1000
-        guard dtMs >= 0 else { return }  // defensive: out-of-order event timestamps
-        if dtMs > ResolverTuning.cadenceResetGapMs {
-            emaMs = 0
-            return
-        }
-        // Rolling-type overlap delivers near-zero dt between fingers — floor it so a
-        // single overlap can't max out the multiplier.
-        let clamped = max(dtMs, ResolverTuning.cadenceMinIntervalMs)
-        emaMs = emaMs == 0 ? clamped : emaMs + ResolverTuning.cadenceAlpha * (clamped - emaMs)
-    }
-
-    /// β multiplier for the current cadence. Piecewise linear, monotone non-increasing:
-    /// sustained fast bursts lean harder on the language prior; slow deliberate taps
-    /// resolve almost purely geometrically (native feel). Pure — self-testable.
-    static func betaMultiplier(forEmaMs ema: Double) -> Float {
-        guard ema > 0 else { return ResolverTuning.cadenceMultMin }  // cold ⇒ deliberate
-        let fast = ResolverTuning.cadenceFastKneeMs
-        let neutral = ResolverTuning.cadenceNeutralKneeMs
-        let slow = ResolverTuning.cadenceSlowKneeMs
-        if ema <= fast { return ResolverTuning.cadenceMultMax }
-        if ema < neutral {
-            let t = Float((ema - fast) / (neutral - fast))
-            return ResolverTuning.cadenceMultMax + t * (1 - ResolverTuning.cadenceMultMax)
-        }
-        if ema < slow {
-            let t = Float((ema - neutral) / (slow - neutral))
-            return 1 + t * (ResolverTuning.cadenceMultMin - 1)
-        }
-        return ResolverTuning.cadenceMultMin
-    }
-}
+// `ResolverTuning` + `KeyboardCadenceTracker` live in V2/ResolverTuning.swift (internal,
+// so the calibration replay harness and unit tests can reach them).
 
 final class KeyboardGestureCoordinator: UIView {
 
@@ -135,9 +48,17 @@ final class KeyboardGestureCoordinator: UIView {
     /// touch-down and the comparison logged (privacy-safe). Cached per session.
     private var shadowLoggingEnabled = KeyboardFeatureFlags.shadowLoggingEnabled
 
+    /// Native commit timing (default ON): letters commit on touch-UP / rollover flush like
+    /// the system keyboard, enabling slide-to-correct. OFF = legacy optimistic
+    /// commit-on-touch-DOWN (DEBUG A/B kill switch). Cached per session.
+    private var nativeCommitTiming = KeyboardFeatureFlags.nativeCommitTiming
+
     /// Tunables for the power-diagram resolver. β stays 0 until calibrated on the touch
     /// corpus; the flag gates activation independently so the path can be exercised first.
     private var probabilisticConfig = ProbabilisticHitResolver.Config.default
+
+    /// Cadence/fat-touch modulation tuning (the shipping values).
+    private let resolverTuning = ResolverTuning.current
 
     /// Typing-cadence EMA, fed by every touch-down (space/backspace are part of the typing
     /// rhythm; rapid-delete repeats are a single touch-down so they can't spam it). Modulates
@@ -150,6 +71,8 @@ final class KeyboardGestureCoordinator: UIView {
 
     #if DEBUG
     private static var didRunResolverSelfTest = false
+    /// Full-fidelity calibration capture (dev tool; frozen offset learning while on).
+    private var calibrationCaptureEnabled = false
     #endif
 
     /// Caret-move callback (only used in cursor mode).
@@ -189,16 +112,87 @@ final class KeyboardGestureCoordinator: UIView {
 
     // MARK: - Touch State
 
+    /// Lifecycle phase of one press. Native commit timing (default): characters are
+    /// PENDING from touch-down and commit at lift or when the next finger lands
+    /// (rollover flush) — exactly the system keyboard's semantics, which is what makes
+    /// slide-to-correct, slide-off-cancel, shift-slide-capital and 123-slide-symbol work.
+    enum PressPhase: Equatable {
+        /// Character/shortcut key awaiting lift or rollover flush. Highlight + callout
+        /// are already visible; nothing has touched the document yet.
+        case pendingCharacter
+        /// Space / return / snippet toggle (and mode change under legacy timing) —
+        /// commit on lift, as they always have.
+        case pendingOnLift
+        /// Backspace / shift / (native) mode change: primary effect fired at touch-down.
+        case actedOnDown
+        /// The long-press accent menu owns this press; insert happens via the menu on lift.
+        case accentMenu
+        /// Rollover-flushed: the character committed while the finger is still down.
+        /// Inert — the highlight clears on lift, nothing else can happen.
+        case committed
+        /// Legacy (kill-switch) timing: character optimistically committed at touch-down.
+        /// Locked against retarget, and the accent menu must undo the commit.
+        case committedOnDown
+        /// Slid onto a down-acting key or otherwise voided — nothing happens on lift.
+        /// A further slide onto a character/space revives the press.
+        case cancelled
+    }
+
+    /// Initial phase for a fresh press. Pure — self-testable.
+    static func initialPhase(for action: KeyAction, nativeCommitTiming: Bool) -> PressPhase {
+        switch action {
+        case .character, .insertText:
+            return nativeCommitTiming ? .pendingCharacter : .committedOnDown
+        case .backspace, .shift:
+            return .actedOnDown
+        case .space, .returnKey, .snippetToggle:
+            return .pendingOnLift
+        case .modeChange:
+            // Native: the plane switches at finger-down (enables 123-slide-to-symbol).
+            return nativeCommitTiming ? .actedOnDown : .pendingOnLift
+        }
+    }
+
+    /// Phase after a slide retargets the press onto `action`. Down-acting keys must never
+    /// fire from a slide (a slide onto backspace deleting would be catastrophic), so they
+    /// void the press; sliding onward can revive it. Pure — self-testable.
+    static func phaseAfterRetarget(to action: KeyAction) -> PressPhase {
+        switch action {
+        case .character, .insertText:
+            return .pendingCharacter
+        case .space, .returnKey:
+            return .pendingOnLift
+        case .backspace, .shift, .modeChange, .snippetToggle:
+            return .cancelled
+        }
+    }
+
+    /// Gold-label plausibility gate: a slide-corrected commit teaches the offset model only
+    /// when the touch-down point could plausibly have been an aim error at the final key —
+    /// within one row and 1.5 key-widths. A cross-keyboard slide is a changed mind, not an
+    /// aim error. Pure — self-testable.
+    static func isPlausibleAimError(downPoint: CGPoint, downRow: Int, finalKey: KeyFrame) -> Bool {
+        guard abs(finalKey.rowIndex - downRow) <= 1 else { return false }
+        return abs(finalKey.rect.midX - downPoint.x) <= finalKey.rect.width * 1.5
+    }
+
     /// Per-touch press state. Keyed by `ObjectIdentifier(touch)` so concurrent touches
     /// each get their own key tracking, long-press timer, and rapid-delete timer.
     private struct ActivePress {
         var key: KeyFrame
+        /// Hit-grid key at touch-down (pre-resolver) — offset-learning gate input.
+        let rawKey: KeyFrame
+        /// Action of the down-resolved key, before any slide retarget. Distinguishes
+        /// shift-slide / 123-slide commits and keeps mode-slide commits out of the
+        /// offset model's gold-label path.
+        let originAction: KeyAction
         var startPoint: CGPoint
         var sequence: UInt64
-        /// True when this press already caused its primary effect on touch-down. Movement may
-        /// cancel long-running side effects, but it must not retarget the committed key.
-        var committedOnTouchDown: Bool = false
+        var phase: PressPhase
         var didSlideOffOriginal: Bool = false
+        /// Set when a mid-touch layout swap left `key` referencing the OLD layout's frames
+        /// (no action match in the new layout). The next move re-resolves without hysteresis.
+        var keyStale: Bool = false
         var longPressTask: Task<Void, Never>? = nil
         var rapidDeleteTask: Task<Void, Never>? = nil
         var rapidDeleteCount: Int = 0
@@ -269,8 +263,14 @@ final class KeyboardGestureCoordinator: UIView {
         probabilisticTouchEnabled = KeyboardFeatureFlags.probabilisticTouchEnabled
         useProbabilisticHitResolver = KeyboardFeatureFlags.useProbabilisticHitResolver
         shadowLoggingEnabled = KeyboardFeatureFlags.shadowLoggingEnabled
+        nativeCommitTiming = KeyboardFeatureFlags.nativeCommitTiming
         TypingTelemetry.shared.enabled = shadowLoggingEnabled
         KeyboardResponsivenessTelemetry.shared.enabled = shadowLoggingEnabled
+        #if DEBUG
+        KeyboardSignposts.enabled = shadowLoggingEnabled
+        calibrationCaptureEnabled = KeyboardFeatureFlags.calibrationCaptureEnabled
+        CalibrationCapture.shared.enabled = calibrationCaptureEnabled
+        #endif
         // Per-user offset learning is part of the next-gen engine — on when it is.
         TouchOffsetModel.shared.enabled = useProbabilisticHitResolver
         calloutController.updateParentWidth(bounds.width)
@@ -280,8 +280,10 @@ final class KeyboardGestureCoordinator: UIView {
             Self.didRunResolverSelfTest = true
             ProbabilisticHitResolver.runEquivalenceSelfTest()
             ProbabilisticTouchContext.runContextSelfTest()
-            Self.runCadenceSelfTest()
+            KeyboardCadenceTracker.runCadenceSelfTest()
             TouchOffsetModel.runCrossfadeSelfTest()
+            Self.runCommitPhaseSelfTest()
+            KeyboardCommitPipeline.runWordDeleteSelfTest()
         }
         #endif
     }
@@ -335,6 +337,10 @@ final class KeyboardGestureCoordinator: UIView {
     }
 
     private func rebuildLayout() {
+        KeyboardSignposts.interval("rebuildLayout") { performRebuildLayout() }
+    }
+
+    private func performRebuildLayout() {
         guard bounds.width > 0, bounds.height > 0 else { return }
         let isDark = state?.appearanceMode == .dark
         let shiftState = state?.shiftState ?? .disabled
@@ -358,6 +364,7 @@ final class KeyboardGestureCoordinator: UIView {
         if signature == lastRenderSignature {
             return
         }
+        let sizeChanged = lastRenderSignature.map { $0.size != signature.size } ?? false
         lastRenderSignature = signature
 
         let layout = KeyboardLayoutFactory.layout(
@@ -391,6 +398,50 @@ final class KeyboardGestureCoordinator: UIView {
         rebuildAccessibilityElements()
         rebuildHitViews()
         updateVoronoiDebugOverlay()
+
+        // Mid-gesture layout changes: a SIZE change (rotation / host height) invalidates
+        // every in-flight press geometry — cancel them, exactly as UIKit cancels touches on
+        // rotation. A same-size change (page swap, appearance) keeps presses alive: remap
+        // their key frames into the new layout and re-apply the per-touch highlights that
+        // `render()` just destroyed.
+        if sizeChanged {
+            cancelAllActivePresses()
+        } else {
+            remapActivePressesAfterLayoutChange()
+        }
+    }
+
+    /// Re-anchor in-flight presses after a same-size layout rebuild (page/appearance swap).
+    /// Presses whose action exists in the new layout keep tracking seamlessly; the rest are
+    /// marked stale so the next move re-resolves without hysteresis.
+    private func remapActivePressesAfterLayoutChange() {
+        guard !activePresses.isEmpty else { return }
+        for (id, press) in activePresses {
+            var p = press
+            if let match = resolvedFrames.first(where: { $0.action == p.key.action }) {
+                p.key = match
+                rendererRef.setPressedKey(match, for: id)
+            } else {
+                p.keyStale = true
+                rendererRef.clearPressedKey(for: id)
+            }
+            activePresses[id] = p
+        }
+    }
+
+    /// Cancel every in-flight press without committing anything (rotation / teardown).
+    private func cancelAllActivePresses() {
+        guard !activePresses.isEmpty else { return }
+        for (id, press) in activePresses {
+            press.longPressTask?.cancel()
+            press.rapidDeleteTask?.cancel()
+            if press.ownsSpaceCursor { _ = spaceCursor.endPress() }
+            rendererRef.clearPressedKey(for: id)
+            KeyboardResponsivenessTelemetry.shared.markTouchEnded(id)
+        }
+        activePresses.removeAll()
+        calloutController.dismiss()
+        mostRecentTouchID = nil
     }
 
     /// Paint the next-gen engine's decision cells when both the debug hit-overlay setting and
@@ -429,13 +480,24 @@ final class KeyboardGestureCoordinator: UIView {
     /// so a touch anywhere, including between keys, lands on a real interactive subview that
     /// forwards to this coordinator. The debug overlay flag only changes their visual styling.
     private func rebuildHitViews() {
-        for v in keyHitViews { v.removeFromSuperview() }
-        keyHitViews.removeAll(keepingCapacity: true)
-        for frame in resolvedFrames {
-            let hv = KeyHitView(frame: frame.hitRect)
-            hv.coordinator = self
-            addSubview(hv)
-            keyHitViews.append(hv)
+        KeyboardSignposts.interval("rebuildHitViews") {
+            // Reframe in place when the key count is unchanged (appearance/subtitle/rotation
+            // rebuilds): UIView reuse keeps mid-gesture touches flowing to live views and
+            // avoids ~35 view alloc/deallocs. Count changes (page switch) rebuild fully.
+            if keyHitViews.count == resolvedFrames.count, !keyHitViews.isEmpty {
+                for (hv, frame) in zip(keyHitViews, resolvedFrames) {
+                    hv.frame = frame.hitRect
+                }
+                return
+            }
+            for v in keyHitViews { v.removeFromSuperview() }
+            keyHitViews.removeAll(keepingCapacity: true)
+            for frame in resolvedFrames {
+                let hv = KeyHitView(frame: frame.hitRect)
+                hv.coordinator = self
+                addSubview(hv)
+                keyHitViews.append(hv)
+            }
         }
     }
 
@@ -524,39 +586,140 @@ final class KeyboardGestureCoordinator: UIView {
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
-            let id = ObjectIdentifier(touch)
-            KeyboardResponsivenessTelemetry.shared.markTouchDown(id)
-            cadence.registerTouchDown(at: touch.timestamp)
-            let point = touch.location(in: self)
-            guard ensureLayoutReadyForTouch(), let rawKey = findKey(at: point) else {
-                TypingTelemetry.shared.recordUnresolvedTouchDown(layout: currentLayoutHash)
-                continue
+            KeyboardSignposts.interval("touchDown") {
+                processTouchBegan(touch)
             }
-            let resolved = smartResolvedResult(rawKey: rawKey, at: point, radius: touch.majorRadius)
-            let key = resolved.key
-            TypingTelemetry.shared.recordOutcome(
-                layout: currentLayoutHash,
-                raw: rawKey,
-                resolved: key,
-                runnerUp: resolved.runnerUp,
-                point: point,
-                confidence: state?.inputTracking.touchContext.confidence ?? 0,
-                margin: resolved.margin,
-                betaMult: KeyboardCadenceTracker.betaMultiplier(forEmaMs: cadence.emaMs)
-                    * ResolverTuning.fatTouchBetaMultiplier(radius: touch.majorRadius)
-            )
-            beginPress(touch: touch, key: key, rawKey: rawKey, at: point)
         }
     }
+
+    private func processTouchBegan(_ touch: UITouch) {
+        let id = ObjectIdentifier(touch)
+        KeyboardResponsivenessTelemetry.shared.markTouchDown(id)
+        cadence.registerTouchDown(at: touch.timestamp)
+        // Rollover flush (native): a new finger landing commits the previous pending
+        // character FIRST — so fast typing loses zero throughput to lift-commit timing,
+        // and the bigram/trigram context is exactly as fresh as under commit-on-down
+        // when the new touch resolves below.
+        flushPendingCharacterPresses()
+        let point = touch.location(in: self)
+        guard ensureLayoutReadyForTouch(), let rawKey = findKey(at: point) else {
+            TypingTelemetry.shared.recordUnresolvedTouchDown(layout: currentLayoutHash)
+            return
+        }
+        let resolved = KeyboardSignposts.interval("resolve") {
+            smartResolvedResult(rawKey: rawKey, at: point, radius: touch.majorRadius)
+        }
+        let key = resolved.key
+        TypingTelemetry.shared.recordOutcome(
+            layout: currentLayoutHash,
+            raw: rawKey,
+            resolved: key,
+            runnerUp: resolved.runnerUp,
+            point: point,
+            confidence: state?.inputTracking.touchContext.confidence ?? 0,
+            margin: resolved.margin,
+            betaMult: resolverTuning.cadenceBetaMultiplier(forEmaMs: cadence.emaMs)
+                * resolverTuning.fatTouchBetaMultiplier(radius: touch.majorRadius)
+        )
+        #if DEBUG
+        captureCalibrationTap(touch: touch, point: point, rawKey: rawKey, resolved: key)
+        #endif
+        beginPress(touch: touch, key: key, rawKey: rawKey, at: point)
+    }
+
+    #if DEBUG
+    /// Record one tap for the offline replay harness. Placed AFTER resolution and BEFORE
+    /// `beginPress`, so the captured context/prior/confidence state is exactly what the
+    /// resolver just consumed (commits mutate the context only later — at rollover flush
+    /// or lift). NOTE: char taps capture the touch-DOWN decision; a subsequent slide can
+    /// retarget the actual commit — rare enough that the replayed context stream tolerates
+    /// it, and slides carry their own gold-label path.
+    private func captureCalibrationTap(touch: UITouch, point: CGPoint, rawKey: KeyFrame, resolved: KeyFrame) {
+        guard calibrationCaptureEnabled, currentPage == .letters, let state else { return }
+        let tc = state.inputTracking.touchContext
+        CalibrationCapture.shared.beginSessionIfNeeded {
+            CalibrationCapture.SessionHeader(
+                capturedAtEpoch: Date().timeIntervalSince1970,
+                screenWidth: Double(max(bounds.width, 1)),
+                keysW: Double(bounds.width),
+                keysH: Double(bounds.height),
+                profile: String(describing: state.layoutProfile),
+                layoutHash: currentLayoutHash,
+                config: probabilisticConfig,
+                tuning: resolverTuning,
+                contextTuning: tc.tuning,
+                populationScale: Double(PopulationOffset.scale),
+                clusters: TouchOffsetModel.shared.clusterSnapshot(forLayout: currentLayoutHash),
+                nativeCommitTiming: nativeCommitTiming
+            )
+        }
+
+        let allowsTransforms = actions?.inputTraits().allowsSmartTransforms ?? true
+        let engineActed = useProbabilisticHitResolver && rawKey.isCharacterKey && allowsTransforms
+        let action: String
+        switch resolved.action {
+        case .character(let c):
+            action = (engineActed ? "c:" : "cx:") + c.lowercased()
+        case .insertText(_, let output):
+            if output.count == 1, let f = output.first, f.isLetter {
+                action = "cx:" + output.lowercased()
+            } else {
+                action = "text"
+            }
+        case .space: action = "space"
+        case .backspace: action = "backspace"
+        case .returnKey: action = "return"
+        case .shift: action = "shift"
+        case .modeChange: action = "mode"
+        case .snippetToggle: action = "other"
+        }
+
+        var priorDict: [String: Float]?
+        if let p = tc.predictivePrior {
+            var d: [String: Float] = [:]
+            for (k, v) in p { d[String(k)] = v }
+            priorDict = d
+        }
+        CalibrationCapture.shared.record(CalibrationCapture.TapRecord(
+            tMs: touch.timestamp * 1000,
+            x: Double(point.x),
+            y: Double(point.y),
+            radius: Double(touch.majorRadius),
+            rawRow: rawKey.rowIndex,
+            rawCol: rawKey.columnIndex,
+            actingRow: resolved.rowIndex,
+            actingCol: resolved.columnIndex,
+            action: action,
+            confidence: tc.confidence,
+            prior: priorDict,
+            priorFresh: tc.priorIsFresh,
+            priorIsEnglish: tc.isEnglishContext
+        ))
+    }
+    #endif
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
             let id = ObjectIdentifier(touch)
             guard let press = activePresses[id] else { continue }
-            // For the space-cursor owner, forward every coalesced sample so caret-drag
-            // is sub-frame smooth on 120 Hz ProMotion displays. Other presses keep the
-            // single-sample path (character keys don't benefit and we want fewer hit-tests).
-            if press.ownsSpaceCursor, let coalesced = event?.coalescedTouches(for: touch), !coalesced.isEmpty {
+            // Forward every coalesced sample for presses that can retarget (slide-to-correct
+            // tracks the true finger path at 120 Hz on ProMotion) and for the space-cursor
+            // owner (sub-frame caret drag). Locked presses keep the single-sample path —
+            // they only run slop checks.
+            let wantsCoalesced: Bool
+            if press.ownsSpaceCursor {
+                wantsCoalesced = true
+            } else {
+                switch press.phase {
+                case .pendingCharacter, .pendingOnLift, .cancelled:
+                    wantsCoalesced = true
+                case .actedOnDown:
+                    if case .backspace = press.originAction { wantsCoalesced = false } else { wantsCoalesced = true }
+                case .committed, .committedOnDown, .accentMenu:
+                    wantsCoalesced = false
+                }
+            }
+            if wantsCoalesced, let coalesced = event?.coalescedTouches(for: touch), !coalesced.isEmpty {
                 for sample in coalesced {
                     handleMovedPress(touchID: id, point: sample.location(in: self))
                 }
@@ -583,7 +746,14 @@ final class KeyboardGestureCoordinator: UIView {
     private func beginPress(touch: UITouch, key: KeyFrame, rawKey: KeyFrame, at point: CGPoint) {
         let id = ObjectIdentifier(touch)
         nextPressSequence &+= 1
-        var press = ActivePress(key: key, startPoint: point, sequence: nextPressSequence)
+        var press = ActivePress(
+            key: key,
+            rawKey: rawKey,
+            originAction: key.action,
+            startPoint: point,
+            sequence: nextPressSequence,
+            phase: Self.initialPhase(for: key.action, nativeCommitTiming: nativeCommitTiming)
+        )
         // Make this the most-recent press — drives the shared callout.
         mostRecentTouchID = id
 
@@ -594,34 +764,36 @@ final class KeyboardGestureCoordinator: UIView {
 
         switch key.action {
         case .character(let c):
-            press.committedOnTouchDown = true
+            // Perceived feedback (highlight above + callout here) fires at touch-down in
+            // BOTH timings — that is what defines responsiveness. Under native timing the
+            // document insert waits for lift or rollover flush (commitPendingPress).
             let cased = (state?.shiftState ?? .disabled) != .disabled ? c.uppercased() : c.lowercased()
             calloutController.presentInput(for: key, character: cased, casedByShift: false)
             KeyboardResponsivenessTelemetry.shared.markCalloutShown(id)
-            // Commit immediately on touch-down (Phase D). Matches native iOS: the character
-            // lands in the document at the instant of finger-down, not on release.
-            if let state, let actions {
-                KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
-                KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
-            }
-            // Per-user offset learning: a new character means the PREVIOUS one survived (wasn't
-            // backspaced quickly) after a short survival window. Letters page only.
-            if useProbabilisticHitResolver, currentPage == .letters {
-                if shouldLearnTouchOffset(rawKey: rawKey, resolvedKey: key, point: point) {
+            if press.phase == .committedOnDown {
+                // Legacy kill-switch timing: optimistic commit at finger-down.
+                if let state, let actions {
+                    KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
+                    KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
+                }
+                var learningFrozen = false
+                #if DEBUG
+                learningFrozen = calibrationCaptureEnabled
+                #endif
+                if !learningFrozen, useProbabilisticHitResolver, currentPage == .letters,
+                   shouldLearnTouchOffset(rawKey: rawKey, resolvedKey: key, point: point) {
                     TouchOffsetModel.shared.record(keyFrame: key, point: point,
                                                    keyboardWidth: bounds.width, rowCount: currentRowCount)
                 }
             }
             press.longPressTask = scheduleLongPress(touchID: id, key: key)
         case .insertText(_, let output):
-            press.committedOnTouchDown = true
             calloutController.dismiss()
-            if let state, let actions {
+            if press.phase == .committedOnDown, let state, let actions {
                 KeyboardCommitPipeline.commitText(output, state: state, actions: actions)
                 KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
             }
         case .backspace:
-            press.committedOnTouchDown = true
             // Immediate delete on touch-down feels native. Long-press starts rapid-delete.
             commitBackspace()
             // The just-typed character is being deleted — likely an error; don't learn from it.
@@ -637,15 +809,102 @@ final class KeyboardGestureCoordinator: UIView {
                 })
             }
         case .shift:
-            press.committedOnTouchDown = true
             // Shift triggers on press for snappier feel; double-tap detection happens in state.
             state?.toggleShift()
             rendererRef.updateShiftState(state?.shiftState ?? .disabled)
-        case .returnKey, .modeChange, .snippetToggle:
+        case .modeChange(let page):
+            if press.phase == .actedOnDown, let state {
+                // Native: the plane switches at finger-down so press-slide-release can pick
+                // a key from the new page (123-slide-to-symbol). The synchronous setPage
+                // skips the withObservationTracking runloop hop; the observation sync that
+                // follows is a no-op via the RenderSignature short-circuit.
+                KeyboardCommitPipeline.commitModeChange(to: page, state: state)
+                setPage(page)
+                // The press's key frame belongs to the OLD page. Re-anchor it to whatever
+                // now sits under the finger (usually the swapped mode key) so slide
+                // hysteresis measures against live geometry.
+                if let under = findKey(at: point) {
+                    press.key = under
+                    rendererRef.setPressedKey(under, for: id)
+                }
+            }
+        case .returnKey, .snippetToggle:
             break  // commit on release for these
         }
 
         activePresses[id] = press
+    }
+
+    /// Commit every press still in `.pendingCharacter`, oldest first (at most one in
+    /// practice). Called from `processTouchBegan` BEFORE the new touch resolves, so
+    /// context-sensitive resolution sees the freshest character stream.
+    private func flushPendingCharacterPresses() {
+        guard !activePresses.isEmpty else { return }
+        for (id, press) in activePresses.sorted(by: { $0.value.sequence < $1.value.sequence })
+        where press.phase == .pendingCharacter {
+            var p = press
+            p.longPressTask?.cancel()
+            p.longPressTask = nil
+            commitPendingPress(&p, touchID: id)
+            p.phase = .committed
+            activePresses[id] = p
+        }
+    }
+
+    /// The single deferred-commit block, shared by the rollover flush and `endPress`.
+    private func commitPendingPress(_ press: inout ActivePress, touchID id: ObjectIdentifier) {
+        guard let state, let actions else { return }
+        // Timing capture is DEBUG-only end to end — RELEASE pays not even the clock read.
+        #if DEBUG
+        let commitStart = CACurrentMediaTime()
+        #endif
+        switch press.key.action {
+        case .character(let c):
+            KeyboardCommitPipeline.commitCharacter(c, state: state, actions: actions)
+            KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
+            #if DEBUG
+            KeyboardResponsivenessTelemetry.shared.recordCommitDispatch(startedAt: commitStart)
+            #endif
+            learnOffsetIfEligible(for: press)
+        case .insertText(_, let output):
+            KeyboardCommitPipeline.commitText(output, state: state, actions: actions)
+            KeyboardResponsivenessTelemetry.shared.markInsertReturned(id)
+            #if DEBUG
+            KeyboardResponsivenessTelemetry.shared.recordCommitDispatch(startedAt: commitStart)
+            #endif
+        default:
+            break
+        }
+    }
+
+    /// Offset learning at commit time. Non-slid presses go through the standard
+    /// anchor/confidence gate with their touch-DOWN geometry. A slid press that committed a
+    /// DIFFERENT character key than it resolved at down is a gold label — the user showed us
+    /// exactly which key the down-point was aiming at — and bypasses those gates behind the
+    /// plausible-aim-error check instead. Mode/shift-origin slides teach nothing (the down
+    /// point aimed at the mode/shift key, not the slid-to character).
+    private func learnOffsetIfEligible(for press: ActivePress) {
+        #if DEBUG
+        // Calibration capture freezes learning so the session header's cluster snapshot
+        // stays exact for every tap in the session.
+        if calibrationCaptureEnabled { return }
+        #endif
+        guard useProbabilisticHitResolver, currentPage == .letters else { return }
+        if !press.didSlideOffOriginal {
+            if shouldLearnTouchOffset(rawKey: press.rawKey, resolvedKey: press.key, point: press.startPoint) {
+                TouchOffsetModel.shared.record(keyFrame: press.key, point: press.startPoint,
+                                               keyboardWidth: bounds.width, rowCount: currentRowCount)
+            }
+        } else if case .character = press.originAction,
+                  press.key.isCharacterKey,
+                  press.key.action != press.originAction,
+                  Self.isPlausibleAimError(downPoint: press.startPoint,
+                                           downRow: press.rawKey.rowIndex,
+                                           finalKey: press.key) {
+            TouchOffsetModel.shared.recordCorrected(keyFrame: press.key, point: press.startPoint,
+                                                    keyboardWidth: bounds.width, rowCount: currentRowCount)
+            TypingTelemetry.shared.recordSlideCorrection()
+        }
     }
 
     private func handleMovedPress(touchID id: ObjectIdentifier, point: CGPoint) {
@@ -695,10 +954,21 @@ final class KeyboardGestureCoordinator: UIView {
             return
         }
 
-        if press.committedOnTouchDown {
-            // Commit-touch lock: the primary effect already happened on touch-down. Movement
-            // can cancel long-running side effects, but it must not retarget visuals or cause
-            // a second special-key action on release.
+        // Locked phases: rollover-flushed, legacy commit-on-down, accent-menu-owned, and
+        // backspace-origin presses never retarget. Movement may cancel held timers
+        // (accent menu scheduling / rapid delete), nothing else.
+        let locked: Bool
+        switch press.phase {
+        case .committed, .committedOnDown, .accentMenu:
+            locked = true
+        case .actedOnDown:
+            // Shift/mode-origin presses stay live so press-slide-release works
+            // (shift-slide-capital, 123-slide-symbol); backspace stays locked.
+            if case .backspace = press.originAction { locked = true } else { locked = false }
+        case .pendingCharacter, .pendingOnLift, .cancelled:
+            locked = false
+        }
+        if locked {
             let cancelSlop: CGFloat = 8
             if !press.key.hitRect.insetBy(dx: -cancelSlop, dy: -cancelSlop).contains(point) {
                 press.longPressTask?.cancel()
@@ -710,32 +980,42 @@ final class KeyboardGestureCoordinator: UIView {
             return
         }
 
-        // Finger-slide: are we still on the same key? Apply smart-touch resolution so
-        // a sideways drag that lands near a boundary still picks the contextually correct
-        // character (same logic as initial touch-down).
+        // Finger-slide retarget. RAW geometry on purpose: a slide is visually targeted —
+        // the user is looking at the key — so the language prior must not fight the finger
+        // (native retargeting is geometric too).
         guard let rawNewKey = findKey(at: point) else { return }
-        let newKey = smartResolved(rawKey: rawNewKey, at: point)
-        guard newKey != press.key else { return }
-
-        // Touch hysteresis: require the finger to move at least 12pt past the boundary
-        // into the new key's rect before swapping. Prevents callout flicker / wrong-key
-        // commits when a finger wobbles around a key boundary during a fast slide —
-        // matches native iOS "sticky" feel.
-        let hysteresisDistance: CGFloat = 12
-        let oldRect = press.key.rect
-        let newRect = newKey.rect
-        let pastBoundary: CGFloat
-        if newRect.midX > oldRect.midX {
-            // Sliding right: boundary is between oldRect.maxX and newRect.minX.
-            pastBoundary = point.x - max(oldRect.maxX, newRect.minX)
-        } else if newRect.midX < oldRect.midX {
-            // Sliding left.
-            pastBoundary = min(oldRect.minX, newRect.maxX) - point.x
+        let newKey = rawNewKey
+        if press.keyStale {
+            // Mid-touch layout swap left `key` on the old layout — re-anchor without
+            // hysteresis (the old rect can't be compared against live geometry).
+            press.keyStale = false
+            if newKey == press.key {
+                activePresses[id] = press
+                return
+            }
         } else {
-            // Vertical slide (different row) — don't apply horizontal hysteresis.
-            pastBoundary = hysteresisDistance
+            guard newKey != press.key else { return }
+
+            // Touch hysteresis: require the finger to move at least 12pt past the boundary
+            // into the new key's rect before swapping. Prevents callout flicker / wrong-key
+            // commits when a finger wobbles around a key boundary during a fast slide —
+            // matches native iOS "sticky" feel.
+            let hysteresisDistance: CGFloat = 12
+            let oldRect = press.key.rect
+            let newRect = newKey.rect
+            let pastBoundary: CGFloat
+            if newRect.midX > oldRect.midX {
+                // Sliding right: boundary is between oldRect.maxX and newRect.minX.
+                pastBoundary = point.x - max(oldRect.maxX, newRect.minX)
+            } else if newRect.midX < oldRect.midX {
+                // Sliding left.
+                pastBoundary = min(oldRect.minX, newRect.maxX) - point.x
+            } else {
+                // Vertical slide (different row) — don't apply horizontal hysteresis.
+                pastBoundary = hysteresisDistance
+            }
+            if pastBoundary < hysteresisDistance { return }
         }
-        if pastBoundary < hysteresisDistance { return }
 
         press.longPressTask?.cancel()
         press.longPressTask = nil
@@ -743,6 +1023,7 @@ final class KeyboardGestureCoordinator: UIView {
         press.rapidDeleteTask = nil
         press.key = newKey
         press.didSlideOffOriginal = true
+        press.phase = Self.phaseAfterRetarget(to: newKey.action)
 
         // Refresh shared visuals only if this touch is the current most-recent — keeps the
         // highlight/callout from flickering when a less-recent finger slides.
@@ -751,7 +1032,7 @@ final class KeyboardGestureCoordinator: UIView {
             switch newKey.action {
             case .character(let c):
                 let cased = (state?.shiftState ?? .disabled) != .disabled ? c.uppercased() : c.lowercased()
-                calloutController.presentInput(for: newKey, character: cased, casedByShift: false)
+                calloutController.presentInput(for: newKey, character: cased, casedByShift: false, slide: true)
             default:
                 calloutController.dismiss()
             }
@@ -765,11 +1046,10 @@ final class KeyboardGestureCoordinator: UIView {
     }
 
     private func endPress(touchID id: ObjectIdentifier, committed: Bool) {
-        guard let press = activePresses.removeValue(forKey: id) else { return }
+        guard var press = activePresses.removeValue(forKey: id) else { return }
         press.longPressTask?.cancel()
         press.rapidDeleteTask?.cancel()
         rendererRef.clearPressedKey(for: id)
-        KeyboardResponsivenessTelemetry.shared.markTouchEnded(id)
 
         // Space-cursor mode: if this press owned it, end cursor mode and suppress space.
         var spaceCursorWasEngaged = false
@@ -795,25 +1075,42 @@ final class KeyboardGestureCoordinator: UIView {
             }
         }
 
-        // Touch-up commit for keys that don't insert on touch-down.
+        // Touch-up commit, by phase. A system cancel (`committed == false`) drops a pending
+        // character silently — native-identical semantics.
         if committed && !accentInserted, let state = state, let actions = actions {
-            switch press.key.action {
-            case .character, .insertText, .backspace, .shift:
-                // Already committed on touch-down (or shift toggled). Nothing more to do.
-                break
-            case .space:
-                // If this press owned cursor mode and cursor engaged, suppress the space.
-                if !spaceCursorWasEngaged {
-                    KeyboardCommitPipeline.commitSpace(state: state, actions: actions)
+            switch press.phase {
+            case .pendingCharacter:
+                commitPendingPress(&press, touchID: id)
+                // 123-slide-release: after committing the slid-to key, snap back to letters
+                // (native plane-peek). A plain mode tap (no slide) stays on the new page.
+                if case .modeChange = press.originAction, press.didSlideOffOriginal,
+                   state.currentPage != .letters {
+                    KeyboardCommitPipeline.commitModeChange(to: .letters, state: state)
+                    setPage(.letters)
                 }
-            case .returnKey:
-                KeyboardCommitPipeline.commitReturn(state: state, actions: actions)
-            case .modeChange(let page):
-                KeyboardCommitPipeline.commitModeChange(to: page, state: state, actions: actions)
-            case .snippetToggle:
-                state.showingSnippets = true
+            case .pendingOnLift:
+                switch press.key.action {
+                case .space:
+                    // If this press owned cursor mode and cursor engaged, suppress the space.
+                    if !spaceCursorWasEngaged {
+                        KeyboardCommitPipeline.commitSpace(state: state, actions: actions)
+                    }
+                case .returnKey:
+                    KeyboardCommitPipeline.commitReturn(state: state, actions: actions)
+                case .modeChange(let page):
+                    // Legacy timing only — native switches the plane at touch-down.
+                    KeyboardCommitPipeline.commitModeChange(to: page, state: state, actions: actions)
+                case .snippetToggle:
+                    state.showingSnippets = true
+                default:
+                    break
+                }
+            case .actedOnDown, .committed, .committedOnDown, .accentMenu, .cancelled:
+                break
             }
         }
+
+        KeyboardResponsivenessTelemetry.shared.markTouchEnded(id)
 
         // Visual cleanup: only dismiss the shared callout/highlight when no other press
         // remains. Otherwise promote the next-most-recent press to drive the visuals.
@@ -824,13 +1121,17 @@ final class KeyboardGestureCoordinator: UIView {
     }
 
     /// When a press is removed, choose the newest remaining touch and refresh the shared callout
-    /// to reflect it. Per-key pressed highlights remain owned by each active touch.
+    /// to reflect it. Per-key pressed highlights remain owned by each active touch. Only a press
+    /// still awaiting its character (`.pendingCharacter`) may resurrect the balloon — a
+    /// rollover-flushed or cancelled press must not — and never while the accent menu owns it.
     private func promoteNewMostRecentIfNeeded(removedID: ObjectIdentifier) {
         if let next = activePresses.max(by: { $0.value.sequence < $1.value.sequence }) {
             let nextID = next.key
             let nextPress = next.value
             mostRecentTouchID = nextID
-            if case .character(let c) = nextPress.key.action {
+            if case .actions = calloutController.mode { return }
+            let showsCallout = nextPress.phase == .pendingCharacter || nextPress.phase == .committedOnDown
+            if showsCallout, case .character(let c) = nextPress.key.action {
                 let cased = (state?.shiftState ?? .disabled) != .disabled ? c.uppercased() : c.lowercased()
                 calloutController.presentInput(for: nextPress.key, character: cased, casedByShift: false)
             }
@@ -892,13 +1193,6 @@ final class KeyboardGestureCoordinator: UIView {
         return anchor.contains(point)
     }
 
-    /// Apply bigram-weighted smart-touch correction to the raw `findKey` result.
-    /// Non-character keys, and presses while smart touch is disabled, pass through unchanged.
-    /// Slides pass no radius (neutral fat-touch) — they aren't taps.
-    private func smartResolved(rawKey: KeyFrame, at point: CGPoint) -> KeyFrame {
-        smartResolvedResult(rawKey: rawKey, at: point).key
-    }
-
     private struct SmartResolvedResult {
         let key: KeyFrame
         let runnerUp: KeyFrame?
@@ -925,21 +1219,14 @@ final class KeyboardGestureCoordinator: UIView {
             // Dynamic λ: scale the language pull by how confident the context is (word-start
             // taps lean on geometry, mid-word taps get the full prior) AND by typing cadence
             // (sustained fast bursts lean harder on the prior; slow deliberate taps resolve
-            // almost purely geometrically — native feel). Composed and clamped here; the
-            // resolver math itself is untouched.
-            var cfg = probabilisticConfig
-            let cadenceMult = KeyboardCadenceTracker.betaMultiplier(forEmaMs: cadence.emaMs)
-            // Fat touch: a large contact patch means the centroid is less trustworthy —
-            // lean a bit harder on the prior (σ-scaling expressed as a β multiplier).
-            let fatMult = ResolverTuning.fatTouchBetaMultiplier(radius: radius)
-            cfg.beta = min(cfg.beta * touchContext.confidence * cadenceMult * fatMult,
-                           ResolverTuning.betaCeiling)
-            // During sustained bursts, shrink the prior-immune anchor zone (60%×70% →
-            // 50%×60% at full burst) so the prior can rescue sloppier taps. Dead-center
-            // taps stay immune; slow taps keep the full anchor (shrink only when mult > 1).
-            let shrinkT = CGFloat(max(0, min(1, (cadenceMult - 1) / (ResolverTuning.cadenceMultMax - 1))))
-            cfg.anchorFracW -= ResolverTuning.anchorShrinkMaxW * shrinkT
-            cfg.anchorFracH -= ResolverTuning.anchorShrinkMaxH * shrinkT
+            // almost purely geometrically — native feel). `composedConfig` is the single
+            // shared implementation with the offline replay harness — keep them one.
+            let cfg = resolverTuning.composedConfig(
+                base: probabilisticConfig,
+                confidence: touchContext.confidence,
+                cadenceEmaMs: cadence.emaMs,
+                touchRadius: radius
+            )
             return ProbabilisticHitResolver.resolveWithCandidates(
                 rawKey: rawKey,
                 point: point,
@@ -1105,13 +1392,22 @@ final class KeyboardGestureCoordinator: UIView {
         return Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled, let self else { return }
-            // Make sure this press is still alive and still on the same key.
-            guard let press = self.activePresses[id], press.key == key else { return }
-            // The character was already committed on touch-down (Phase D). Undo that commit
-            // so the eventual accent insertion replaces it cleanly.
-            self.actions?.deleteBackward()
-            TouchOffsetModel.shared.discardPending()
-            self.state?.inputTracking.recordAction(.other)
+            // Make sure this press is still alive, still on the same key, and still able to
+            // own the menu. A rollover-flushed press (.committed) can't — its character is
+            // final, exactly like native.
+            guard var press = self.activePresses[id], press.key == key,
+                  press.phase == .pendingCharacter || press.phase == .committedOnDown else { return }
+            if press.phase == .committedOnDown {
+                // Legacy timing only: the character was optimistically committed at
+                // touch-down — undo it so the accent insertion replaces it cleanly. Under
+                // native timing nothing has been committed, so there is nothing to undo
+                // (no ghost character flicker in the host field).
+                self.actions?.deleteBackward()
+                TouchOffsetModel.shared.discardPending()
+                self.state?.inputTracking.recordAction(.other)
+            }
+            press.phase = .accentMenu
+            self.activePresses[id] = press
             // Accent menu becomes the visual focus — promote this touch to most-recent.
             self.mostRecentTouchID = id
             self.calloutController.beginActions(for: key, items: menu)
@@ -1122,22 +1418,38 @@ final class KeyboardGestureCoordinator: UIView {
     // MARK: - Backspace Rapid Delete (per-touch)
 
     private func scheduleRapidDelete(touchID id: ObjectIdentifier) -> Task<Void, Never>? {
+        let native = nativeCommitTiming
         return Task { @MainActor [weak self] in
-            // The first delete already fired on touch-down (instant). Hold engages an
-            // accelerating repeat after a short pause — matches native iOS, which starts
-            // char-by-char and speeds up the longer the key is held.
-            try? await Task.sleep(for: .milliseconds(350))
+            // The first delete already fired on touch-down (instant). Native pacing:
+            // ~500ms initial delay, then ~100ms per character for ~1.5s, then whole-WORD
+            // chunks at ~350ms — the escalation every native user's muscle memory expects.
+            // Legacy (kill switch): the old accelerating 1→2→3-char burst ramp.
+            try? await Task.sleep(for: .milliseconds(native ? 500 : 350))
             while !Task.isCancelled {
                 guard let self, var press = self.activePresses[id] else { return }
                 press.rapidDeleteCount += 1
                 let count = press.rapidDeleteCount
-                // Delete more per tick the longer you hold (1 → 2 → 3 chars).
-                let burst = count < 6 ? 1 : (count < 16 ? 2 : 3)
-                for _ in 0..<burst { self.commitBackspace() }
-                self.activePresses[id] = press
-                // Interval ramps from ~110ms down to ~45ms as the hold continues.
-                let interval = max(45, 110 - count * 6)
-                try? await Task.sleep(for: .milliseconds(interval))
+                if native {
+                    if count <= 15 {
+                        self.commitBackspace()
+                        self.activePresses[id] = press
+                        try? await Task.sleep(for: .milliseconds(100))
+                    } else {
+                        let deleted = self.commitWordBackspace()
+                        self.activePresses[id] = press
+                        // A single-char fallback tick (empty/unavailable context) keeps the
+                        // fast cadence so held-backspace never crawls or stalls.
+                        try? await Task.sleep(for: .milliseconds(deleted > 1 ? 350 : 100))
+                    }
+                } else {
+                    // Delete more per tick the longer you hold (1 → 2 → 3 chars).
+                    let burst = count < 6 ? 1 : (count < 16 ? 2 : 3)
+                    for _ in 0..<burst { self.commitBackspace() }
+                    self.activePresses[id] = press
+                    // Interval ramps from ~110ms down to ~45ms as the hold continues.
+                    let interval = max(45, 110 - count * 6)
+                    try? await Task.sleep(for: .milliseconds(interval))
+                }
             }
         }
     }
@@ -1145,6 +1457,12 @@ final class KeyboardGestureCoordinator: UIView {
     private func commitBackspace() {
         guard let state = state, let actions = actions else { return }
         KeyboardCommitPipeline.commitBackspace(state: state, actions: actions)
+    }
+
+    /// One word-tier backspace tick. Returns how many deletions were performed.
+    private func commitWordBackspace() -> Int {
+        guard let state = state, let actions = actions else { return 0 }
+        return KeyboardCommitPipeline.commitWordBackspace(state: state, actions: actions)
     }
 
     // MARK: - Renderer
@@ -1178,6 +1496,101 @@ private final class KeyboardKeyAccessibilityElement: UIAccessibilityElement {
 /// own — it exists so UIKit's native hit-testing always finds a real interactive view for
 /// every point in the keys area (gaps included), then forwards the touch to the gesture
 /// coordinator, which resolves and commits it exactly as if it had received the touch directly.
+#if DEBUG
+extension KeyboardGestureCoordinator {
+    /// Invariant check for the press-phase state machine tables: initial phase per action
+    /// under both commit timings, retarget mapping, and the gold-label plausibility gate.
+    /// Returns violations so XCTest can assert; the runtime wrapper logs (does not crash).
+    static func commitPhaseSelfTestFailures() -> [String] {
+        var failures: [String] = []
+
+        // Initial phase — native timing.
+        let nativeExpectations: [(KeyAction, PressPhase)] = [
+            (.character("a"), .pendingCharacter),
+            (.insertText(label: "@", output: "@"), .pendingCharacter),
+            (.backspace, .actedOnDown),
+            (.shift, .actedOnDown),
+            (.space, .pendingOnLift),
+            (.returnKey, .pendingOnLift),
+            (.snippetToggle, .pendingOnLift),
+            (.modeChange(.numbers), .actedOnDown),
+        ]
+        for (action, expected) in nativeExpectations
+        where initialPhase(for: action, nativeCommitTiming: true) != expected {
+            failures.append("native initialPhase(\(action)) != \(expected)")
+        }
+
+        // Initial phase — legacy timing: characters commit on down; mode changes on lift.
+        let legacyExpectations: [(KeyAction, PressPhase)] = [
+            (.character("a"), .committedOnDown),
+            (.insertText(label: "@", output: "@"), .committedOnDown),
+            (.backspace, .actedOnDown),
+            (.shift, .actedOnDown),
+            (.space, .pendingOnLift),
+            (.returnKey, .pendingOnLift),
+            (.snippetToggle, .pendingOnLift),
+            (.modeChange(.numbers), .pendingOnLift),
+        ]
+        for (action, expected) in legacyExpectations
+        where initialPhase(for: action, nativeCommitTiming: false) != expected {
+            failures.append("legacy initialPhase(\(action)) != \(expected)")
+        }
+
+        // Retarget mapping: characters revive, space/return defer, down-acting keys void.
+        let retargetExpectations: [(KeyAction, PressPhase)] = [
+            (.character("a"), .pendingCharacter),
+            (.insertText(label: ".com", output: ".com"), .pendingCharacter),
+            (.space, .pendingOnLift),
+            (.returnKey, .pendingOnLift),
+            (.backspace, .cancelled),
+            (.shift, .cancelled),
+            (.modeChange(.symbols), .cancelled),
+            (.snippetToggle, .cancelled),
+        ]
+        for (action, expected) in retargetExpectations
+        where phaseAfterRetarget(to: action) != expected {
+            failures.append("phaseAfterRetarget(\(action)) != \(expected)")
+        }
+        // A retarget must never fabricate a down-acting or terminal phase.
+        for action: KeyAction in [.character("z"), .space, .backspace, .shift,
+                                  .modeChange(.letters), .snippetToggle, .returnKey] {
+            let p = phaseAfterRetarget(to: action)
+            if p == .actedOnDown || p == .committed || p == .committedOnDown || p == .accentMenu {
+                failures.append("phaseAfterRetarget(\(action)) produced illegal phase \(p)")
+            }
+        }
+
+        // Gold-label plausibility gate.
+        let keyRect = CGRect(x: 100, y: 50, width: 40, height: 44)
+        let finalKey = KeyFrame(action: .character("k"), rect: keyRect, hitRect: keyRect,
+                                rowIndex: 1, columnIndex: 5, isCharacterKey: true)
+        // Adjacent-key mis-tap (one key width away, same row) — plausible.
+        if !isPlausibleAimError(downPoint: CGPoint(x: 160, y: 72), downRow: 1, finalKey: finalKey) {
+            failures.append("adjacent mis-tap rejected by gold-label gate")
+        }
+        // Cross-keyboard slide (far away) — a changed mind, not an aim error.
+        if isPlausibleAimError(downPoint: CGPoint(x: 300, y: 72), downRow: 1, finalKey: finalKey) {
+            failures.append("cross-keyboard slide accepted by gold-label gate")
+        }
+        // Two rows away — rejected.
+        if isPlausibleAimError(downPoint: CGPoint(x: 120, y: 72), downRow: 3, finalKey: finalKey) {
+            failures.append("two-row slide accepted by gold-label gate")
+        }
+        return failures
+    }
+
+    /// One-time runtime wrapper — logs instead of crashing, keyboard-extension safe.
+    static func runCommitPhaseSelfTest() {
+        let failures = commitPhaseSelfTestFailures()
+        if failures.isEmpty {
+            NSLog("[SnipKeyboard] commit-phase self-test passed")
+        } else {
+            for f in failures { NSLog("[SnipKeyboard] commit-phase SELF-TEST FAILED: %@", f) }
+        }
+    }
+}
+#endif
+
 final class KeyHitView: UIView {
     weak var coordinator: KeyboardGestureCoordinator?
 
@@ -1218,82 +1631,3 @@ final class KeyHitView: UIView {
     }
 }
 
-#if DEBUG
-extension KeyboardGestureCoordinator {
-    /// One-time invariant check for the cadence/fat-touch β modulation (ResolverTuning):
-    /// curve bounds, monotonicity, the neutral crossing, EMA seeding/reset behavior, the
-    /// composed worst case vs `betaCeiling`, and the anchor-shrink floor. Logs (does not
-    /// crash) on violation — same pattern as `ProbabilisticHitResolver.runEquivalenceSelfTest`.
-    static func runCadenceSelfTest() {
-        var failures: [String] = []
-
-        // Multiplier curve: clamped to [multMin, multMax] and monotone non-increasing.
-        var prev = KeyboardCadenceTracker.betaMultiplier(forEmaMs: 1)
-        var ema: Double = 1
-        while ema <= 10_000 {
-            let m = KeyboardCadenceTracker.betaMultiplier(forEmaMs: ema)
-            if m < ResolverTuning.cadenceMultMin - 0.0001 || m > ResolverTuning.cadenceMultMax + 0.0001 {
-                failures.append("multiplier out of bounds at \(ema)ms: \(m)")
-                break
-            }
-            if m > prev + 0.0001 {
-                failures.append("multiplier not monotone non-increasing at \(ema)ms")
-                break
-            }
-            prev = m
-            ema += 5
-        }
-        if KeyboardCadenceTracker.betaMultiplier(forEmaMs: 0) != ResolverTuning.cadenceMultMin {
-            failures.append("cold cadence is not the deliberate floor")
-        }
-        if abs(KeyboardCadenceTracker.betaMultiplier(forEmaMs: ResolverTuning.cadenceNeutralKneeMs) - 1) > 0.001 {
-            failures.append("neutral knee does not cross 1.0")
-        }
-
-        // EMA tracker: seeds on second tap, floors rollover dt, resets after a long pause.
-        var tracker = KeyboardCadenceTracker()
-        tracker.registerTouchDown(at: 10.0)
-        tracker.registerTouchDown(at: 10.1)              // dt = 100ms seeds the EMA
-        if abs(tracker.emaMs - 100) > 0.001 { failures.append("EMA did not seed at first interval") }
-        tracker.registerTouchDown(at: 10.101)            // dt = 1ms → floored to 40ms
-        if tracker.emaMs < ResolverTuning.cadenceMinIntervalMs - 0.001 {
-            failures.append("rollover overlap drove EMA below the floor")
-        }
-        tracker.registerTouchDown(at: 20.0)              // pause ≫ reset gap → cold
-        if tracker.emaMs != 0 { failures.append("long pause did not reset the EMA") }
-
-        // Fat-touch: neutral at/below baseline, capped at max radius, never above the cap.
-        if ResolverTuning.fatTouchBetaMultiplier(radius: 0) != 1 { failures.append("fat mult ≠ 1 at radius 0") }
-        if ResolverTuning.fatTouchBetaMultiplier(radius: ResolverTuning.fatTouchBaselineRadius) != 1 {
-            failures.append("fat mult ≠ 1 at baseline radius")
-        }
-        if abs(ResolverTuning.fatTouchBetaMultiplier(radius: ResolverTuning.fatTouchMaxRadius) - ResolverTuning.fatTouchMultMax) > 0.001 {
-            failures.append("fat mult cap wrong at max radius")
-        }
-        if ResolverTuning.fatTouchBetaMultiplier(radius: 100) > ResolverTuning.fatTouchMultMax + 0.0001 {
-            failures.append("fat mult exceeds its cap")
-        }
-
-        // Composed worst case (confidence 1 × cadence max × fat max) must respect the
-        // ceiling without relying on the clamp, and the anchor floor must hold so the
-        // betaCeiling shift proof in ResolverTuning stays valid.
-        let worst = ProbabilisticHitResolver.Config.default.beta
-            * ResolverTuning.cadenceMultMax * ResolverTuning.fatTouchMultMax
-        if worst > ResolverTuning.betaCeiling {
-            failures.append("composed worst-case β \(worst) exceeds ceiling \(ResolverTuning.betaCeiling)")
-        }
-        if ProbabilisticHitResolver.Config.default.anchorFracW - ResolverTuning.anchorShrinkMaxW < 0.499 {
-            failures.append("anchor width floor below 50%")
-        }
-        if ProbabilisticHitResolver.Config.default.anchorFracH - ResolverTuning.anchorShrinkMaxH < 0.599 {
-            failures.append("anchor height floor below 60%")
-        }
-
-        if failures.isEmpty {
-            NSLog("[SnipKeyboard] cadence/fat-touch self-test passed")
-        } else {
-            for f in failures { NSLog("[SnipKeyboard] cadence/fat-touch SELF-TEST FAILED: %@", f) }
-        }
-    }
-}
-#endif

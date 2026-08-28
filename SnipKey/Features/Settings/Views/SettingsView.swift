@@ -69,6 +69,13 @@ struct SettingsView: View {
     @State private var showingAlert = false
     @State private var currentSettings: SettingsModel = SettingsModel(afterPasteAction: .rtrn)
     @State private var isPresentedGuide: Bool = false
+    #if DEBUG
+    /// DEBUG A/B kill switch for the native commit-timing gesture model. Bound straight to
+    /// the App Group (not the SwiftData settings model) — it is a temporary rollout lever,
+    /// locked ON in RELEASE by `KeyboardFeatureFlags.nativeCommitTiming`.
+    @State private var nativeCommitTiming = AppGroupSettings.bool(
+        forKey: AppGroupSettings.Key.nativeCommitTiming, default: true)
+    #endif
     
     private var selectedAppearance: AppAppearance {
         AppAppearance(rawValue: appAppearance) ?? .system
@@ -345,6 +352,71 @@ struct SettingsView: View {
                                     .foregroundColor(.secondary)
                             }
                         }
+                    }
+
+                    NavigationLink {
+                        CalibrationDrillView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "target")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Calibration Drill")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Type scripted phrases to capture resolver-tuning sessions")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
+                    NavigationLink {
+                        ReplayLabView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Replay Lab")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Re-run captured sessions under a parameter sweep")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
+                    Toggle(isOn: $nativeCommitTiming) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "hand.tap")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.purple)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Native Commit Timing")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Letters commit on lift/rollover with slide-to-correct; off = legacy commit-on-down (reopen keyboard to apply)")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.purple)
+                    .onChange(of: nativeCommitTiming) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.nativeCommitTiming)
                     }
                     #endif
                 } header: {

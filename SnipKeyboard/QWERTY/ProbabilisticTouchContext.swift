@@ -7,20 +7,56 @@
 
 import Foundation
 
+/// Tunables for the prior pipeline (blend factor + confidence mapping). Internal so the
+/// calibration replay harness and unit tests can sweep them; the live keyboard always
+/// uses `.current`.
+struct ContextTuning: Codable, Equatable {
+    /// Prior's share of the blend; the bigram gets the remainder.
+    var priorBlendFactor: Float = 0.45
+    /// Floor so β is never fully zeroed.
+    var minConfidence: Float = 0.25
+    /// Peak-weight normalization window: peak ≤ low ⇒ minConfidence, peak ≥ high ⇒ 1.
+    var confidencePeakLow: Float = 0.12
+    var confidencePeakHigh: Float = 0.35
+    /// Use the bundled corpus trigram (`CharacterTrigramLM`) as the per-key prior instead
+    /// of the legacy BigramEngine + curated TrigramEngine boosts. Falls back automatically
+    /// when the table failed to load.
+    var useCorpusTrigram: Bool = false
+
+    /// The live keyboard's tuning: the flag is session-cached here so calibration capture
+    /// snapshots it and replay reproduces the same prior source.
+    static var current: ContextTuning {
+        ContextTuning(useCorpusTrigram: KeyboardFeatureFlags.useCorpusTrigram)
+    }
+}
+
 /// Tracks the last typed character for probabilistic touch resolution.
 /// This is a plain class (NOT @Observable) — updates cause zero SwiftUI
-/// re-renders. Read by KeyButtonView during touch resolution (UIKit path).
+/// re-renders. Read by the touch layers on every touch-down.
 ///
-/// Updated on every keystroke via handleTap() in KeyButtonView,
-/// same pattern as QWERTYInputTracking.
+/// Storage is two preallocated 26-slot Float buffers (index = ASCII letter − 'a') plus a
+/// tiny overflow map for non-ASCII prior characters. `recordCharacter` runs ON the touch
+/// path (synchronously inside `commitCharacter`), so it must not allocate: the bigram row
+/// is a fixed-buffer copy from `BigramEngine.table26`, the trigram boost mutates in place,
+/// and the blend re-bake is a 26-iteration loop.
 final class ProbabilisticTouchContext {
 
     /// The last character typed (lowercased). nil if last action wasn't a character.
     private(set) var lastCharacter: Character?
 
-    /// Pre-computed weights for the current context.
-    /// Always non-nil — defaults to word-initial frequencies.
-    private(set) var currentWeights: [Character: Float]
+    /// Pre-computed weights for the current context, index = letter − 'a'.
+    /// Always populated — defaults to word-initial frequencies.
+    private var currentWeights26: ContiguousArray<Float>
+
+    /// Pre-baked blend of `predictivePrior` and `currentWeights26`; valid only while
+    /// `usingBlended` is true. The touch hot path reads whichever buffer is active — it
+    /// never performs blending math.
+    private var blended26: ContiguousArray<Float>
+    private var usingBlended = false
+
+    /// Blend weights for non-ASCII prior characters (non-English predictive priors only;
+    /// nearly always empty). Read after the 26-slot fast path misses.
+    private var overflowWeights: [Character: Float] = [:]
 
     /// Predictive next-character prior derived from the in-progress word's top
     /// completions — P(next char | partial word, dictionary). Produced OFF the
@@ -28,16 +64,10 @@ final class ProbabilisticTouchContext {
     /// nil when there is no usable prediction (short prefix, word boundary).
     private(set) var predictivePrior: [Character: Float]?
 
-    /// Pre-baked blend of `predictivePrior` and `currentWeights`. The touch hot
-    /// path reads THIS (via `weightsForRow` / `weight(for:)`) so it never performs
-    /// blending math. nil whenever there is no usable predictive prior —
-    /// the readers then fall back to the pure-bigram `currentWeights`.
-    private(set) var blendedWeights: [Character: Float]?
-
     /// Whether the current input language is English. The bigram tables
     /// (`BigramEngine`) are English-only, so for non-English contexts the blend
     /// drops the bigram term and uses the (language-correct) prior alone.
-    private var isEnglishContext: Bool = true
+    private(set) var isEnglishContext: Bool = true
 
     /// Whether `predictivePrior` was computed for the CURRENT character context.
     /// `recordCharacter` clears it: at that instant the prior still predicts the
@@ -47,10 +77,11 @@ final class ProbabilisticTouchContext {
     /// excluded from the blend (fresh bigram+trigram only); a stale non-English
     /// prior is kept, because a stale right-language prior still beats a fresh
     /// wrong-language bigram.
-    private var priorIsFresh = false
+    private(set) var priorIsFresh = false
 
-    /// Prior's share of the blend; the bigram gets the remainder. Tunable.
-    private static let priorBlendFactor: Float = 0.45
+    /// Blend/confidence tunables. `.current` on the live keyboard; the calibration replay
+    /// harness constructs contexts with sweep variants.
+    let tuning: ContextTuning
 
     /// The character before `lastCharacter` — gives the 2-char context for trigram boosts.
     private var secondLastCharacter: Character?
@@ -60,29 +91,43 @@ final class ProbabilisticTouchContext {
     /// at all when it isn't (first letter of a word). Plan §7.
     private(set) var confidence: Float = 0.35
 
-    private static let minConfidence: Float = 0.25      // floor so β is never fully zeroed
-
-    init() {
-        self.currentWeights = BigramEngine.wordInitialFrequencies
+    init(tuning: ContextTuning = .current) {
+        self.tuning = tuning
+        self.currentWeights26 = ContiguousArray<Float>(repeating: 0, count: 26)
+        self.blended26 = ContiguousArray<Float>(repeating: 0, count: 26)
+        // Word-initial distribution; also bakes/loads the tables off the touch path.
+        if !(tuning.useCorpusTrigram
+             && CharacterTrigramLM.shared.fill(into: &currentWeights26, prev2: nil, prev1: nil)) {
+            BigramEngine.fill26(after: nil, into: &currentWeights26)
+        }
         recomputeConfidence()
     }
 
     /// Update after a character is typed. Runs ON the touch path (synchronously inside
-    /// `commitCharacter` ← `touchesBegan`): one bigram dictionary read, an optional
-    /// trigram max-merge, and the stale-aware re-bake — no smoothing loop.
+    /// `commitCharacter` ← `touchesBegan`): one fixed-buffer row copy, an optional
+    /// trigram max-merge, and the stale-aware re-bake — no allocations.
     func recordCharacter(_ char: Character) {
         let lower = Character(char.lowercased())
         // The trigram context advances even when the char repeats ("ll" ⇒ prev2='l',
         // prev1='l') — the old early-out left it stale after double letters.
         secondLastCharacter = (lower == lastCharacter) ? lower : lastCharacter
         lastCharacter = lower
-        // Bigram base, then raise the predicted letters for high-confidence trigram prefixes
-        // (max-merge: only ever increases a likely letter, never lowers another).
-        var base = BigramEngine.weights(after: lower)
-        if let boost = TrigramEngine.boost(prev2: secondLastCharacter, prev1: lower) {
-            for (ch, b) in boost { base[ch] = max(base[ch] ?? 0, b) }
+        // Prior source: the corpus trigram when enabled and loaded (real English
+        // P(next | prev2, prev1) with offline-smoothed backoff — subsumes the curated
+        // boosts); otherwise bigram base + high-confidence trigram max-merge (only ever
+        // increases a likely letter, never lowers another).
+        if !(tuning.useCorpusTrigram
+             && CharacterTrigramLM.shared.fill(into: &currentWeights26,
+                                               prev2: secondLastCharacter, prev1: lower)) {
+            BigramEngine.fill26(after: lower, into: &currentWeights26)
+            if let boost = TrigramEngine.boost(prev2: secondLastCharacter, prev1: lower) {
+                for (ch, b) in boost {
+                    if let i = BigramEngine.letterIndex(ch) {
+                        currentWeights26[i] = max(currentWeights26[i], b)
+                    }
+                }
+            }
         }
-        currentWeights = base
         // The prior predicted THIS character; for the next tap it is one keystroke stale.
         priorIsFresh = false
         rebakeBlendedWeights()
@@ -95,13 +140,17 @@ final class ProbabilisticTouchContext {
     func recordNonCharacter() {
         if lastCharacter != nil {
             lastCharacter = nil
-            currentWeights = BigramEngine.wordInitialFrequencies
+            if !(tuning.useCorpusTrigram
+                 && CharacterTrigramLM.shared.fill(into: &currentWeights26, prev2: nil, prev1: nil)) {
+                BigramEngine.fill26(after: nil, into: &currentWeights26)
+            }
         }
         secondLastCharacter = nil
         // Word boundary — the prefix prior no longer applies.
         predictivePrior = nil
         priorIsFresh = false
-        blendedWeights = nil
+        usingBlended = false
+        if !overflowWeights.isEmpty { overflowWeights.removeAll(keepingCapacity: true) }
         recomputeConfidence()
     }
 
@@ -120,82 +169,114 @@ final class ProbabilisticTouchContext {
     /// Recompute `confidence` from the sharp distribution the resolver actually reads.
     /// Flat (word start) → minConfidence; strongly peaked (e.g. after "th") → 1.
     private func recomputeConfidence() {
-        let source = blendedWeights ?? currentWeights
-        let peak = source.values.max() ?? fallbackPeak
-        let normalized = min(max((peak - 0.12) / (0.35 - 0.12), 0), 1)
-        confidence = Self.minConfidence + normalized * (1 - Self.minConfidence)
+        var peak: Float = 0
+        if usingBlended {
+            for v in blended26 where v > peak { peak = v }
+            for v in overflowWeights.values where v > peak { peak = v }
+        } else {
+            for v in currentWeights26 where v > peak { peak = v }
+        }
+        if peak <= 0 { peak = fallbackPeak }
+        let normalized = min(max((peak - tuning.confidencePeakLow)
+                                 / (tuning.confidencePeakHigh - tuning.confidencePeakLow), 0), 1)
+        confidence = tuning.minConfidence + normalized * (1 - tuning.minConfidence)
     }
 
     private var fallbackPeak: Float { 1.0 / 26.0 }
 
-    /// Recompute `blendedWeights` from the current `predictivePrior` + `currentWeights`.
-    /// Runs on context change / predictive update, so the hot-path reads always see a
-    /// finished result.
+    /// Recompute `blended26` from the current `predictivePrior` + `currentWeights26`.
+    /// Runs on context change / predictive update (never per touch-down), so the hot-path
+    /// reads always see a finished result. Prior keys are lowercased so a capitalized
+    /// completion ("I…") still boosts its letter key.
     private func rebakeBlendedWeights() {
+        if !overflowWeights.isEmpty { overflowWeights.removeAll(keepingCapacity: true) }
         guard let prior = predictivePrior else {
-            blendedWeights = nil
+            usingBlended = false
             return
         }
+        let fallback: Float = 1.0 / 26.0
         // Non-English: bigram tables are English-only, so use the language-correct
         // prior alone rather than polluting it with English bigram mass — even when
-        // the prior is one keystroke stale.
+        // the prior is one keystroke stale. Letters absent from the prior read uniform.
         guard isEnglishContext else {
-            blendedWeights = prior
+            for i in 0..<26 { blended26[i] = fallback }
+            for (c, p) in prior {
+                let lower = Character(String(c).lowercased())
+                if let i = BigramEngine.letterIndex(lower) {
+                    blended26[i] = p
+                } else {
+                    overflowWeights[lower] = p
+                }
+            }
+            usingBlended = true
             return
         }
         // A stale English prior pulls toward the letter just typed — drop it and let
         // the fresh bigram+trigram carry the next tap until the flush re-supplies it.
         guard priorIsFresh else {
-            blendedWeights = nil
+            usingBlended = false
             return
         }
-        let priorFactor = Self.priorBlendFactor
+        let priorFactor = tuning.priorBlendFactor
         let bigramFactor = 1 - priorFactor
-        let fallback: Float = 1.0 / 26.0
-        var blended: [Character: Float] = [:]
-        blended.reserveCapacity(currentWeights.count + prior.count)
-        for c in Set(currentWeights.keys).union(prior.keys) {
-            let p = prior[c] ?? 0
-            let b = currentWeights[c] ?? fallback
-            blended[c] = priorFactor * p + bigramFactor * b
+        for i in 0..<26 { blended26[i] = bigramFactor * currentWeights26[i] }
+        for (c, p) in prior {
+            let lower = Character(String(c).lowercased())
+            if let i = BigramEngine.letterIndex(lower) {
+                blended26[i] += priorFactor * p
+            } else {
+                overflowWeights[lower] = priorFactor * p + bigramFactor * fallback
+            }
         }
-        blendedWeights = blended
+        usingBlended = true
     }
 
     /// Extract ordered probability weights for a specific row's characters.
     /// Returns an array of floats in the same order as the input characters.
-    /// Reads the pre-baked `blendedWeights` when a fresh predictive prior exists, else
-    /// the pure-bigram `currentWeights` — a single optional-dictionary read swap,
-    /// no blending math on the hot path.
+    /// Reads the pre-baked active buffer — no blending math on the hot path.
     ///
     /// - Parameter rowChars: The characters in the row (e.g., ["Q","W","E",...])
     /// - Returns: Array of weights, one per character. Unknown chars get a small default weight.
     func weightsForRow(_ rowChars: [String]) -> [Float] {
-        let source = blendedWeights ?? currentWeights
-        return rowChars.map { charString in
-            let lower = Character(charString.lowercased())
-            return source[lower] ?? (1.0 / 26.0)
-        }
+        rowChars.map { weight(for: $0.first ?? " ") }
     }
 
-    /// Probability weight P(char | context) for a single character, reading the same
-    /// pre-baked source as `weightsForRow`. Used by the 2D `ProbabilisticHitResolver`,
-    /// which scores all character keys (not just one row) per touch-down. Unknown chars
-    /// get the uniform fallback. No blending math on the hot path.
+    /// Probability weight P(char | context) for a single character, reading the active
+    /// pre-baked buffer. Used by the 2D `ProbabilisticHitResolver`, which scores all
+    /// character keys per touch-down. A bounds-checked array read — zero allocations.
     func weight(for char: Character) -> Float {
-        (blendedWeights ?? currentWeights)[Character(char.lowercased())] ?? (1.0 / 26.0)
+        let lower = Character(char.lowercased())
+        if let i = BigramEngine.letterIndex(lower) {
+            return usingBlended ? blended26[i] : currentWeights26[i]
+        }
+        if usingBlended, let v = overflowWeights[lower] { return v }
+        return 1.0 / 26.0
     }
 }
 
 #if DEBUG
 extension ProbabilisticTouchContext {
-    /// One-time invariant check for the prior pipeline: sharp (un-smoothed) weights,
-    /// stale-prior exclusion, double-letter trigram context, and word-boundary snap.
-    /// Logs (does not crash) on violation — same pattern as
-    /// `ProbabilisticHitResolver.runEquivalenceSelfTest`.
-    static func runContextSelfTest() {
+    /// Test-only reconstructions of the old dictionary views (never on the hot path).
+    var debugCurrentWeights: [Character: Float] {
+        var d: [Character: Float] = [:]
+        for i in 0..<26 {
+            d[Character(UnicodeScalar(UInt8(97 + i)))] = currentWeights26[i]
+        }
+        return d
+    }
+
+    var debugHasBlend: Bool { usingBlended }
+
+    /// Invariant check for the prior pipeline: sharp (un-smoothed) weights, stale-prior
+    /// exclusion, double-letter trigram context, and word-boundary snap. Returns the
+    /// violations so XCTest can assert; the runtime wrapper logs (does not crash) —
+    /// same pattern as `ProbabilisticHitResolver.runEquivalenceSelfTest`.
+    static func contextSelfTestFailures() -> [String] {
         var failures: [String] = []
-        let ctx = ProbabilisticTouchContext()
+        // Pinned to the legacy prior source: these invariants assert against the
+        // BigramEngine tables specifically (the corpus-trigram source has its own tests).
+        let ctx = ProbabilisticTouchContext(tuning: ContextTuning(useCorpusTrigram: false))
+        let tuning = ctx.tuning
 
         // 1. Trigram sharpness: after "t","h" the resolver must see the full "th→e"
         //    boost immediately (no EMA dilution).
@@ -204,9 +285,10 @@ extension ProbabilisticTouchContext {
         if ctx.weight(for: "e") < 0.5 {
             failures.append("th→e boost diluted: weight(e)=\(ctx.weight(for: "e"))")
         }
-        let expectedPeak = ctx.currentWeights.values.max() ?? 0
-        let expectedNorm = min(max((expectedPeak - 0.12) / (0.35 - 0.12), 0), 1)
-        let expectedConfidence = minConfidence + expectedNorm * (1 - minConfidence)
+        let expectedPeak = ctx.debugCurrentWeights.values.max() ?? 0
+        let expectedNorm = min(max((expectedPeak - tuning.confidencePeakLow)
+                                   / (tuning.confidencePeakHigh - tuning.confidencePeakLow), 0), 1)
+        let expectedConfidence = tuning.minConfidence + expectedNorm * (1 - tuning.minConfidence)
         if abs(ctx.confidence - expectedConfidence) > 0.001 {
             failures.append("confidence lags sharp source: \(ctx.confidence) vs \(expectedConfidence)")
         }
@@ -214,16 +296,17 @@ extension ProbabilisticTouchContext {
         // 2. Stale English prior is excluded after a keystroke; a fresh one applies
         //    at full strength immediately.
         ctx.updatePredictivePrior(["x": 0.9], isEnglish: true)
-        if ctx.blendedWeights == nil {
+        if !ctx.debugHasBlend {
             failures.append("fresh prior did not produce a blend")
         }
         let blendedX = ctx.weight(for: "x")
-        let expectedX = 0.45 * Float(0.9) + 0.55 * (ctx.currentWeights["x"] ?? 1.0 / 26.0)
+        let expectedX = tuning.priorBlendFactor * Float(0.9)
+            + (1 - tuning.priorBlendFactor) * (ctx.debugCurrentWeights["x"] ?? 1.0 / 26.0)
         if abs(blendedX - expectedX) > 0.001 {
             failures.append("fresh prior under-applied: weight(x)=\(blendedX) expected \(expectedX)")
         }
         ctx.recordCharacter("e")
-        if ctx.blendedWeights != nil {
+        if ctx.debugHasBlend {
             failures.append("stale English prior still blended after recordCharacter")
         }
 
@@ -235,7 +318,7 @@ extension ProbabilisticTouchContext {
         }
 
         // 4. Double-letter trigram context: "t","e","e" ⇒ prev2='e', prev1='e'.
-        let ctx2 = ProbabilisticTouchContext()
+        let ctx2 = ProbabilisticTouchContext(tuning: ContextTuning(useCorpusTrigram: false))
         ctx2.recordCharacter("t")
         ctx2.recordCharacter("e")
         ctx2.recordCharacter("e")
@@ -246,10 +329,15 @@ extension ProbabilisticTouchContext {
         // 5. Word boundary snaps to word-initial frequencies and drops the prior.
         ctx2.updatePredictivePrior(["q": 0.9], isEnglish: true)
         ctx2.recordNonCharacter()
-        if ctx2.blendedWeights != nil || ctx2.currentWeights != BigramEngine.wordInitialFrequencies {
+        if ctx2.debugHasBlend || ctx2.debugCurrentWeights != BigramEngine.wordInitialFrequencies {
             failures.append("word boundary did not snap to word-initial")
         }
+        return failures
+    }
 
+    /// One-time runtime wrapper — logs instead of crashing, keyboard-extension safe.
+    static func runContextSelfTest() {
+        let failures = contextSelfTestFailures()
         if failures.isEmpty {
             NSLog("[SnipKeyboard] ProbabilisticTouchContext self-test passed")
         } else {

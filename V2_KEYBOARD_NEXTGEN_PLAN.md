@@ -1,7 +1,8 @@
 # SnipKey Keyboard V2 — Next-Gen Typing Quality Plan
 
-> **Status:** **IMPLEMENTED and shipping by default** (see Implementation Status below). One item —
-> data-driven *tuning* — is intentionally left as optional future work.
+> **Status:** **IMPLEMENTED and shipping by default** (see Implementation Status below). The
+> data-driven tuning TOOLING (capture → replay → sweep) now ships too; what remains is the
+> on-device data-collection pass itself (§15/§15a).
 > **Goal:** A keyboard that feels extremely smooth, highly accurate, fast/reliable, consistent under
 > high typing speed, predictable and forgiving — comparable to or better than the perceived typing
 > quality of the stock iOS keyboard.
@@ -34,10 +35,11 @@ plan.
 | Responsiveness percentiles | ✅ Shipped (DEBUG telemetry, off by default) | `KeyboardResponsivenessTelemetry` |
 | Live Voronoi debug overlay | ✅ Shipped (off by default) | coordinator `updateVoronoiDebugOverlay` |
 | Settings toggles + version-string alignment | ✅ Shipped | `SettingsView`, `SettingsModel`, pbxproj |
-| **Data-driven tuning** of β / σ / offset sign-scale | ⏸️ **Remaining work** — see §15 | — |
-| Population-prior fixed offsets (`PopulationOffset`) | ⏸️ Infra present, scale 0 (per-user learning preferred) | `PopulationOffset` |
-| Offline replay harness / CI corpus gates | ⏸️ Remaining work | host app or test target |
-| Full corpus-trained trigram / sequence decoding | ⏸️ Out of scope (needs a corpus) | — |
+| **Data-driven tuning** of β / σ / offset sign-scale | 🔧 **Tooling shipped** (capture + replay + drill/lab, see §15); on-device data collection pending | `CalibrationCapture`, `ResolverReplayEngine`, `CalibrationLabView` |
+| Population-prior fixed offsets (`PopulationOffset`) | ⚠️ **ACTIVE — `scale = 1`, +down sign** (cold-start crossfade). Sign never validated on a real device — see §15a | `PopulationOffset` |
+| Offline replay harness / CI corpus gates | ✅ Shipped — deterministic replay w/ baseline bit-exactness gate + synthetic XCTest suites | `ResolverReplayEngine`, `SnipKeyTests` |
+| Full corpus-trained trigram | ✅ Shipped behind `useCorpusTrigram` (DEBUG ON / RELEASE OFF until gates pass) — Norvig-corpus 27×27×26 table, offline-smoothed | `CharacterTrigramLM`, `tooling/trigram/` |
+| Sequence decoding / retroactive autocorrect | ⏸️ Out of scope | — |
 | Haptics | 🚫 Excluded by product decision | — |
 
 Shipped defaults (research-shaped, conservative): `β = 0.35`, `σx = 13`, `σy = 16`, anchor inner
@@ -282,9 +284,13 @@ autocorrect-style word replacement in V2.
 
 **Hierarchy:** `offset_k = population_prior(row, lateral) + user_delta(cluster_k)`.
 
-**Population prior (zero-learning, ship immediately):** users land above center, bias growing top→bottom
-rows; lateral bias by hand. Encode as **fractions of key height/width** (e.g., small upward fraction on
-home row, larger on the top row), validated on the corpus — never hardcoded pixels.
+**Population prior (zero-learning, ship immediately):** users' touch centroids land systematically
+off key center with the bias growing top→bottom rows; lateral bias by hand. Encode as **fractions of
+key height/width**, validated on the corpus — never hardcoded pixels. **Sign caution:** the shipped
+`PopulationOffset` encodes a **downward** (+dy) bias per the code's site-toward-landing convention;
+the literature is quoted both ways depending on whether it describes the landing point or the needed
+correction. The sign must be confirmed on-device (§15a) — the DEBUG sign audit in
+`TouchOffsetModel.fold` flags a fully-trusted cluster that learned the opposite sign.
 
 **Clusters:** 6 groups = 3 row-bands (top/home/bottom) × 2 lateral zones (left third / right two-thirds).
 Interpretable, maps to the documented offset structure, and avoids per-key overfit. `<50` samples per
@@ -453,6 +459,23 @@ offsets, then online offsets → Tier 3 trigram → Tier 5 polish.
 5. Confirm the offset divergence-guard caps and the confidence-decile threshold against real corpus stats.
 
 ---
+
+## 15a. URGENT On-Device Check — PopulationOffset Sign (zero code required)
+
+`PopulationOffset` ships **active** (`scale = 1`) with a **downward** site bias that has never been
+validated against real thumb touches (the simulator cannot exercise it). If the sign is wrong it is
+actively hurting cold-start accuracy. To validate, on a real device with a DEBUG build:
+
+1. Settings → Experimental → enable **Shadow-Mode Logging**; type naturally for ~10 minutes.
+2. Open **Shadow Telemetry Report** and read the **mean in-cell landing** `dy` (normalized in the
+   raw key rect, so it is an unbiased landing estimator):
+   - `dy > 0.55` and increasing top→bottom rows ⇒ current **+down sign is correct**, keep it.
+   - `dy < 0.5` ⇒ **sign is wrong** → set `PopulationOffset.scale = 0` immediately (kill switch)
+     and only re-enable with corrected fractions after a replay-harness sweep.
+3. Watch the Xcode console for the `PopulationOffset sign audit` line from `TouchOffsetModel.fold`
+   during natural typing — it fires when a fully-trusted learned cluster contradicts the baseline.
+
+Either verdict, update the status-table row and this section with the measured `dy` values.
 
 ## 15. Optional Future Work — Data-Driven Tuning (NOT yet implemented)
 

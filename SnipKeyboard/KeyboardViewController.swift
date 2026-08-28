@@ -129,6 +129,13 @@ class KeyboardViewController: UIInputViewController {
     /// so `.words`/`.sentences` would compute false anyway). `.allCharacters` is still honored.
     private var ownCharacterInsertInFlight = false
 
+    /// True while ANY of our own proxy mutations (insertText/deleteBackward, not just the
+    /// character fast path) is executing. Consulted by `textDidChange` so the context
+    /// mirror is only invalidated by EXTERNAL document changes. Deliberately separate from
+    /// `ownCharacterInsertInFlight`, which additionally skips the auto-cap recompute and
+    /// must stay narrow (see the guard's comment in `updateQWERTYState`).
+    private var ownMutationInFlight = false
+
     /// Coalescer guard: ensures at most one deferred side-effect flush is queued per runloop.
     /// V2 commits schedule slash + predictive evaluation here instead of running them
     /// synchronously inside `touchesBegan`, so a fast burst collapses to one context read
@@ -139,7 +146,11 @@ class KeyboardViewController: UIInputViewController {
     private lazy var keyboardActionsStruct: KeyboardActions = {
         KeyboardActions(
             insertText: { [weak self] text in
-                self?.textDocumentProxy.insertText(text)
+                guard let self = self else { return }
+                self.ownMutationInFlight = true
+                self.textDocumentProxy.insertText(text)
+                self.ownMutationInFlight = false
+                self.qwertyState.inputTracking.mirrorAppend(text)
             },
             insertCharacter: { [weak self] text in
                 guard let self = self else { return }
@@ -148,9 +159,14 @@ class KeyboardViewController: UIInputViewController {
                 self.ownCharacterInsertInFlight = true
                 self.textDocumentProxy.insertText(text)
                 self.ownCharacterInsertInFlight = false
+                self.qwertyState.inputTracking.mirrorAppend(text)
             },
             deleteBackward: { [weak self] in
-                self?.textDocumentProxy.deleteBackward()
+                guard let self = self else { return }
+                self.ownMutationInFlight = true
+                self.textDocumentProxy.deleteBackward()
+                self.ownMutationInFlight = false
+                self.qwertyState.inputTracking.mirrorDeleteBackward()
             },
             advanceToNextInputMode: { [weak self] in
                 self?.advanceToNextInputMode()
@@ -219,8 +235,10 @@ class KeyboardViewController: UIInputViewController {
                 // Content read — the one call that can trigger the iOS 16 paste prompt.
                 guard let text = pb.string ?? pb.url?.absoluteString, !text.isEmpty else { return }
                 self.textDocumentProxy.insertText(text)
-                // Pasted content is arbitrary — never carries a smart space (snippet precedent).
+                // Pasted content is arbitrary — never carries a smart space (snippet precedent),
+                // and the mirror shouldn't vouch for it either (the flush re-seeds it).
                 self.qwertyState.inputTracking.pendingSmartSpace = false
+                self.qwertyState.inputTracking.invalidateMirror()
                 self.scheduleSideEffectFlush()
             },
             copySnippetFile: { [weak self] snippet in
@@ -258,6 +276,9 @@ class KeyboardViewController: UIInputViewController {
                 // A caret move invalidates the pending smart space — the cursor is no longer
                 // right after a suggestion's trailing space, so don't eat an arbitrary space.
                 self.qwertyState.inputTracking.pendingSmartSpace = false
+                // The context mirror tracks text BEFORE the caret — a caret move shifts
+                // that window to unknown text.
+                self.qwertyState.inputTracking.invalidateMirror()
                 self.textDocumentProxy.adjustTextPosition(byCharacterOffset: delta)
             },
             inputTraits: { [weak self] in
@@ -509,6 +530,9 @@ class KeyboardViewController: UIInputViewController {
         TypingTelemetry.shared.flush()
         KeyboardResponsivenessTelemetry.shared.flush()
         TouchOffsetModel.shared.flush()
+        #if DEBUG
+        CalibrationCapture.shared.flush()
+        #endif
     }
 
     // MARK: - Clipboard Polling
@@ -569,8 +593,28 @@ class KeyboardViewController: UIInputViewController {
     }
     
     override func textWillChange(_ textInput: UITextInput?) {
-        // The app is about to change the document's contents. Perform any preparation here.
-        
+        // External document change incoming — the mirror can't vouch for the trailing
+        // text between will/did. textDidChange invalidates too; this closes the (rare)
+        // window where the pair straddles a runloop turn and a touch lands in between.
+        if !ownMutationInFlight && !ownCharacterInsertInFlight {
+            qwertyState.inputTracking.invalidateMirror()
+        }
+    }
+
+    /// Some hosts (WKWebView-backed fields are the known offender) report caret moves and
+    /// selection edits ONLY through the selection callbacks, never textDidChange — exactly
+    /// the stale-mirror case that mispicks a smart-quote direction. Invalidating here is
+    /// pure coverage: worst case the next flush re-seeds and re-validates the mirror.
+    override func selectionWillChange(_ textInput: UITextInput?) {
+        if !ownMutationInFlight && !ownCharacterInsertInFlight {
+            qwertyState.inputTracking.invalidateMirror()
+        }
+    }
+
+    override func selectionDidChange(_ textInput: UITextInput?) {
+        if !ownMutationInFlight && !ownCharacterInsertInFlight {
+            qwertyState.inputTracking.invalidateMirror()
+        }
     }
     
     override func textDidChange(_ textInput: UITextInput?) {
@@ -584,7 +628,14 @@ class KeyboardViewController: UIInputViewController {
             textColor = UIColor.black
         }
         self.nextKeyboardButton.setTitleColor(textColor, for: [])
-        
+
+        // Any document change we didn't make ourselves means the context mirror can no
+        // longer vouch for the text before the caret (host edits, autocorrect in other
+        // fields, legacy NotificationCenter snippet inserts, selection-driven changes).
+        if !ownMutationInFlight && !ownCharacterInsertInFlight {
+            qwertyState.inputTracking.invalidateMirror()
+        }
+
         // Update QWERTY keyboard state from text document proxy
         KeyboardResponsivenessTelemetry.shared.markTextDidChange()
         updateQWERTYState()
@@ -631,6 +682,9 @@ class KeyboardViewController: UIInputViewController {
         // most one keystroke stale is harmless and field switches are picked up on the next change.
         refreshHostInputTraits()
         let context = textDocumentProxy.documentContextBeforeInput
+        // Re-seed the smart-punctuation context mirror from this (already-paid-for) read,
+        // so the next burst's transforms run with zero additional XPC.
+        qwertyState.inputTracking.mirrorSeed(context)
         runSlashEvaluation(context: context)
         runReminderEvaluation(context: context)
         runTimerEvaluation(context: context)

@@ -27,7 +27,9 @@ final class TouchOffsetModel {
     static let shared = TouchOffsetModel()
 
     /// Mean fractional offset (fraction of key width/height) + sample count for one cluster.
-    private struct Cluster: Codable {
+    /// Internal (not private) so calibration session headers can snapshot cluster state and
+    /// the replay harness can recompute offsets bit-exact.
+    struct Cluster: Codable, Equatable {
         var fx: Float = 0
         var fy: Float = 0
         var n: Int = 0
@@ -59,7 +61,9 @@ final class TouchOffsetModel {
     private var nextPendingID: UInt64 = 0
     private var dirty = false
 
-    private init() { load() }
+    /// Internal (not private) so the DEBUG self-test and the unit-test target can build
+    /// isolated instances. Production code always goes through `shared`.
+    init() { load() }
 
     // MARK: - Query (hot path)
 
@@ -70,15 +74,39 @@ final class TouchOffsetModel {
     /// from the literature bias instead of nothing.
     func offset(for frame: KeyFrame, keyboardWidth: CGFloat, rowCount: Int) -> CGVector {
         guard enabled, frame.isCharacterKey else { return .zero }
-        let pop = PopulationOffset.offset(for: frame)
-        guard let cs = clusters[key(currentLayout)] else { return pop }  // cold start
+        return Self.computeOffset(
+            clusters: clusters[key(currentLayout)],
+            frame: frame,
+            keyboardWidth: keyboardWidth,
+            rowCount: rowCount,
+            population: PopulationOffset.offset(for: frame)
+        )
+    }
+
+    /// The pure crossfade math, shared by the live path above and the offline replay
+    /// harness (which feeds a session-header cluster snapshot + a sweep-scaled population
+    /// offset). `clusters == nil` (unseen layout) or an untrusted cluster ⇒ population.
+    nonisolated static func computeOffset(
+        clusters: [Cluster]?,
+        frame: KeyFrame,
+        keyboardWidth: CGFloat,
+        rowCount: Int,
+        population: CGVector
+    ) -> CGVector {
+        guard let cs = clusters, cs.count == clusterCount else { return population }  // cold start
         let latFrac = Float(frame.rect.midX / max(keyboardWidth, 1))
         let idx = clusterIndex(row: frame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
         let c = cs[idx]
-        let trust = CGFloat(min(Float(c.n) / Self.learnThreshold, 1))
+        let trust = CGFloat(min(Float(c.n) / learnThreshold, 1))
         // Population dx is 0, so only dy blends.
         return CGVector(dx: CGFloat(c.fx) * trust * frame.rect.width,
-                        dy: CGFloat(c.fy) * trust * frame.rect.height + pop.dy * (1 - trust))
+                        dy: CGFloat(c.fy) * trust * frame.rect.height + population.dy * (1 - trust))
+    }
+
+    /// Snapshot of the learned clusters for one layout hash (nil if never seen) — captured
+    /// into calibration session headers so replay reproduces the acting offsets exactly.
+    func clusterSnapshot(forLayout layout: Int) -> [Cluster]? {
+        clusters[key(layout)]
     }
 
     // MARK: - Learning
@@ -90,8 +118,28 @@ final class TouchOffsetModel {
         let h = max(keyFrame.rect.height, 1)
         let fx = Float((point.x - keyFrame.rect.midX) / w)
         let fy = Float((point.y - keyFrame.rect.midY) / h)
+        stage(keyFrame: keyFrame, fx: fx, fy: fy, keyboardWidth: keyboardWidth, rowCount: rowCount)
+    }
+
+    /// Slide-corrected gold label: the user touched down at `point`, slid to `keyFrame` and
+    /// committed it — direct evidence of where a tap aimed at this key actually lands.
+    /// Bypasses the coordinator's anchor/confidence gates (the correction IS the evidence)
+    /// but clamps the fractional offset to ±0.3: a raw correction can exceed the ±0.5
+    /// divergence guard (which would void a first-sample seed), and direction matters more
+    /// than magnitude for the EMA. Same pending/backspace-survival path as `record`.
+    func recordCorrected(keyFrame: KeyFrame, point: CGPoint, keyboardWidth: CGFloat, rowCount: Int) {
+        guard enabled, keyFrame.isCharacterKey else { return }
+        let cap: Float = 0.3
+        let w = max(keyFrame.rect.width, 1)
+        let h = max(keyFrame.rect.height, 1)
+        let fx = min(max(Float((point.x - keyFrame.rect.midX) / w), -cap), cap)
+        let fy = min(max(Float((point.y - keyFrame.rect.midY) / h), -cap), cap)
+        stage(keyFrame: keyFrame, fx: fx, fy: fy, keyboardWidth: keyboardWidth, rowCount: rowCount)
+    }
+
+    private func stage(keyFrame: KeyFrame, fx: Float, fy: Float, keyboardWidth: CGFloat, rowCount: Int) {
         let latFrac = Float(keyFrame.rect.midX / max(keyboardWidth, 1))
-        let idx = clusterIndex(row: keyFrame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
+        let idx = Self.clusterIndex(row: keyFrame.rowIndex, rowCount: rowCount, lateralFraction: latFrac)
         nextPendingID &+= 1
         let id = nextPendingID
         let task = Task { @MainActor [weak self] in
@@ -153,7 +201,7 @@ final class TouchOffsetModel {
 
     // MARK: - Clustering
 
-    private func clusterIndex(row: Int, rowCount: Int, lateralFraction: Float) -> Int {
+    nonisolated static func clusterIndex(row: Int, rowCount: Int, lateralFraction: Float) -> Int {
         let band = rowCount <= 1 ? 1 : min(Int(Float(max(row, 0)) / Float(rowCount) * 3), 2)
         let lateral = lateralFraction < 0.5 ? 0 : 1
         return band * 2 + lateral
@@ -188,11 +236,12 @@ final class TouchOffsetModel {
 
 #if DEBUG
 extension TouchOffsetModel {
-    /// One-time invariant check for the population/user offset crossfade: pure population
+    /// Invariant check for the population/user offset crossfade: pure population
     /// for unseen layouts and untrusted clusters, pure user at full trust, the exact
     /// midpoint halfway up the ramp, bounded output, and the population sign lock (+down
-    /// for every row band). Logs (does not crash) on violation.
-    static func runCrossfadeSelfTest() {
+    /// for every row band). Returns the violations so XCTest can assert; the runtime
+    /// wrapper logs (does not crash).
+    static func crossfadeSelfTestFailures() -> [String] {
         var failures: [String] = []
         let model = TouchOffsetModel()
         model.enabled = true
@@ -255,6 +304,12 @@ extension TouchOffsetModel {
             failures.append("offset exceeds bound: \(o)")
         }
 
+        return failures
+    }
+
+    /// One-time runtime wrapper — logs instead of crashing, keyboard-extension safe.
+    static func runCrossfadeSelfTest() {
+        let failures = crossfadeSelfTestFailures()
         if failures.isEmpty {
             NSLog("[SnipKeyboard] offset-crossfade self-test passed")
         } else {

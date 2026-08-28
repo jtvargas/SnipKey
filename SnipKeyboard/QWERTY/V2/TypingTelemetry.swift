@@ -63,6 +63,9 @@ final class TypingTelemetry {
     private(set) var outcomeTotal = 0
     private(set) var unresolvedTouchDowns = 0
     private(set) var rawResolvedDisagreements = 0
+    /// Lift-committed slide corrections (user slid off a mis-tap and released on the
+    /// intended key) — each one fed the offset model a gold label.
+    private(set) var slideCorrections = 0
 
     private init() {}
 
@@ -131,6 +134,11 @@ final class TypingTelemetry {
         unresolvedTouchDowns += 1
     }
 
+    func recordSlideCorrection() {
+        guard enabled else { return }
+        slideCorrections += 1
+    }
+
     /// Persist buffer + summary to the App Group container as JSON. Call OFF the hot path
     /// (e.g. `viewWillDisappear`). No-op when disabled or empty.
     func flush() {
@@ -147,6 +155,8 @@ final class TypingTelemetry {
             let outcomeTotal: Int
             let unresolvedTouchDowns: Int
             let rawResolvedDisagreements: Int
+            /// Additive field (decoders tolerate absence) — see `slideCorrections`.
+            let slideCorrections: Int
             let outcomes: [TouchOutcome]
         }
         let payload = Payload(
@@ -157,6 +167,7 @@ final class TypingTelemetry {
             outcomeTotal: outcomeTotal,
             unresolvedTouchDowns: unresolvedTouchDowns,
             rawResolvedDisagreements: rawResolvedDisagreements,
+            slideCorrections: slideCorrections,
             outcomes: outcomes
         )
         if let data = try? JSONEncoder().encode(payload) {
@@ -220,6 +231,10 @@ final class KeyboardResponsivenessTelemetry {
         let touchToInsertReturn: Metric
         let touchToTextDidChange: Metric
         let sideEffectFlushDelay: Metric
+        /// Commit-call → insert-return only (no press dwell). Under native commit timing
+        /// `touchToInsertReturn` includes the finger's dwell on the key, so this keeps the
+        /// pure XPC/pipeline cost separately visible.
+        let commitDispatch: Metric
     }
 
     var enabled = false
@@ -233,6 +248,7 @@ final class KeyboardResponsivenessTelemetry {
     private var touchToInsertReturn = Metric()
     private var touchToTextDidChange = Metric()
     private var sideEffectFlushDelay = Metric()
+    private var commitDispatch = Metric()
 
     private init() {}
 
@@ -272,6 +288,14 @@ final class KeyboardResponsivenessTelemetry {
         #endif
     }
 
+    /// Record the synchronous cost of one deferred commit (commit call → insert returned).
+    func recordCommitDispatch(startedAt start: CFTimeInterval) {
+        #if DEBUG
+        guard enabled else { return }
+        commitDispatch.add(Self.ms(from: start))
+        #endif
+    }
+
     func markTextDidChange() {
         #if DEBUG
         guard enabled, let start = mostRecentTouchDown else { return }
@@ -305,7 +329,8 @@ final class KeyboardResponsivenessTelemetry {
             touchToCallout: touchToCallout,
             touchToInsertReturn: touchToInsertReturn,
             touchToTextDidChange: touchToTextDidChange,
-            sideEffectFlushDelay: sideEffectFlushDelay
+            sideEffectFlushDelay: sideEffectFlushDelay,
+            commitDispatch: commitDispatch
         )
         let url = dir.appendingPathComponent("telemetry-responsiveness.json")
         if let data = try? JSONEncoder().encode(payload) {
