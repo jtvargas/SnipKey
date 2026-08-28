@@ -390,7 +390,7 @@ struct HomeView2: View {
             Menu(
                 content: {
                     Picker(selection: $selectedFilter, label: Image(systemName: "tag.fill")) {
-                        ForEach(tags, id: \.id) { tag in
+                        ForEach(tags.userOrdered, id: \.id) { tag in
                             Label {
                                 Text(tag.name ?? "")
                             } icon: {

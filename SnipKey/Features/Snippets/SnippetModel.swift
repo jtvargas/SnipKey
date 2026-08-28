@@ -133,6 +133,10 @@ final class SnipTag {
     var imageTag: String?
     var id: String?
     var colorHex: String?  // Optional color in hex format (e.g., "#FF3B30")
+    /// User-defined position from drag-reordering in the Tags screen. Optional so the
+    /// CloudKit schema migration is additive; nil = never reordered (sorts after ordered
+    /// tags, alphabetically). See `Array.userOrdered`.
+    var sortOrder: Int?
     
     @Relationship(inverse: \SnippetItem.customTag)
     var snippets: [SnippetItem]?
@@ -142,6 +146,20 @@ final class SnipTag {
         self.name = name
         self.imageTag = imageTag
         self.colorHex = colorHex
+    }
+}
+
+/// Single source of truth for tag display order: drag-reordered tags first (by
+/// `sortOrder`), never-ordered tags after, alphabetically. Used by the Tags screen
+/// and the Snippets filter menu so the two always agree.
+extension Array where Element == SnipTag {
+    var userOrdered: [SnipTag] {
+        sorted {
+            let a = $0.sortOrder ?? Int.max
+            let b = $1.sortOrder ?? Int.max
+            if a != b { return a < b }
+            return ($0.name ?? "").localizedStandardCompare($1.name ?? "") == .orderedAscending
+        }
     }
 }
 
