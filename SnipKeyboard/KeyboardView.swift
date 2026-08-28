@@ -811,18 +811,29 @@ struct KeyboardView: View {
                 name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
             NotificationCenter.default.post(
                 name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x000D)!))
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "switchKey"), object: nil)
+            switchKeyboardAfterPaste()
         case .change:
             NotificationCenter.default.post(
                 name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
-            NotificationCenter.default.post(
-                name: NSNotification.Name(rawValue: "switchKey"), object: nil)
+            switchKeyboardAfterPaste()
         case .space:
             NotificationCenter.default.post(
                 name: NSNotification.Name(rawValue: "addKey"), object: String(UnicodeScalar(0x0020)!))
         case .nothing:
             break
+        }
+    }
+
+    /// Destination of the "Switch" / "Return + Switch" paste actions. When the user has the
+    /// SnipKey QWERTY keyboard enabled, "switch" flips to it (same as the bottom bar's
+    /// Switch-to-keyboard button); otherwise keep the legacy behavior of advancing to the
+    /// next system keyboard.
+    private func switchKeyboardAfterPaste() {
+        if currentKeyboardSettings.isQWERTYKeyboardEnabled, let qState = qwertyStateFromEnvironment {
+            qState.showingSnippets = false
+        } else {
+            NotificationCenter.default.post(
+                name: NSNotification.Name(rawValue: "switchKey"), object: nil)
         }
     }
 
