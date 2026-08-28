@@ -187,55 +187,8 @@ struct SettingsView: View {
                     }
                     .tint(.orange)
 
-                    // DEBUG-only: Native Keyboard V2 + Smart Touch Targeting. Release builds always
-                    // run V2 with smart touch ON (locked via KeyboardFeatureFlags), so no toggles.
-                    #if DEBUG
-                    Toggle(isOn: $currentSettings.useNativeKeyboardV2) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(width: 28, height: 28)
-                                .background(Color.indigo)
-                                .cornerRadius(6)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Native Keyboard V2 (Beta)")
-                                    .font(.custom("IBMPlexMono-Medium", size: 15))
-                                Text("KeyboardKit-style with finger-slide & accents")
-                                    .font(.custom("IBMPlexMono-Regular", size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .tint(.indigo)
-                    .onChange(of: currentSettings.useNativeKeyboardV2) { _, newValue in
-                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
-                    }
-
-                    Toggle(isOn: $currentSettings.probabilisticTouchEnabled) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "target")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(width: 28, height: 28)
-                                .background(Color.teal)
-                                .cornerRadius(6)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Smart Touch Targeting")
-                                    .font(.custom("IBMPlexMono-Medium", size: 15))
-                                Text("Improves accuracy when typing fast")
-                                    .font(.custom("IBMPlexMono-Regular", size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .tint(.teal)
-                    .onChange(of: currentSettings.probabilisticTouchEnabled) { _, newValue in
-                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
-                    }
-                    #endif
+                    // DEBUG-only experimental toggles follow. The V2 keyboard and Smart Touch
+                    // Targeting are no longer toggleable — they are the only implementation.
 
                     Toggle(isOn: $currentSettings.autoCapitalizationEnabled) {
                         HStack(spacing: 12) {
@@ -576,14 +529,6 @@ struct SettingsView: View {
                     // Mirror SwiftData settings to the App Group so the keyboard extension
                     // can read them synchronously at launch.
                     AppGroupSettings.setBool(
-                        myCurrentSettings.useNativeKeyboardV2,
-                        forKey: AppGroupSettings.Key.useNativeKeyboardV2
-                    )
-                    AppGroupSettings.setBool(
-                        myCurrentSettings.probabilisticTouchEnabled,
-                        forKey: AppGroupSettings.Key.probabilisticTouchEnabled
-                    )
-                    AppGroupSettings.setBool(
                         myCurrentSettings.autoCapitalizationEnabled,
                         forKey: AppGroupSettings.Key.autoCapitalizationEnabled
                     )
@@ -630,8 +575,6 @@ struct SettingsView: View {
     private func resetKeyboardSettings() {
         currentSettings.afterPasteAction = .space
         currentSettings.isQWERTYKeyboardEnabled = false
-        currentSettings.useNativeKeyboardV2 = true
-        currentSettings.probabilisticTouchEnabled = true
         currentSettings.autoCapitalizationEnabled = true
         currentSettings.debugHitOverlayEnabled = false
         currentSettings.useProbabilisticHitResolver = true
@@ -639,8 +582,6 @@ struct SettingsView: View {
         currentSettings.remindersIntegrationEnabled = false
         currentSettings.reminderDestination = .snipKey
         currentSettings.timerIntegrationEnabled = false
-        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useNativeKeyboardV2)
-        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.probabilisticTouchEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)

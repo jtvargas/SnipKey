@@ -65,16 +65,6 @@ final class SettingsModel {
     /// This is an experimental feature — disabled by default.
     var isQWERTYKeyboardEnabled: Bool = false
 
-    /// When true, the keyboard uses the V2 (KeyboardKit-inspired) implementation with a single
-    /// root-gesture coordinator, finger-slide tracking, long-press accent menus, and a shared
-    /// callout overlay. **Default ON** as of Phase D — V2 is now the recommended keyboard.
-    var useNativeKeyboardV2: Bool = true
-
-    /// When true, character-key hit testing shifts boundaries based on English bigram weights
-    /// (e.g. after typing "t", the "h" key's hit area expands toward "g"). Matches native
-    /// iOS's always-on bigram-aware touch resolver. **Default ON** as of Phase I.
-    var probabilisticTouchEnabled: Bool = true
-
     /// When true, the keyboard auto-capitalizes at sentence starts and replaces lone "i"
     /// with "I" (matches the iOS system Auto-Capitalization setting). When false, the
     /// keyboard always starts lowercase and never auto-caps — the user must tap shift
@@ -120,8 +110,6 @@ final class SettingsModel {
     init(
         afterPasteAction: KeyboardAfterPasteAction = .space,
         isQWERTYKeyboardEnabled: Bool = false,
-        useNativeKeyboardV2: Bool = true,
-        probabilisticTouchEnabled: Bool = true,
         autoCapitalizationEnabled: Bool = true,
         autoSuggestionSpaceEnabled: Bool = false,
         debugHitOverlayEnabled: Bool = false,
@@ -134,8 +122,6 @@ final class SettingsModel {
         self.settingsId = "SnipKey-Settings"
         self.afterPasteAction = afterPasteAction
         self.isQWERTYKeyboardEnabled = isQWERTYKeyboardEnabled
-        self.useNativeKeyboardV2 = useNativeKeyboardV2
-        self.probabilisticTouchEnabled = probabilisticTouchEnabled
         self.autoCapitalizationEnabled = autoCapitalizationEnabled
         self.autoSuggestionSpaceEnabled = autoSuggestionSpaceEnabled
         self.debugHitOverlayEnabled = debugHitOverlayEnabled
@@ -156,8 +142,6 @@ enum AppGroupSettings {
     static let suite = "group.snipkey"
 
     enum Key {
-        static let useNativeKeyboardV2 = "useNativeKeyboardV2"
-        static let probabilisticTouchEnabled = "probabilisticTouchEnabled"
         static let autoCapitalizationEnabled = "autoCapitalizationEnabled"
         /// Legacy unused key retained so old App Group values do not need migration.
         static let autoSuggestionSpaceEnabled = "autoSuggestionSpaceEnabled"
@@ -216,17 +200,12 @@ enum AppGroupSettings {
 /// value (so the Settings → Experimental toggles still drive behavior). In RELEASE they return a
 /// locked constant, so shipping builds always run the intended configuration regardless of any
 /// stale App Group value a previous TestFlight/DEBUG build may have written:
-///   • V2 keyboard + Next-Gen + Smart Touch engines → always ON
+///   • Next-Gen touch engine → always ON
 ///   • debug hit-test overlay + shadow-mode logging → always OFF
 /// The corresponding Settings toggles are hidden in RELEASE (see SettingsView, `#if DEBUG`).
+/// The V2 keyboard and Smart Touch Targeting are no longer flags — they are the only
+/// implementation (always on in every configuration).
 enum KeyboardFeatureFlags {
-    static var useNativeKeyboardV2: Bool {
-        #if DEBUG
-        AppGroupSettings.bool(forKey: AppGroupSettings.Key.useNativeKeyboardV2, default: true)
-        #else
-        true
-        #endif
-    }
 
     static var useProbabilisticHitResolver: Bool {
         #if DEBUG
@@ -236,13 +215,6 @@ enum KeyboardFeatureFlags {
         #endif
     }
 
-    static var probabilisticTouchEnabled: Bool {
-        #if DEBUG
-        AppGroupSettings.bool(forKey: AppGroupSettings.Key.probabilisticTouchEnabled, default: true)
-        #else
-        true
-        #endif
-    }
 
     static var debugHitOverlayEnabled: Bool {
         #if DEBUG

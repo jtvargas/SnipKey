@@ -20,7 +20,7 @@ struct HostInputTraits {
     let smartDashesEnabled: Bool
     let autoCapitalizationEnabled: Bool
 
-    /// Sensible defaults used by the `.noop` actions (previews / V1 fallback).
+    /// Sensible defaults used by the `.noop` actions (previews).
     static let defaults = HostInputTraits(
         keyboardType: .default,
         autocapitalizationType: .sentences,
@@ -76,13 +76,6 @@ struct KeyboardActions {
     /// dimensions stuck on the width captured when `KeyboardActions` was initialized.
     let screenWidthProvider: () -> CGFloat
     var screenWidth: CGFloat { screenWidthProvider() }
-
-    /// Show character pop-up balloon above a key.
-    /// Parameters: character (already cased), key's visual frame in keyboard coordinates, isDark
-    let showPopup: (_ character: String, _ keyFrame: CGRect, _ isDark: Bool) -> Void
-
-    /// Hide the character pop-up balloon
-    let hidePopup: () -> Void
 
     /// Open the main SnipKey app (for settings access from the keyboard)
     let openApp: () -> Void
@@ -141,8 +134,7 @@ struct KeyboardActions {
     /// Rendered as a subtitle on the space bar when more than one mode is enabled.
     let activeInputLocaleCodes: () -> [String]
 
-    /// Shared V2 callout view, pre-mounted on `KeyboardViewController.view`.
-    /// Nil in the V1 path (V1 uses `KeyPopupView` instead) and in previews.
+    /// Shared V2 callout view, pre-mounted on `KeyboardViewController.view`. Nil in previews.
     /// The V2 gesture coordinator presents/dismisses it directly; rect conversion
     /// from coordinator coords to root-view coords happens via the coordinator
     /// converting through window coords (`convert(_:to:nil)` + `convert(_:from:nil)`).
@@ -156,8 +148,6 @@ struct KeyboardActions {
         advanceToNextInputMode: {},
         documentContextBeforeInput: { nil },
         screenWidthProvider: { 393 },
-        showPopup: { _, _, _ in },
-        hidePopup: {},
         openApp: {},
         hasFullAccess: { false },
         requestReminder: {},

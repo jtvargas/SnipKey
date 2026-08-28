@@ -32,15 +32,8 @@ final class KeyboardGestureCoordinator: UIView {
     private let calloutController: CalloutController
     private let spaceCursor = SpaceBarCursorController()
 
-    /// Cached "probabilistic touch enabled" setting. The value lives in App Group
-    /// UserDefaults (written by the host app's Settings screen) and cannot change while
-    /// the user is typing — flipping it requires leaving the keyboard. So we read it once
-    /// per keyboard session in `configure(...)` instead of on every character touch-down,
-    /// keeping the smart-touch hot path free of repeated settings lookups.
-    private var probabilisticTouchEnabled = KeyboardFeatureFlags.probabilisticTouchEnabled
-
     /// Staged-enablement flag for the 2D power-diagram resolver (V2 next-gen engine).
-    /// Cached once per session like `probabilisticTouchEnabled`. When off, the legacy 1D
+    /// Cached once per keyboard session in `configure(...)`. When off, the legacy 1D
     /// `SmartTouchResolver` path runs unchanged. See V2_KEYBOARD_NEXTGEN_PLAN.md.
     private var useProbabilisticHitResolver = KeyboardFeatureFlags.useProbabilisticHitResolver
 
@@ -260,7 +253,6 @@ final class KeyboardGestureCoordinator: UIView {
         self.actions = actions
         self.dims = dims
         // Refresh cached settings once per keyboard session (this is the cold-start seam).
-        probabilisticTouchEnabled = KeyboardFeatureFlags.probabilisticTouchEnabled
         useProbabilisticHitResolver = KeyboardFeatureFlags.useProbabilisticHitResolver
         shadowLoggingEnabled = KeyboardFeatureFlags.shadowLoggingEnabled
         nativeCommitTiming = KeyboardFeatureFlags.nativeCommitTiming
@@ -1201,9 +1193,6 @@ final class KeyboardGestureCoordinator: UIView {
 
     private func smartResolvedResult(rawKey: KeyFrame, at point: CGPoint, radius: CGFloat = 0) -> SmartResolvedResult {
         guard let state else { return SmartResolvedResult(key: rawKey, runnerUp: nil, margin: nil) }
-        guard probabilisticTouchEnabled else {
-            return SmartResolvedResult(key: rawKey, runnerUp: nil, margin: nil)
-        }
 
         // 2D power-diagram engine (V2 next-gen), gated to the letters page and fields that
         // allow smart transforms (excludes URL/email/number pads). Non-letters pages and
@@ -1240,7 +1229,6 @@ final class KeyboardGestureCoordinator: UIView {
             SmartTouchResolver.resolve(
                 rawKey: rawKey,
                 point: point,
-                enabled: probabilisticTouchEnabled,
                 frames: resolvedFrames,
                 touchContext: touchContext,
                 dims: dims

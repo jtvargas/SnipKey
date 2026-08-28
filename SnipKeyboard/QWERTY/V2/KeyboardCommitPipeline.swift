@@ -2,9 +2,8 @@
 //  KeyboardCommitPipeline.swift
 //  SnipKeyboard
 //
-//  Shared post-key-press side effects. Used by the V2 gesture coordinator;
-//  the V1 KeyButtonView calls into the same helpers indirectly via KeyboardActions
-//  so that auto-period and predictive triggers stay consistent across paths.
+//  Shared post-key-press side effects, used by the V2 gesture coordinator so that
+//  auto-period and predictive triggers stay consistent across commit paths.
 //
 //  Smart-punctuation and auto-cap-"i" transforms (Phase E) run AFTER `insertText`
 //  but BEFORE slash/predictive evaluation so the latter see the final text.
