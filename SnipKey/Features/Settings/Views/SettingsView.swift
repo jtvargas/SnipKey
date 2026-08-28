@@ -80,6 +80,13 @@ struct SettingsView: View {
     private var selectedAppearance: AppAppearance {
         AppAppearance(rawValue: appAppearance) ?? .system
     }
+
+    // MARK: - Feedback & Support URLs
+    /// Public repository — SnipKey is open source.
+    private static let githubRepoURL = URL(string: "https://github.com/jtvargas/SnipKey")!
+    /// GitHub "Choose Template" page (bug report / feature request templates live in
+    /// .github/ISSUE_TEMPLATE). Both the Feature Requests and Report a Bug rows land here.
+    private static let githubNewIssueURL = URL(string: "https://github.com/jtvargas/SnipKey/issues/new/choose")!
     
     var body: some View {
         NavigationStack {
@@ -406,6 +413,46 @@ struct SettingsView: View {
                 } header: {
                     Text("Help & Support")
                 }
+
+                // MARK: - Feedback & Support Section
+                Section {
+                    Button {
+                        openURL(Self.githubRepoURL)
+                    } label: {
+                        SettingsRow(
+                            icon: "chevron.left.forwardslash.chevron.right",
+                            iconColor: .purple,
+                            title: "Source Code"
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        openURL(Self.githubNewIssueURL)
+                    } label: {
+                        SettingsRow(
+                            icon: "lightbulb.fill",
+                            iconColor: .yellow,
+                            title: "Feature Requests"
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        openURL(Self.githubNewIssueURL)
+                    } label: {
+                        SettingsRow(
+                            icon: "ladybug.fill",
+                            iconColor: .red,
+                            title: "Report a Bug"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Feedback & Support")
+                } footer: {
+                    Text("SnipKey is open source. Browse the code, request features, or report bugs on GitHub.")
+                }
                 
                 // MARK: - About Section
                 Section {
@@ -446,18 +493,6 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                     
-                    Button {
-                        if let url = URL(string: "https://github.com/jtvargas/SnipKey") {
-                            openURL(url)
-                        }
-                    } label: {
-                        SettingsRow(
-                            icon: "chevron.left.forwardslash.chevron.right",
-                            iconColor: .purple,
-                            title: "Source Code (GitHub)"
-                        )
-                    }
-                    .buttonStyle(.plain)
                     
                     Button {
                         if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
@@ -472,19 +507,6 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                     
-                    Button {
-                        let urlString = "https://snipkey.jrtv.online/feedback-login?companyID=6611dc80cc35d4304dff22cd&redirect=https%3A%2F%2Fsnipkey.canny.io"
-                        if let url = URL(string: urlString) {
-                            openURL(url)
-                        }
-                    } label: {
-                        SettingsRow(
-                            icon: "lightbulb.fill",
-                            iconColor: .yellow,
-                            title: "Suggest Feature"
-                        )
-                    }
-                    .buttonStyle(.plain)
                     
                     Button {
                         if let url = URL(string: "https://snipkey.jrtv.online/contact-us") {
