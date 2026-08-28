@@ -593,8 +593,28 @@ class KeyboardViewController: UIInputViewController {
     }
     
     override func textWillChange(_ textInput: UITextInput?) {
-        // The app is about to change the document's contents. Perform any preparation here.
-        
+        // External document change incoming — the mirror can't vouch for the trailing
+        // text between will/did. textDidChange invalidates too; this closes the (rare)
+        // window where the pair straddles a runloop turn and a touch lands in between.
+        if !ownMutationInFlight && !ownCharacterInsertInFlight {
+            qwertyState.inputTracking.invalidateMirror()
+        }
+    }
+
+    /// Some hosts (WKWebView-backed fields are the known offender) report caret moves and
+    /// selection edits ONLY through the selection callbacks, never textDidChange — exactly
+    /// the stale-mirror case that mispicks a smart-quote direction. Invalidating here is
+    /// pure coverage: worst case the next flush re-seeds and re-validates the mirror.
+    override func selectionWillChange(_ textInput: UITextInput?) {
+        if !ownMutationInFlight && !ownCharacterInsertInFlight {
+            qwertyState.inputTracking.invalidateMirror()
+        }
+    }
+
+    override func selectionDidChange(_ textInput: UITextInput?) {
+        if !ownMutationInFlight && !ownCharacterInsertInFlight {
+            qwertyState.inputTracking.invalidateMirror()
+        }
     }
     
     override func textDidChange(_ textInput: UITextInput?) {

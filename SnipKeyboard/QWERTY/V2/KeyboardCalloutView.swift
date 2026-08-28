@@ -130,7 +130,9 @@ final class KeyboardCalloutView: UIView {
     func show(_ mode: CalloutMode, isDark: Bool, in parentWidth: CGFloat, animated: Bool = true, moveAnimated: Bool = false) {
         currentIsDark = isDark
         let wasInputMode: Bool = { if case .input = currentMode { return true }; return false }()
-        let oldPosition = layer.presentation()?.position ?? layer.position
+        // `presentation()` copies the layer — only pay for it on the glide path that
+        // consumes `oldPosition`. Fresh shows (every touch-down) pass moveAnimated: false.
+        let oldPosition = moveAnimated ? (layer.presentation()?.position ?? layer.position) : layer.position
         let oldSize = frame.size
 
         CATransaction.begin()

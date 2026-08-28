@@ -126,14 +126,18 @@ final class QWERTYInputTracking {
     }
 
     /// Track our own single backward deletion. Deleting past the mirrored window means
-    /// unknown text now trails the caret — invalidate rather than guess.
+    /// unknown text now trails the caret — invalidate rather than guess. A non-ASCII tail
+    /// also invalidates: `deleteBackward()` granularity is host-defined for composed
+    /// clusters (jamo, Indic sequences, emoji ZWJ), so the proxy may remove less than one
+    /// Swift `Character` — popping one grapheme could desync the mirror. The next
+    /// coalesced flush re-seeds it byte-exact either way.
     func mirrorDeleteBackward() {
         guard contextMirrorValid else { return }
-        if contextMirror.isEmpty {
+        guard let last = contextMirror.last, last.isASCII else {
             invalidateMirror()
-        } else {
-            contextMirror.removeLast()
+            return
         }
+        contextMirror.removeLast()
     }
 
     /// The document changed under us (host edit, caret move, direct proxy write).
