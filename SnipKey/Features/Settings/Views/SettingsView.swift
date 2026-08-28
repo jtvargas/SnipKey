@@ -87,6 +87,10 @@ struct SettingsView: View {
     /// GitHub "Choose Template" page (bug report / feature request templates live in
     /// .github/ISSUE_TEMPLATE). Both the Feature Requests and Report a Bug rows land here.
     private static let githubNewIssueURL = URL(string: "https://github.com/jtvargas/SnipKey/issues/new/choose")!
+    /// The policy is the versioned PRIVACY_POLICY.md in the open-source repo.
+    private static let privacyPolicyURL = URL(string: "https://github.com/jtvargas/SnipKey/blob/main/PRIVACY_POLICY.md")!
+    /// Contact goes to the developer's GitHub profile README.
+    private static let contactURL = URL(string: "https://github.com/jtvargas/jtvargas/blob/main/README.md")!
     
     var body: some View {
         NavigationStack {
@@ -481,23 +485,7 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                     
                     Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online") {
-                            openURL(url)
-                        }
-                    } label: {
-                        SettingsRow(
-                            icon: "globe",
-                            iconColor: .teal,
-                            title: "SnipKey Website"
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    
-                    
-                    Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online/privacy-policy") {
-                            openURL(url)
-                        }
+                        openURL(Self.privacyPolicyURL)
                     } label: {
                         SettingsRow(
                             icon: "hand.raised.fill",
@@ -506,12 +494,9 @@ struct SettingsView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    
-                    
+
                     Button {
-                        if let url = URL(string: "https://snipkey.jrtv.online/contact-us") {
-                            openURL(url)
-                        }
+                        openURL(Self.contactURL)
                     } label: {
                         SettingsRow(
                             icon: "envelope.fill",
