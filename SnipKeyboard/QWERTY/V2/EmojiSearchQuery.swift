@@ -26,11 +26,15 @@ struct EmojiSearchQuery {
         guard caret > 0 else { return }
         let index = text.index(text.startIndex, offsetBy: caret - 1)
         text.remove(at: index)
-        caret -= 1
+        caret = min(caret - 1, text.count)
     }
 
     mutating func moveCaret(by offset: Int) {
-        caret = min(max(0, caret + offset), text.count)
+        setCaret(to: caret + offset)
+    }
+
+    mutating func setCaret(to position: Int) {
+        caret = min(max(0, position), text.count)
     }
 
     mutating func clear() {

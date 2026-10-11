@@ -78,15 +78,13 @@ enum ReminderParser {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
     }()
 
-    /// Relative durations `NSDataDetector` won't parse — both compact shorthand ("10s", "2hr",
-    /// "1d", "2w") and spaced words ("15 min", "3 days", "2 weeks"), with an optional leading "in".
-    /// Group 1 = amount; group 2 = an **attached** unit (compact — single letters allowed);
-    /// group 3 = a **spaced** unit (multi-char only — a bare spaced "m"/"s" is intentionally NOT a
-    /// unit, so "2 m&ms" can't read as minutes). The optional "in " is inside the match so it's
-    /// stripped from the body cleanly.
+    /// Relative durations introduced by "in", or trailing compact durations. Clean boundaries
+    /// prevent decimals, negatives, and partial unit words from becoming temporal matches.
     private static let relativeRegex: NSRegularExpression? = {
-        try? NSRegularExpression(
-            pattern: #"\b(?:in\s+)?(\d+)(?:(secs?|mins?|hrs?|wks?|s|m|h|d|w)|\s+(seconds?|minutes?|hours?|days?|weeks?|months?|secs?|mins?|hrs?|wks?))\b"#,
+        let token = DurationExpression.tokenPattern
+        let sequence = token + "(?:" + DurationExpression.separatorPattern + token + ")*"
+        return try? NSRegularExpression(
+            pattern: #"(?<![\p{L}\p{N}.+\-])(?:in\s+)?("# + sequence + ")",
             options: [.caseInsensitive])
     }()
 
@@ -120,19 +118,17 @@ enum ReminderParser {
     static func parse(from context: String?) -> ParsedReminder? {
         guard let context, !context.isEmpty else { return nil }
 
-        // Cheap guard + anchor on the LAST "/remind" so earlier text never interferes.
-        let lower = context.lowercased()
-        guard let triggerRange = lower.range(of: trigger, options: .backwards) else { return nil }
-        let command = String(context[triggerRange.lowerBound...])
+        guard let command = CommandSource.suffix(in: context, trigger: trigger) else { return nil }
 
         let now = Date()
         let cal = Calendar.current
         var phrases: [String] = []   // temporal substrings to strip from the task body
+        var relativeSourceRange: Range<String.Index>?
         var fire: Date?
         var hadTemporal = false       // did we detect any time/date (vs. the bare now+1h fallback)?
 
         if let rel = matchRelative(in: command, now: now, cal: cal) {
-            phrases.append(rel.phrase); fire = rel.date; hadTemporal = true
+            relativeSourceRange = rel.range; fire = rel.date; hadTemporal = true
         } else if let special = matchSpecialDate(in: command, now: now, cal: cal) {
             phrases.append(special.phrase); fire = special.date; hadTemporal = true
         } else {
@@ -175,7 +171,9 @@ enum ReminderParser {
             resolved = cal.date(byAdding: .day, value: 1, to: resolved) ?? resolved
         }
 
-        let body = extractBody(from: command, removing: phrases)
+        var bodySource = command
+        if let relativeSourceRange { bodySource.removeSubrange(relativeSourceRange) }
+        let body = extractBody(from: bodySource, removing: phrases)
         // Show the pill only when there's a real task OR an explicit time — never for "/remind"
         // alone with nothing entered yet.
         guard body != "Reminder" || hadTemporal else { return nil }
@@ -197,52 +195,32 @@ enum ReminderParser {
         return h < 12 ? h + 12 : h
     }
 
-    /// Resolve a relative duration ("10s", "5m", "2hr", "1d", "2 weeks", "in 45m") to an exact
-    /// offset from now — same wall-clock time, never snapped to 9 AM (durations are unambiguous).
-    /// Returns the resolved date and the matched substring (incl. any leading "in").
-    private static func matchRelative(in command: String, now: Date, cal: Calendar) -> (date: Date, phrase: String)? {
+    /// Resolve the whole compound relative expression. Clock units represent elapsed time;
+    /// days/weeks/months use calendar arithmetic so local wall time survives daylight saving.
+    private static func matchRelative(in command: String, now: Date, cal: Calendar) -> (date: Date, range: Range<String.Index>)? {
         guard let regex = relativeRegex else { return nil }
-        let ns = NSRange(command.startIndex..<command.endIndex, in: command)
-        guard let m = regex.firstMatch(in: command, options: [], range: ns),
-              let full = Range(m.range, in: command),
-              let countRange = Range(m.range(at: 1), in: command),
-              let n = Int(command[countRange]) else {
-            return nil
+        let matches = regex.matches(in: command, range: NSRange(command.startIndex..., in: command))
+        guard let match = matches.last(where: { candidate in
+            guard let range = Range(candidate.range, in: command) else { return false }
+            return command[range].lowercased().hasPrefix("in ")
+                || command[range.upperBound...].trimmingCharacters(in: .whitespaces).isEmpty
+        }), let full = Range(match.range, in: command),
+            let expression = Range(match.range(at: 1), in: command),
+            let tokens = DurationExpression.parse(String(command[expression])) else { return nil }
+        var resolved = now
+        for token in tokens {
+            // Bounds keep calendar arithmetic meaningful and avoid integer overflow.
+            guard token.amount <= 1_000_000 else { return nil }
+            switch token.unit {
+            case .second: resolved = resolved.addingTimeInterval(Double(token.amount))
+            case .minute: resolved = resolved.addingTimeInterval(Double(token.amount) * 60)
+            case .hour: resolved = resolved.addingTimeInterval(Double(token.amount) * 3600)
+            default:
+                guard let next = cal.date(byAdding: token.unit, value: token.amount, to: resolved) else { return nil }
+                resolved = next
+            }
         }
-        // Unit comes from the attached (group 2) or spaced (group 3) branch, whichever matched.
-        let unitText: String
-        if let r = Range(m.range(at: 2), in: command) { unitText = String(command[r]) }
-        else if let r = Range(m.range(at: 3), in: command) { unitText = String(command[r]) }
-        else { return nil }
-
-        guard let unit = canonicalUnit(unitText) else { return nil }
-        let phrase = String(command[full])
-        let resolved: Date
-        switch unit {
-        case .second: resolved = now.addingTimeInterval(Double(n))
-        case .minute: resolved = now.addingTimeInterval(Double(n * 60))
-        case .hour:   resolved = now.addingTimeInterval(Double(n * 3600))
-        case .day:    resolved = cal.date(byAdding: .day, value: n, to: now) ?? now
-        case .week:   resolved = cal.date(byAdding: .day, value: n * 7, to: now) ?? now
-        case .month:  resolved = cal.date(byAdding: .month, value: n, to: now) ?? now
-        }
-        // UN requires a positive interval; guards "0m" and any clamp edge.
-        return (max(resolved, now.addingTimeInterval(1)), phrase)
-    }
-
-    private enum DurationUnit { case second, minute, hour, day, week, month }
-
-    /// Normalize every accepted synonym to a canonical unit.
-    private static func canonicalUnit(_ text: String) -> DurationUnit? {
-        switch text.lowercased() {
-        case "s", "sec", "secs", "second", "seconds":  return .second
-        case "m", "min", "mins", "minute", "minutes":  return .minute
-        case "h", "hr", "hrs", "hour", "hours":        return .hour
-        case "d", "day", "days":                        return .day
-        case "w", "wk", "wks", "week", "weeks":        return .week
-        case "month", "months":                         return .month
-        default:                                        return nil
-        }
+        return (max(resolved, now.addingTimeInterval(1)), full)
     }
 
     /// "next week" → next Monday 9 AM; "next month" → first day of next month 9 AM. `NSDataDetector`
@@ -301,6 +279,7 @@ enum ReminderParser {
               let h = Int(command[hourRange]) else {
             return nil
         }
+        guard (0...23).contains(h) else { return nil }
         return (mapBareHour(h), String(command[full]))
     }
 

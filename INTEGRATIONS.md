@@ -117,6 +117,12 @@ The second integration. `Settings → Integrations → Timers` enables a `/timer
 defaults to seconds) shows a **Create timer · 01:30:00** pill. Tapping it schedules a **SnipKey local
 notification** that fires when the countdown ends — the user stays in their current app.
 
+Hold the keyboard's top-left code button and choose **Timer** to insert `/timer `; this never
+schedules by itself. The same menu offers **Reminder**. Timer phrases also support
+`/timer one hour and five minutes`, `/timer for twenty-five minutes`, and `/timer an hour`.
+Duration grammar validates the entire expression; negative/decimal values and trailing junk do
+not become partial timers. Standalone command boundaries prevent activation inside URL paths.
+
 > AlarmKit (a system-managed countdown with a Lock Screen / Dynamic Island Live Activity) was
 > evaluated and **removed**: only the *foreground app* can create an AlarmKit timer / host its Live
 > Activity — a keyboard extension can't — so it would have required briefly switching into SnipKey on

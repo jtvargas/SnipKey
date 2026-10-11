@@ -259,10 +259,12 @@ Two complementary mechanisms guarantee every point resolves to exactly one key:
   `(keySize, neckLeftX)` so repeats are free (`KeyboardCalloutView.swift:256–329`).
 - **Action mode:** flat horizontal menu of accent/domain slots (44pt, 58pt for multi-char like
   `.com`), system-blue highlight on the selected slot. `shadowPath` set to avoid off-screen passes.
-- **Burst behavior ("callout glide"):** spring pop (`CASpringAnimation` stiffness 220, damping 20)
-  on the first press of a burst; if a new present arrives <150ms after the last dismiss, it snaps in
-  instantly (no spring) and dismisses instantly — so fast typing doesn't read as bouncing/dimming.
-  Burst window tracked via `CACurrentMediaTime()` in `CalloutController`.
+- **Animation ownership:** ordinary input pops immediately; sliding between same-size keys may
+  move for 70ms. Every presentation clears prior slide/scale animation before assigning geometry.
+  Release uses one explicit opacity fade (no competing implicit fade); cancellation snaps hidden.
+  The popup alone owns its frame—an enclosing emoji panel must not resize it to panel bounds.
+  A real UIKit host probe reproduced a stale slide surviving hide/new press before this fix and
+  confirmed it is removed afterward. Per-touch highlight release also disables implicit animation.
 
 ### 5.3 Special keys & native behaviors
 - **Slide gestures (native commit timing):** a pending letter press retargets across keys with
@@ -341,6 +343,26 @@ Repeated letters collapse geometrically; frequency distinguishes identical paths
 model, learned user vocabulary or non-English lexicon. Out-of-vocabulary names are best tapped.
 Candidate confidence is relative ranking, not a calibrated correctness probability.
 
+Trace and candidate templates now use the same spatial smoothing and arc-length resampling.
+Previously, smoothing rounded only the observed gesture, so even a key-center trace was compared
+with a different target shape. Both pipelines reuse the same scratch buffers; a running-sum box
+filter is linear and candidate scoring adds no per-word allocation. A soft in-key distance cost
+retains nearby-key evidence instead of discarding it inside a half-key-width dead zone. Rigid
+order/shape matching, endpoint gates, frequency priors and top-K pruning remain intact.
+
+A broader throwaway replay compared the prior decoder with this correction using the real
+50,000-word lexicon. Development: 270 words / 3,510 traces, top-1 **96.67% → 97.15%**, top-3
+**99.40% → 99.60%**. A disjoint 160-word / 2,080-trace set with stronger perturbations:
+top-1 **92.50% → 93.03%**, top-3 **98.65% → 98.85%** (25 top-1 gains, 14 losses).
+Modes include jitter, uneven speed, corner cutting, curvature, missing endpoints, adjacent-key
+bias, repeated-letter loops and sparse samples. Empty/single/stationary traces and zero-candidate
+requests still reject. These are synthetic ranking measurements, not real-user accuracy.
+Symmetric preprocessing costs more: host release-build p95 was approximately **2.2ms**, versus
+**1.5ms** before, after eliminating repeated segment-length square roots during resampling.
+Decoding remains synchronous at lift to preserve input order; phone latency
+and perceived accuracy require physical-device validation. Flexible alignment and asymmetric
+soft-distance variants were rejected after accuracy regressions.
+
 **SwiftKey evidence boundary.** The inspected Microsoft SwiftKey 4.3.7 IPA is FairPlay-encrypted.
 Exported symbols included `SKFlowGestureRecognizer` (`beforeRecognizedPoints`,
 `minimumDistanceToRecognize`), `SKFlowProcessor`, `flowEnabled`, `FlowSmootherCatmullRom`,
@@ -374,16 +396,29 @@ and **Snippets** destinations. Selection changes surfaces, never inserts the men
 VoiceOver exposes both destinations as custom actions. No new haptics are added.
 
 `EmojiKeyboardView` is lazily mounted as a full-height UIKit sibling of the native keys.
-Its reusable collection cells display nine Unicode categories, recent selections, and
-long-press skin-tone variants (including mixed-tone sequences). ABC returns to typing;
-backspace deletes host text and supports holding. Host appearance changes preserve search.
+`EmojiBrowseLayout` uses continuous horizontal, column-major four-row scrolling through recents
+and eight displayed categories (Smileys/People are combined without removing catalog entries).
+Category taps scroll to sections; scrolling updates the selected icon. Portrait density caps at
+eight columns. `EmojiSurfaceGeometry` fits all nine category icons between borderless ABC/delete
+controls; the selected icon has a circular background. Skin-tone/mixed-tone selection is retained.
 Surface changes cancel active key/delete/menu interactions and clear stale predictions.
 
-Search embeds the same native keys with an isolated state, context mirror, caret, actions,
-and callout. Query edits never reach the host document or summon another keyboard.
-Choosing a result inserts only its emoji. English names and category controls are accessible.
+Search uses a full-width rounded `EmojiSearchField`, a separate 52pt horizontal result strip,
+then the original-height native keys. The controller expands the extension only for this search
+surface. The `.emojiSearch` layout has wide 123/Done controls and no redundant emoji toggle.
+`EmojiSearchField` draws a grapheme-aware caret, supports tap/drag positioning and clear, and never
+becomes first responder. Native keys use isolated state, context mirror, caret, actions and callout;
+query edits never reach the host. Done returns to browsing; choosing a result inserts only its emoji.
+Catalog search runs off-main with cancellation and exact-query validation. Caret-only changes do not
+search, unchanged results do not reload or reset the horizontal offset, and the panel never assigns
+the popup's frame. Host appearance changes preserve search. Names and controls are accessible.
 Recents retain exact sequences, deduplicate, cap at 40, and use a local defaults mirror;
 shared App Group persistence is used only with Full Access. Browsing/search require no network.
+
+Verification used actual UIKit components in a temporary Mac Catalyst host (not a simulator):
+horizontal collection navigation, grapheme caret/clear actions, light/dark rendered snapshots,
+and the production key renderer below search/results. Geometry covered six widths and all three
+search key planes. These component probes do not replace physical-device touch/drag validation.
 
 `EmojiCatalog` decodes the bundled binary plist once off-main: 3,781 fully-qualified
 Unicode 16.0 sequences, 1,906 bases, nine categories. The data comes from
@@ -430,6 +465,29 @@ local grapheme/caret edits and recents persistence; English prefixes, `hte` → 
 `recieve` → `receive`, `thank ` → `you`, contextual `I c` → `can` versus `of c` → `course`,
 contractions, casing and boundaries. No permanent tests or simulator were added.
 UIKit layout, hold selection and real-host typing remain physical-device manual checks.
+
+### 5.8 Quick commands and natural duration phrases
+
+The top-left code button retains tap-to-insert `/`. Hold it for a native context menu containing
+Timer and Reminder; VoiceOver also exposes named actions. Each inserts `/timer ` or `/remind `,
+not a scheduled notification. Existing integration settings and explicit Create acceptance remain.
+
+`CommandInsertionPlan` computes a single selection-aware host edit. A selection receives insertion
+only; a live slash query is replaced only at a token boundary. Other text is retained with a
+separating space. The controller reads fresh host context, cancels stale touches/predictions and
+clears smart-space/auto-period state before applying the edit and coalescing side effects.
+
+`CommandSource` requires a standalone slash trigger and retains original Unicode source indexes.
+URLs, embedded/prefix triggers, a subsequent slash command, and newline-crossing text do not activate
+the timer/reminder parser. `DurationExpression` is shared by the two parsers: integer digits,
+English one–ninety-nine and a/an, compact units, and compound phrases such as `one hour and five
+minutes`. Timers also accept `for twenty-five minutes`. Relative reminders accept duration-before-task
+or a trailing duration; calendar days/weeks/months retain wall-clock semantics.
+
+The actual parser/insertion smoke identified 29 baseline gaps and passed 84 final checks, including
+false triggers, exact deletion spans, selected-text safety, huge values and calendar-relative days.
+Decimal/negative durations are rejected rather than partially harvested as unrelated integers.
+
 
 
 ---

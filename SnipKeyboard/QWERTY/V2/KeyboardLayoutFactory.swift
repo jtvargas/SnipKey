@@ -101,7 +101,7 @@ enum KeyboardLayoutFactory {
             dims: dims
         )
 
-        let bottomRow = bottomRow(profile: .standard, modeTarget: .letters, dims: dims)
+        let bottomRow = bottomRow(profile: profile == .emojiSearch ? .emojiSearch : .standard, modeTarget: .letters, dims: dims)
         return KeyboardLayout(rows: [topRow, middleRow, row2, bottomRow])
     }
 
@@ -111,7 +111,7 @@ enum KeyboardLayoutFactory {
         let lw = dims.letterKeyWidth
 
         let topRow = KeyboardRow(items: "[]{}#%^*+=".map { letterItem(String($0), width: lw) })
-        let middleChars: [String] = profile == .asciiCapable
+        let middleChars: [String] = profile == .asciiCapable || profile == .emojiSearch
             ? ["_", "\\", "|", "~", "<", ">", "`", "^", "{", "}"]
             : ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"]
         let middleRow = KeyboardRow(items: middleChars.map { letterItem($0, width: lw) })
@@ -124,7 +124,7 @@ enum KeyboardLayoutFactory {
             dims: dims
         )
 
-        let bottomRow = bottomRow(profile: .standard, modeTarget: .letters, dims: dims)
+        let bottomRow = bottomRow(profile: profile == .emojiSearch ? .emojiSearch : .standard, modeTarget: .letters, dims: dims)
         return KeyboardLayout(rows: [topRow, middleRow, row2, bottomRow])
     }
 
@@ -141,6 +141,13 @@ enum KeyboardLayoutFactory {
 
         let items: [KeyboardLayoutItem]
         switch profile {
+        case .emojiSearch:
+            let edgeWidth = (dims.usableRowWidth - 2 * dims.keyGap) * 0.24
+            items = [
+                KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(edgeWidth)),
+                KeyboardLayoutItem(action: .space, width: .available),
+                KeyboardLayoutItem(action: .returnKey, width: .points(edgeWidth)),
+            ]
         case .emailAddress:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),

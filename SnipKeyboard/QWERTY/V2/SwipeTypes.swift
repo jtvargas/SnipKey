@@ -32,8 +32,9 @@ struct SwipeKeyLayout: Equatable, Sendable {
     let hash: Int
 }
 
-/// A decoded word with a normalized confidence in 0…1 (1 = best). Results are sorted by
-/// descending confidence; the first entry is what commits.
+/// A decoded word with relative, normalized confidence in 0…1. Scores sum to one
+/// across returned candidates, not all possible words; they are not correctness
+/// probabilities. Results are best-first, and the first entry is what commits.
 struct SwipeCandidate: Equatable, Sendable {
     let word: String
     let confidence: Float

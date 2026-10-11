@@ -30,6 +30,9 @@ final class EmojiCatalog: Decodable, Sendable {
     let version: String
     let groups: [Group]
     let entries: [Entry]
+    /// Recents plus these eight categories fit the native-style footer. Source
+    /// groups remain intact for Unicode provenance and keyword search ordering.
+    let browseGroups: [Group]
     let indexByText: [String: Int]
     private let baseEntries: [Int]
 
@@ -42,6 +45,13 @@ final class EmojiCatalog: Decodable, Sendable {
         version = try container.decode(String.self, forKey: .version)
         groups = try container.decode([Group].self, forKey: .groups)
         entries = try container.decode([Entry].self, forKey: .entries)
+        browseGroups = [
+            Group(name: "Smileys & People", symbol: "face.smiling", entries: groups[0].entries + groups[1].entries),
+            Group(name: groups[2].name, symbol: "pawprint", entries: groups[2].entries),
+            Group(name: groups[3].name, symbol: "carrot", entries: groups[3].entries),
+            Group(name: groups[5].name, symbol: "soccerball", entries: groups[5].entries),
+            groups[4], groups[6], groups[7], groups[8]
+        ]
         indexByText = Dictionary(uniqueKeysWithValues: entries.enumerated().map { ($0.element.text, $0.offset) })
         baseEntries = groups.flatMap(\.entries)
     }
@@ -79,9 +89,15 @@ final class EmojiCatalog: Decodable, Sendable {
             }
         }
         if includesTones {
-            for index in entries.indices { consider(index) }
+            for index in entries.indices {
+                if index.isMultiple(of: 64), Task<Never, Never>.isCancelled { return [] }
+                consider(index)
+            }
         } else {
-            for index in baseEntries { consider(index) }
+            for (offset, index) in baseEntries.enumerated() {
+                if offset.isMultiple(of: 64), Task<Never, Never>.isCancelled { return [] }
+                consider(index)
+            }
         }
         var result = Array(exact.prefix(limit))
         result.reserveCapacity(limit)

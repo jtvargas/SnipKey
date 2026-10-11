@@ -511,7 +511,7 @@ final class KeyboardGestureCoordinator: UIView {
         swipe.cancelAll()
         swipeTrail.cancel()
         activePresses.removeAll()
-        calloutController.dismiss()
+        calloutController.dismiss(immediately: true)
         mostRecentTouchID = nil
     }
 

@@ -145,6 +145,9 @@ struct KeyboardActions {
     /// Rendered as a subtitle on the space bar when more than one input mode is enabled.
     let activeInputLocaleCodes: () -> [String]
 
+    /// Insert a command prefix through one selection-aware host transaction.
+    let insertQuickCommand: (String) -> Void
+
     /// Validate the current host context before accepting a toolbar candidate.
     let acceptPredictiveCandidate: (PredictiveCandidate) -> Void
 
@@ -180,6 +183,7 @@ struct KeyboardActions {
         adjustCaret: { _ in },
         inputTraits: { .defaults },
         activeInputLocaleCodes: { [] },
+        insertQuickCommand: { _ in },
         acceptPredictiveCandidate: { _ in },
         showSwipeAlternatives: { _, _ in },
         v2CalloutView: nil

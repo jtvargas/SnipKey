@@ -47,6 +47,7 @@ class KeyboardViewController: UIInputViewController {
     /// are no dead zones between keys. Only created when V2 is enabled.
     private var nativeV2KeysView: NativeKeyboardV2View?
     private var emojiKeyboardView: EmojiKeyboardView?
+    private var emojiSearchActive = false
     private var predictionContext: String?
     
     // MARK: - Slash Command
@@ -287,6 +288,9 @@ class KeyboardViewController: UIInputViewController {
             activeInputLocaleCodes: { [weak self] in
                 // O(1): computed in `refreshHostInputTraits`, never on a layout pass.
                 self?.cachedHostInputTraits.localeCodes ?? []
+            },
+            insertQuickCommand: { [weak self] command in
+                self?.insertQuickCommand(command)
             },
             acceptPredictiveCandidate: { [weak self] candidate in
                 self?.acceptPredictiveCandidate(candidate)
@@ -690,7 +694,7 @@ class KeyboardViewController: UIInputViewController {
         // Refresh the hot-path width cache here (off the keystroke path) so SwiftUI `dims` reads
         // stay rotation/Stage-Manager correct without walking the window/scene graph per body eval.
         cachedScreenWidth = newWidth
-        heightConstraint?.constant = KeyboardDimensions.totalHeight(forScreenWidth: newWidth)
+        updateKeyboardHeight(for: newWidth)
         // Only update QWERTY state when screen width actually changed (rotation)
         // This avoids doubling observable mutations since textDidChange also calls updateQWERTYState
         if newWidth != lastKnownWidth {
@@ -698,6 +702,16 @@ class KeyboardViewController: UIInputViewController {
             updateQWERTYState()
         }
         super.viewWillLayoutSubviews()
+    }
+
+    private func updateKeyboardHeight(for width: CGFloat? = nil) {
+        let base = KeyboardDimensions.totalHeight(forScreenWidth: width ?? keyboardScreenWidth())
+        let extra = qwertyState.surface == .emoji && emojiSearchActive
+            ? EmojiKeyboardView.searchAdditionalHeight : 0
+        let height = base + extra
+        guard heightConstraint?.constant != height else { return }
+        heightConstraint?.constant = height
+        view.setNeedsLayout()
     }
     
     /// Some hosts (WKWebView-backed fields are the known offender) report caret moves and
@@ -930,6 +944,31 @@ class KeyboardViewController: UIInputViewController {
         predictiveTextState.updateCandidates(candidates, partialWord: replaced)
     }
 
+    private func insertQuickCommand(_ command: String) {
+        guard isKeyboardVisible, qwertyState.surface == .typing,
+              command == "/timer " || command == "/remind " else { return }
+        let proxy = textDocumentProxy
+        let before = proxy.documentContextBeforeInput
+        let plan = CommandInsertionPlan.make(
+            command: command, contextBeforeInput: before,
+            contextAfterInput: proxy.documentContextAfterInput,
+            hasSelection: proxy.selectedText?.isEmpty == false
+        )
+        nativeV2KeysView?.cancelActiveInteraction()
+        qwertyState.inputTracking.contextMirror.reset(to: before)
+        qwertyState.inputTracking.pendingSmartSpace = false
+        qwertyState.inputTracking.resetAutoPeriodTracking()
+        qwertyState.inputTracking.touchContext.recordNonCharacter()
+        TouchOffsetModel.shared.discardPending()
+        resetPredictivePipeline()
+        slashCommandState.dismiss()
+        reminderSuggestionState.clear()
+        timerSuggestionState.clear()
+        for _ in 0..<plan.deleteCount { deleteOwnBackward() }
+        insertOwnText(plan.text)
+        scheduleSideEffectFlush()
+    }
+
     private func acceptPredictiveCandidate(_ candidate: PredictiveCandidate) {
         guard isKeyboardVisible, qwertyState.surface == .typing,
               predictiveTextState.candidates.contains(candidate),
@@ -1085,9 +1124,13 @@ class KeyboardViewController: UIInputViewController {
                     self.prepareEmojiEdit()
                     self.deleteOwnBackward()
                 }
-                let panel = EmojiKeyboardView(actions: actions) { [weak self] in
+                let panel = EmojiKeyboardView(actions: actions, onReturnToTyping: { [weak self] in
                     self?.qwertyState.surface = .typing
-                }
+                }, onSearchModeChanged: { [weak self] active in
+                    guard let self else { return }
+                    self.emojiSearchActive = active
+                    self.updateKeyboardHeight()
+                })
                 panel.translatesAutoresizingMaskIntoConstraints = false
                 view.insertSubview(panel, belowSubview: v2CalloutView)
                 NSLayoutConstraint.activate([
@@ -1104,6 +1147,7 @@ class KeyboardViewController: UIInputViewController {
             emojiKeyboardView?.isHidden = true
             if qwertyState.surface == .typing { scheduleSideEffectFlush() }
         }
+        updateKeyboardHeight()
     }
 
     private func prepareEmojiEdit() {

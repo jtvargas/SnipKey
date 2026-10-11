@@ -3,6 +3,7 @@ import Observation
 
 @MainActor
 final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    static let searchAdditionalHeight = EmojiSurfaceGeometry.searchAdditionalHeight
     private static let catalogTask = Task.detached(priority: .userInitiated) { () throws -> EmojiCatalog in
         guard let url = Bundle.main.url(forResource: "emoji-en", withExtension: "plist") else {
             throw CocoaError(.fileNoSuchFile)
@@ -12,40 +13,41 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
 
     private let actions: KeyboardActions
     private let onReturnToTyping: () -> Void
+    private let onSearchModeChanged: (Bool) -> Void
     private let recents = EmojiRecentsStore()
     private var catalog: EmojiCatalog?
     private var isDark = false
-    private var selectedGroup = 0 // -1 is Recents.
-    private var browseIndices: [Int] = []
+    private var selectedGroup = 0 // Section zero is Recents.
+    private var browseSections: [[Int]] = []
+    private var isAdjustingBrowseLayout = false
     private var matchIndices: [Int] = []
     private var isSearching = false
     private var query = EmojiSearchQuery()
     private var lastSearchedText: String?
+    private var searchWorker: Task<[Int], Never>?
     private var deleteTimer: Timer?
     private var variantPicker: EmojiVariantPicker?
 
     private let grid: UICollectionView
+    private let browseLayout: EmojiBrowseLayout
     private let matches: UICollectionView
-    private let searchButton = UIButton(type: .system)
-    private let cancelButton = UIButton(type: .system)
+    private let searchField = EmojiSearchField()
     private let abcButton = UIButton(type: .system)
     private let deleteButton = EmojiDeleteButton(type: .system)
-    private let categoryScroll = UIScrollView()
-    private var categoryButtons: [UIButton] = []
+    private var categoryButtons: [EmojiCategoryButton] = []
     private let statusLabel = UILabel()
     private let matchStatusLabel = UILabel()
     private let localState = QWERTYKeyboardState()
     private var searchKeyboard: NativeKeyboardV2View?
     private let localCallout = KeyboardCalloutView()
 
-    init(actions: KeyboardActions, onReturnToTyping: @escaping () -> Void) {
+    init(actions: KeyboardActions, onReturnToTyping: @escaping () -> Void,
+         onSearchModeChanged: @escaping (Bool) -> Void) {
         self.actions = actions
         self.onReturnToTyping = onReturnToTyping
-        let gridLayout = UICollectionViewFlowLayout()
-        gridLayout.minimumLineSpacing = 0
-        gridLayout.minimumInteritemSpacing = 0
-        gridLayout.sectionInset = UIEdgeInsets(top: 2, left: 4, bottom: 2, right: 4)
-        grid = UICollectionView(frame: .zero, collectionViewLayout: gridLayout)
+        self.onSearchModeChanged = onSearchModeChanged
+        browseLayout = EmojiBrowseLayout()
+        grid = UICollectionView(frame: .zero, collectionViewLayout: browseLayout)
         let matchLayout = UICollectionViewFlowLayout()
         matchLayout.scrollDirection = .horizontal
         matchLayout.minimumLineSpacing = 0
@@ -54,9 +56,10 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
         super.init(frame: .zero)
         configureViews()
         localState.surface = .typing
-        localState.layoutProfile = .asciiCapable
+        localState.layoutProfile = .emojiSearch
         localState.needsInputModeSwitchKey = false
         localState.returnKeyLabel = "Done"
+        localState.returnKeyIsProminent = true
         observeLocalSurface()
         Task { @MainActor [weak self] in
             do {
@@ -65,7 +68,7 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
             } catch {
                 self?.statusLabel.text = "Emoji data unavailable"
                 self?.statusLabel.isHidden = false
-                self?.searchButton.isEnabled = false
+                self?.searchField.isEnabled = false
             }
         }
     }
@@ -80,12 +83,12 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
         overrideUserInterfaceStyle = isDark ? .dark : .light
         localState.appearanceMode = isDark ? .dark : .light
         recents.reload(allowSharedAccess: actions.hasFullAccess())
-        if catalog != nil, selectedGroup == -1, !isSearching { updateBrowseItems() }
+        if catalog != nil, !isSearching { updateBrowseItems() }
         applyAppearance()
         if changedAppearance {
             dismissVariants()
-            grid.reloadData()
-            matches.reloadData()
+            refreshVisibleCells(in: grid)
+            refreshVisibleCells(in: matches)
         }
     }
 
@@ -104,7 +107,11 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
             collection.dataSource = self
             collection.delegate = self
             collection.showsHorizontalScrollIndicator = false
-            collection.alwaysBounceVertical = collection === grid
+            collection.alwaysBounceHorizontal = true
+            collection.alwaysBounceVertical = false
+            collection.showsVerticalScrollIndicator = false
+            collection.contentInsetAdjustmentBehavior = .never
+            collection.isDirectionalLockEnabled = true
             collection.register(EmojiCollectionCell.self, forCellWithReuseIdentifier: EmojiCollectionCell.reuseIdentifier)
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(holdEmoji(_:)))
             longPress.minimumPressDuration = 0.4
@@ -112,42 +119,34 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
             addSubview(collection)
         }
         matches.isHidden = true
-        searchButton.contentHorizontalAlignment = .leading
-        searchButton.setImage(UIImage(systemName: "magnifyingglass"), for: .normal)
-        searchButton.titleLabel?.font = UIFont(name: "IBMPlexMono-Regular", size: 13) ?? .systemFont(ofSize: 13)
-        searchButton.titleLabel?.lineBreakMode = .byTruncatingMiddle
-        searchButton.layer.cornerRadius = 7
-        searchButton.addTarget(self, action: #selector(searchTapped), for: .touchUpInside)
-        searchButton.accessibilityLabel = "Search emoji"
-        searchButton.isEnabled = false
-        addSubview(searchButton)
-        cancelButton.setTitle("Cancel", for: .normal)
-        cancelButton.titleLabel?.font = UIFont(name: "IBMPlexMono-Medium", size: 12) ?? .systemFont(ofSize: 12, weight: .medium)
-        cancelButton.addTarget(self, action: #selector(endSearch), for: .touchUpInside)
-        cancelButton.isHidden = true
-        addSubview(cancelButton)
+        searchField.onBeginEditing = { [weak self] in self?.searchTapped() }
+        searchField.onSetCaret = { [weak self] in
+            self?.query.setCaret(to: $0)
+            self?.queryCaretDidChange()
+        }
+        searchField.onClear = { [weak self] in
+            self?.query.clear()
+            self?.queryDidChange()
+        }
+        addSubview(searchField)
         abcButton.setTitle("ABC", for: .normal)
         abcButton.titleLabel?.font = .systemFont(ofSize: 16)
         abcButton.accessibilityLabel = "Return to typing"
         abcButton.addTarget(self, action: #selector(returnToTyping), for: .touchUpInside)
-        abcButton.layer.cornerRadius = 7
         addSubview(abcButton)
         deleteButton.setImage(UIImage(systemName: "delete.left"), for: .normal)
         deleteButton.accessibilityLabel = "Delete backward"
-        deleteButton.layer.cornerRadius = 7
         deleteButton.addTarget(self, action: #selector(beginDeleting), for: .touchDown)
         deleteButton.addTarget(self, action: #selector(stopDeleting), for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
         addSubview(deleteButton)
-        categoryScroll.showsHorizontalScrollIndicator = false
-        categoryScroll.accessibilityLabel = "Emoji categories"
-        addSubview(categoryScroll)
+        deleteButton.setPreferredSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 22), forImageIn: .normal)
         statusLabel.text = "Loading emoji…"
-        statusLabel.font = UIFont(name: "IBMPlexMono-Regular", size: 13) ?? .systemFont(ofSize: 13)
+        statusLabel.font = .systemFont(ofSize: 14)
         statusLabel.numberOfLines = 0
         statusLabel.textAlignment = .center
         statusLabel.isUserInteractionEnabled = false
         addSubview(statusLabel)
-        matchStatusLabel.font = UIFont(name: "IBMPlexMono-Regular", size: 11) ?? .systemFont(ofSize: 11)
+        matchStatusLabel.font = .systemFont(ofSize: 14)
         matchStatusLabel.textAlignment = .center
         matchStatusLabel.numberOfLines = 2
         matchStatusLabel.isUserInteractionEnabled = false
@@ -155,28 +154,29 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
         addSubview(matchStatusLabel)
         localCallout.isUserInteractionEnabled = false
         addSubview(localCallout)
-        updateSearchButton()
+        updateSearchField()
         applyAppearance()
     }
 
     private func install(_ catalog: EmojiCatalog) {
         self.catalog = catalog
         recents.reload(allowSharedAccess: actions.hasFullAccess())
-        selectedGroup = recents.sequences.contains(where: { catalog.indexByText[$0] != nil }) ? -1 : 0
-        let names = ["Recents"] + catalog.groups.map(\.name)
-        let symbols = ["clock"] + catalog.groups.map(\.symbol)
+        selectedGroup = recents.sequences.contains(where: { catalog.indexByText[$0] != nil }) ? 0 : 1
+        let names = ["Recents"] + catalog.browseGroups.map(\.name)
+        let symbols = ["clock"] + catalog.browseGroups.map(\.symbol)
         for index in names.indices {
-            let button = UIButton(type: .system)
-            button.tag = index - 1
+            let button = EmojiCategoryButton(frame: .zero)
+            button.tag = index
             button.setImage(UIImage(systemName: symbols[index]), for: .normal)
             button.accessibilityLabel = names[index]
-            button.layer.cornerRadius = 7
             button.addTarget(self, action: #selector(selectCategory(_:)), for: .touchUpInside)
-            categoryScroll.addSubview(button)
+            addSubview(button)
             categoryButtons.append(button)
         }
-        searchButton.isEnabled = true
+        searchField.isEnabled = true
         updateBrowseItems()
+        layoutIfNeeded()
+        scrollToCategory(selectedGroup, animated: false)
         applyAppearance()
         setNeedsLayout()
     }
@@ -184,70 +184,112 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
     override func layoutSubviews() {
         super.layoutSubviews()
         let dims = KeyboardDimensions(screenWidth: bounds.width)
-        let toolbarHeight = dims.toolbarHeight
-        let footerHeight: CGFloat = 46
+        let frames = EmojiSurfaceGeometry(size: bounds.size, headerHeight: dims.toolbarHeight,
+                                          keysHeight: dims.keysAreaHeight, categoryCount: categoryButtons.count)
+        searchField.frame = frames.search
         if isSearching {
-            let queryWidth = min(108, bounds.width * 0.29)
-            searchButton.frame = CGRect(x: 4, y: 3, width: queryWidth, height: toolbarHeight - 6)
-            cancelButton.frame = CGRect(x: bounds.width - 58, y: 0, width: 58, height: toolbarHeight)
-            let matchFrame = CGRect(x: queryWidth + 8, y: 0, width: max(0, bounds.width - queryWidth - 66), height: toolbarHeight)
-            if matches.frame != matchFrame {
-                matches.frame = matchFrame
+            if matches.frame != frames.results {
+                matches.frame = frames.results
                 matches.collectionViewLayout.invalidateLayout()
             }
-            matchStatusLabel.frame = matchFrame
-            searchKeyboard?.frame = CGRect(x: 0, y: toolbarHeight, width: bounds.width, height: max(0, bounds.height - toolbarHeight))
+            matchStatusLabel.frame = frames.results
+            searchKeyboard?.frame = frames.keys
         } else {
-            searchButton.frame = CGRect(x: 6, y: 4, width: max(0, bounds.width - 12), height: toolbarHeight - 8)
-            let gridFrame = CGRect(x: 0, y: toolbarHeight, width: bounds.width, height: max(0, bounds.height - toolbarHeight - footerHeight))
-            if grid.frame != gridFrame {
-                grid.frame = gridFrame
-                grid.collectionViewLayout.invalidateLayout()
+            isAdjustingBrowseLayout = true
+            let changedSize = grid.bounds.size != frames.browse.size
+            if grid.frame != frames.browse { grid.frame = frames.browse }
+            if changedSize {
+                browseLayout.invalidateLayout()
+                grid.layoutIfNeeded()
+                scrollToCategory(selectedGroup, animated: false)
             }
-            statusLabel.frame = gridFrame.insetBy(dx: 20, dy: 0)
-            abcButton.frame = CGRect(x: 4, y: bounds.height - footerHeight + 2, width: 48, height: 42)
-            deleteButton.frame = CGRect(x: bounds.width - 48, y: bounds.height - footerHeight + 2, width: 44, height: 42)
-            categoryScroll.frame = CGRect(x: 56, y: bounds.height - footerHeight, width: max(0, bounds.width - 108), height: footerHeight)
+            isAdjustingBrowseLayout = false
+            statusLabel.frame = frames.browse.insetBy(dx: 20, dy: 0)
+            abcButton.frame = frames.abc
+            deleteButton.frame = frames.delete
             for (index, button) in categoryButtons.enumerated() {
-                button.frame = CGRect(x: CGFloat(index) * 44, y: 1, width: 44, height: 44)
+                button.frame = frames.categories[index]
             }
-            categoryScroll.contentSize = CGSize(width: CGFloat(categoryButtons.count) * 44, height: footerHeight)
         }
-        localCallout.frame = bounds
+        // KeyboardCalloutView owns its balloon frame; resizing it here races the
+        // pressed-key presentation and causes flashes on every query/layout update.
         variantPicker?.frame = bounds
     }
 
     private func applyAppearance() {
         let foreground: UIColor = isDark ? .white : .black
-        let keyColor = isDark ? UIColor(white: 0.4, alpha: 0.55) : UIColor(red: 0.674, green: 0.704, blue: 0.747, alpha: 0.88)
-        for button in [searchButton, abcButton, deleteButton, cancelButton] { button.tintColor = foreground }
-        for button in [searchButton, abcButton, deleteButton] { button.backgroundColor = keyColor }
-        statusLabel.textColor = foreground.withAlphaComponent(0.7)
-        matchStatusLabel.textColor = foreground.withAlphaComponent(0.7)
+        let selectedColor = foreground.withAlphaComponent(isDark ? 0.12 : 0.10)
+        searchField.backgroundColor = foreground.withAlphaComponent(isDark ? 0.09 : 0.07)
+        abcButton.tintColor = foreground
+        deleteButton.tintColor = foreground
+        statusLabel.textColor = .secondaryLabel
+        matchStatusLabel.textColor = .secondaryLabel
         for button in categoryButtons {
             let selected = button.tag == selectedGroup
-            button.tintColor = foreground.withAlphaComponent(selected ? 1 : 0.65)
-            button.backgroundColor = selected ? keyColor : .clear
+            button.isSelected = selected
+            button.tintColor = foreground.withAlphaComponent(selected ? 1 : 0.72)
+            button.setSelectionColor(selectedColor)
             button.accessibilityTraits = selected ? [.button, .selected] : .button
         }
     }
 
     @objc private func selectCategory(_ sender: UIButton) {
         dismissVariants()
-        selectedGroup = sender.tag
         updateBrowseItems()
-        grid.setContentOffset(.zero, animated: false)
+        selectedGroup = sender.tag
+        scrollToCategory(selectedGroup, animated: !UIAccessibility.isReduceMotionEnabled)
+        updateBrowseStatus()
         applyAppearance()
     }
 
     private func updateBrowseItems() {
         guard let catalog else { return }
-        browseIndices = selectedGroup == -1
-            ? recents.sequences.compactMap { catalog.indexByText[$0] }
-            : catalog.groups[selectedGroup].entries
-        statusLabel.text = "Recently used emoji appear here"
-        statusLabel.isHidden = !browseIndices.isEmpty || isSearching
+        let recentIndices = recents.sequences.compactMap { catalog.indexByText[$0] }
+        if browseSections.isEmpty {
+            browseSections = [recentIndices] + catalog.browseGroups.map(\.entries)
+        } else {
+            guard browseSections[0] != recentIndices else { return }
+            browseSections[0] = recentIndices
+        }
+        isAdjustingBrowseLayout = true
+        defer { isAdjustingBrowseLayout = false }
+        let previousOffset = browseLayout.geometry.sectionOffsets.indices.contains(selectedGroup)
+            ? grid.contentOffset.x - browseLayout.geometry.sectionOffsets[selectedGroup] : 0
+        browseLayout.itemCounts = browseSections.map(\.count)
         grid.reloadData()
+        grid.layoutIfNeeded()
+        if browseLayout.geometry.sectionOffsets.indices.contains(selectedGroup) {
+            let x = browseLayout.geometry.offset(forSection: selectedGroup) + max(0, previousOffset)
+            grid.setContentOffset(CGPoint(x: min(x, max(0, grid.contentSize.width - grid.bounds.width)), y: 0), animated: false)
+        }
+        updateBrowseStatus()
+    }
+
+    private func scrollToCategory(_ section: Int, animated: Bool) {
+        grid.layoutIfNeeded()
+        guard browseLayout.geometry.sectionOffsets.indices.contains(section) else { return }
+        grid.setContentOffset(CGPoint(x: browseLayout.geometry.offset(forSection: section), y: 0), animated: animated)
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard scrollView === grid, !isSearching, !isAdjustingBrowseLayout,
+              let section = browseLayout.geometry.section(atOffset: grid.contentOffset.x),
+              section != selectedGroup else { return }
+        selectedGroup = section
+        updateBrowseStatus()
+        applyAppearance()
+    }
+
+    private func updateBrowseStatus() {
+        statusLabel.text = "Recently used emoji appear here"
+        statusLabel.isHidden = isSearching || selectedGroup != 0 || !(browseSections.first?.isEmpty ?? true)
+    }
+
+    private func refreshVisibleCells(in collection: UICollectionView) {
+        for path in collection.indexPathsForVisibleItems {
+            guard let cell = collection.cellForItem(at: path) as? EmojiCollectionCell else { continue }
+            configure(cell, in: collection, at: path)
+        }
     }
 
     private func selectEmoji(_ index: Int) {
@@ -261,31 +303,37 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
         // next category selection/presentation rather than moving the tapped item.
     }
 
+    func numberOfSections(in collectionView: UICollectionView) -> Int {
+        collectionView === grid ? browseSections.count : 1
+    }
+
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        collectionView === grid ? browseIndices.count : matchIndices.count
+        collectionView === grid ? browseSections[section].count : matchIndices.count
     }
 
     private func entryIndex(in collection: UICollectionView, at indexPath: IndexPath) -> Int {
-        collection === grid ? browseIndices[indexPath.item] : matchIndices[indexPath.item]
+        collection === grid ? browseSections[indexPath.section][indexPath.item] : matchIndices[indexPath.item]
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: EmojiCollectionCell.reuseIdentifier, for: indexPath) as! EmojiCollectionCell
-        guard let catalog else { return cell }
+        configure(cell, in: collectionView, at: indexPath)
+        return cell
+    }
+
+    private func configure(_ cell: EmojiCollectionCell, in collectionView: UICollectionView, at indexPath: IndexPath) {
+        guard let catalog else { return }
         let index = entryIndex(in: collectionView, at: indexPath)
         let entry = catalog.entries[index]
         let hasVariants = !catalog.entries[entry.base].variants.isEmpty
         let chooseVariant: (() -> Void)? = hasVariants ? { [weak self] in self?.showVariants(for: index) } : nil
         cell.configure(entry: entry, hasVariants: hasVariants, isDark: isDark, chooseVariant: chooseVariant)
-        return cell
     }
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout,
                         sizeForItemAt indexPath: IndexPath) -> CGSize {
-        if collectionView === matches { return CGSize(width: 44, height: 44) }
-        let width = max(0, collectionView.bounds.width - 8)
-        let columns = max(1, Int(width / 44))
-        return CGSize(width: floor(width / CGFloat(columns)), height: 48)
+        CGSize(width: max(44, collectionView.bounds.width / CGFloat(max(1, Int(collectionView.bounds.width / 48)))),
+               height: Self.searchAdditionalHeight)
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -366,69 +414,86 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
         }
         updateSearchVisibility()
         refreshSearch()
-        UIAccessibility.post(notification: .layoutChanged, argument: searchButton)
+        onSearchModeChanged(true)
+        UIAccessibility.post(notification: .layoutChanged, argument: searchField)
     }
 
     @objc private func endSearch() {
         guard isSearching else { return }
         cancelInteraction()
         isSearching = false
+        searchWorker?.cancel()
+        searchWorker = nil
         query.clear()
         lastSearchedText = nil
         localState.surface = .typing
         localState.inputTracking.contextMirror.reset(to: nil)
         updateBrowseItems()
         updateSearchVisibility()
-        UIAccessibility.post(notification: .layoutChanged, argument: searchButton)
+        onSearchModeChanged(false)
+        UIAccessibility.post(notification: .layoutChanged, argument: searchField)
     }
 
     private func updateSearchVisibility() {
         grid.isHidden = isSearching
-        categoryScroll.isHidden = isSearching
+        categoryButtons.forEach { $0.isHidden = isSearching }
         abcButton.isHidden = isSearching
         deleteButton.isHidden = isSearching
         matches.isHidden = !isSearching
-        cancelButton.isHidden = !isSearching
         searchKeyboard?.isHidden = !isSearching
-        statusLabel.isHidden = isSearching || !browseIndices.isEmpty
+        updateBrowseStatus()
         matchStatusLabel.isHidden = !isSearching || !matchIndices.isEmpty
-        updateSearchButton()
+        updateSearchField()
         setNeedsLayout()
     }
 
-    private func updateSearchButton() {
-        searchButton.setTitle(isSearching ? " " + (query.text.isEmpty ? "Search" : query.text) : " Search emoji", for: .normal)
-        searchButton.accessibilityValue = isSearching ? (query.text.isEmpty ? "Empty query" : query.text) : nil
-        searchButton.accessibilityHint = isSearching ? "Type using the keys below. Text stays in emoji search." : "Opens local emoji search."
-        searchButton.accessibilityCustomActions = isSearching ? [UIAccessibilityCustomAction(name: "Clear search") { [weak self] _ in
-            guard let self else { return false }
-            self.query.clear()
-            self.queryDidChange()
-            return true
-        }] : nil
+    private func updateSearchField() {
+        searchField.update(text: query.text, caret: query.caret, isEditing: isSearching)
     }
 
     private func refreshSearch() {
         guard let catalog, isSearching, lastSearchedText != query.text else { return }
-        lastSearchedText = query.text
-        matchIndices = query.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? (recents.sequences.isEmpty ? Array(catalog.groups[0].entries.prefix(40)) : recents.sequences.compactMap { catalog.indexByText[$0] })
-            : catalog.search(query.text)
-        updateSearchButton()
-        matches.reloadData()
-        matches.setContentOffset(.zero, animated: false)
+        let text = query.text
+        lastSearchedText = text
+        searchWorker?.cancel()
+        searchWorker = nil
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let recentIndices = recents.sequences.compactMap { catalog.indexByText[$0] }
+            applyMatches(recentIndices.isEmpty ? Array(catalog.browseGroups[0].entries.prefix(40)) : recentIndices)
+            return
+        }
+        let worker = Task.detached(priority: .userInitiated) { catalog.search(text) }
+        searchWorker = worker
+        Task { @MainActor [weak self] in
+            let indices = await worker.value
+            guard !worker.isCancelled, let self, self.isSearching, self.query.text == text else { return }
+            self.applyMatches(indices)
+        }
+    }
+
+    private func applyMatches(_ indices: [Int]) {
+        if matchIndices != indices {
+            matchIndices = indices
+            matches.reloadData()
+            matches.setContentOffset(.zero, animated: false)
+        }
         matchStatusLabel.text = "No matches"
-        matchStatusLabel.isHidden = !matchIndices.isEmpty
+        matchStatusLabel.isHidden = !isSearching || !matchIndices.isEmpty
     }
 
     private func queryDidChange() {
-        localState.inputTracking.contextMirror.reset(to: query.contextBeforeInput)
+        queryCaretDidChange()
         refreshSearch()
     }
 
     private func moveQueryCaret(by offset: Int) {
         query.moveCaret(by: offset)
+        queryCaretDidChange()
+    }
+
+    private func queryCaretDidChange() {
         localState.inputTracking.contextMirror.reset(to: query.contextBeforeInput)
+        updateSearchField()
     }
 
     private func observeLocalSurface() {
@@ -476,6 +541,7 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
             },
             adjustCaret: { [weak self] in self?.moveQueryCaret(by: $0) },
             inputTraits: { traits }, activeInputLocaleCodes: { [] },
+            insertQuickCommand: { _ in },
             acceptPredictiveCandidate: { _ in }, showSwipeAlternatives: { _, _ in },
             v2CalloutView: localCallout
         )

@@ -94,6 +94,8 @@ struct QWERTYKeyboardLayout {
 
     static func bottomRow(for profile: KeyboardLayoutProfile, modeTarget: KeyboardPage) -> [KeyAction] {
         switch profile {
+        case .emojiSearch:
+            return [.modeChange(modeTarget), .space, .returnKey]
         case .emailAddress:
             return [
                 .modeChange(modeTarget),

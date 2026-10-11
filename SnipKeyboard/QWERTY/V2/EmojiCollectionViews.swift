@@ -1,6 +1,89 @@
 import UIKit
 
 @MainActor
+final class EmojiBrowseLayout: UICollectionViewLayout {
+    var itemCounts: [Int] = [] {
+        didSet { if oldValue != itemCounts { invalidateLayout() } }
+    }
+    private(set) var geometry = EmojiBrowseGeometry(viewport: .zero, itemCounts: [])
+
+    override func prepare() {
+        super.prepare()
+        guard let collectionView else { return }
+        if geometry.viewport != collectionView.bounds.size || geometry.itemCounts != itemCounts {
+            geometry = EmojiBrowseGeometry(viewport: collectionView.bounds.size, itemCounts: itemCounts)
+        }
+    }
+
+    override var collectionViewContentSize: CGSize { geometry.contentSize }
+
+    override func shouldInvalidateLayout(forBoundsChange newBounds: CGRect) -> Bool {
+        newBounds.size != geometry.viewport
+    }
+
+    override func layoutAttributesForItem(at indexPath: IndexPath) -> UICollectionViewLayoutAttributes? {
+        guard geometry.itemCounts.indices.contains(indexPath.section),
+              (0..<geometry.itemCounts[indexPath.section]).contains(indexPath.item) else { return nil }
+        let attributes = UICollectionViewLayoutAttributes(forCellWith: indexPath)
+        attributes.frame = geometry.frame(section: indexPath.section, item: indexPath.item)
+        return attributes
+    }
+
+    override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
+        guard geometry.cellSize.width > 0 else { return [] }
+        var attributes: [UICollectionViewLayoutAttributes] = []
+        for section in geometry.itemCounts.indices {
+            let start = geometry.sectionOffsets[section] + 4
+            let end = geometry.sectionOffsets[section] + geometry.sectionWidths[section]
+            guard rect.maxX >= start, rect.minX <= end else { continue }
+            let firstColumn = max(0, Int(floor((rect.minX - start) / geometry.cellSize.width)))
+            let lastColumn = max(firstColumn, Int(floor((rect.maxX - start) / geometry.cellSize.width)))
+            let first = min(geometry.itemCounts[section], firstColumn * EmojiBrowseGeometry.rows)
+            let endItem = min(geometry.itemCounts[section], (lastColumn + 1) * EmojiBrowseGeometry.rows)
+            for item in first..<endItem {
+                if let value = layoutAttributesForItem(at: IndexPath(item: item, section: section)) {
+                    attributes.append(value)
+                }
+            }
+        }
+        return attributes
+    }
+}
+
+@MainActor
+final class EmojiCategoryButton: UIButton {
+    private let selectionBackground = UIView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        selectionBackground.isUserInteractionEnabled = false
+        selectionBackground.isHidden = true
+        insertSubview(selectionBackground, at: 0)
+        setPreferredSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 20, weight: .regular), forImageIn: .normal)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
+
+    override var isSelected: Bool {
+        didSet { selectionBackground.isHidden = !isSelected }
+    }
+
+    override var isHighlighted: Bool {
+        didSet { alpha = isHighlighted ? 0.5 : 1 }
+    }
+
+    func setSelectionColor(_ color: UIColor) { selectionBackground.backgroundColor = color }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let side = max(0, min(32, bounds.width - 2, bounds.height - 4))
+        selectionBackground.frame = CGRect(x: (bounds.width - side) / 2, y: (bounds.height - side) / 2, width: side, height: side)
+        selectionBackground.layer.cornerRadius = side / 2
+        sendSubviewToBack(selectionBackground)
+    }
+}
+
+@MainActor
 final class EmojiCollectionCell: UICollectionViewCell {
     static let reuseIdentifier = "EmojiCollectionCell"
     private let glyph = UILabel()
@@ -25,13 +108,15 @@ final class EmojiCollectionCell: UICollectionViewCell {
     override func layoutSubviews() {
         super.layoutSubviews()
         glyph.frame = contentView.bounds.insetBy(dx: 2, dy: 1)
-        variantMark.frame = CGRect(x: contentView.bounds.maxX - 7, y: contentView.bounds.maxY - 7, width: 4, height: 4)
+        let fontSize = min(34, max(18, min(bounds.width, bounds.height) - 8))
+        if glyph.font.pointSize != fontSize { glyph.font = .systemFont(ofSize: fontSize) }
+        variantMark.frame = CGRect(x: contentView.bounds.maxX - 7, y: contentView.bounds.maxY - 6, width: 3, height: 3)
     }
 
     func configure(entry: EmojiCatalog.Entry, hasVariants: Bool, isDark: Bool,
                    chooseVariant: (() -> Void)? = nil) {
         glyph.text = entry.text
-        glyph.font = .systemFont(ofSize: bounds.height < 45 ? 28 : 32)
+        setNeedsLayout()
         accessibilityLabel = entry.name
         accessibilityHint = hasVariants ? "Double-tap to insert. Skin tones available in Actions." : "Double-tap to insert."
         variantMark.isHidden = !hasVariants
@@ -93,7 +178,7 @@ final class EmojiVariantPicker: UIView, UICollectionViewDataSource, UICollection
         card.layer.shadowRadius = 8
         addSubview(card)
         titleLabel.text = "Skin tones"
-        titleLabel.font = UIFont(name: "IBMPlexMono-Medium", size: 14) ?? .systemFont(ofSize: 14, weight: .medium)
+        titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
         titleLabel.textColor = isDark ? .white : .black
         titleLabel.accessibilityTraits = .header
         card.addSubview(titleLabel)

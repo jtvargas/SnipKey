@@ -8,8 +8,8 @@
 //  Shape/location matching inspired by Kristensson & Zhai's SHARK2 (UIST 2004), with a
 //  unigram frequency prior. This is not a reproduction of SHARK2 or a proprietary decoder.
 //
-//  1. Preprocess: merge trace points closer than `minimumPointSpacing`, measure the path
-//     length, resample to `sampleCount` points equidistant by arc length.
+//  1. Preprocess: merge trace points closer than `minimumPointSpacing`, resample uniformly,
+//     spatially smooth, then remeasure and resample to `sampleCount` arc-length points.
 //  2. Candidates: the first letter must have its key center within `firstLetterRadius`
 //     key widths of the first trace point, the last within `lastLetterRadius` of the last
 //     point (lift-off is sloppier than touch-down; the nearest key is always included).
@@ -17,16 +17,15 @@
 //     word is skipped when its template path length is outside
 //     [minimumLengthRatio, maximumLengthRatio] × trace length.
 //  3. Template: the polyline through the word's key centers with consecutive repeated
-//     letters collapsed ("hello" → h-e-l-o), resampled like the trace.
-//  4. Location channel: mean over samples of max(0, ‖tᵢ − wᵢ‖ − r), r = `locationTolerance`
-//     key widths, with the first/last `endSampleCount` samples weighted
-//     `endSampleWeight`×.
+//     letters collapsed ("hello" → h-e-l-o). Apply the same spatial smoothing and
+//     resampling as the trace so preprocessing does not introduce a shape mismatch.
+//  4. Location channel: key-width-normalized distance with a soft in-key tolerance.
+//     Even small deviations retain a cost: nearby keys must not become frequency-only ties.
 //  5. Shape channel: both polylines translated to their centroid and scaled by the larger
-//     bounding-box side (so a word's shape is compared independent of where and how big
-//     it was drawn); mean sample distance.
-//  6. cost = endpointWeight·dEnds + locationWeight·dLoc + shapeWeight·dShape
-//     − priorWeight·ln P(word). Direct endpoint errors use the same location tolerance.
-//     Lowest cost wins; softmax scores are relative, not calibrated correctness probabilities.
+//     bounding-box side (so shape is compared independently of location and overall size).
+//  6. Add direct endpoint cost and a unigram prior. Lowest cost wins; softmax scores are
+//     relative, not calibrated correctness probabilities. Consecutive repeated letters
+//     have identical geometry and are distinguished only by frequency, not invented motion.
 //
 //  Geometry buffers share one scratch allocation. Candidate scoring allocates no
 //  per-word storage and stops when partial location cost cannot beat the current top-K.
@@ -43,8 +42,9 @@ final class SwipeDecoder: Sendable {
         var sampleCount = 48
         /// Trace points closer than this (pt) to the previously kept point are merged.
         var minimumPointSpacing: Float = 1
-        /// Half-width (pt) of the box filter applied to the uniformly resampled trace
-        /// before its length is measured, reducing jitter at the cost of corner rounding.
+        /// Half-width (pt) of the spatial box filter applied to both trace and template
+        /// before final arc-length resampling. Matching only a smoothed trace against a
+        /// sharp template would penalize even a perfect key-center gesture at corners.
         var smoothingRadius: Float = 12
         /// First-letter key centers must lie within this many key widths of the first
         /// trace point. Which neighbouring rows qualify depends on the layout geometry.
@@ -55,9 +55,10 @@ final class SwipeDecoder: Sendable {
         /// is waived when the trace is shorter than one key width so 2-letter words pass.
         var minimumLengthRatio: Float = 0.4
         var maximumLengthRatio: Float = 2.2
-        /// Location-channel tolerance in key widths: samples within this distance of the
-        /// template cost nothing (the finger need not cross key centers).
+        /// Soft location tolerance in key widths. Interior and endpoint deviations within
+        /// this radius still cost `inKeyDistanceWeight` × distance, preserving geometry.
         var locationTolerance: Float = 0.5
+        var inKeyDistanceWeight: Float = 0.2
         /// Number of samples at each end given `endSampleWeight` in the location channel.
         var endSampleCount = 4
         var endSampleWeight: Float = 2
@@ -138,9 +139,9 @@ final class SwipeDecoder: Sendable {
 
         lexicon.letters.withUnsafeBufferPointer { letters in
             for first in 0..<SwipeLexicon.letterCount where firstSet & (1 << first) != 0 {
-                let startError = max(0, simd_distance(sampledTrace[0], centers[first]) - tolerance)
+                let startError = Self.locationError(simd_distance(sampledTrace[0], centers[first]), tolerance: tolerance, inKeyWeight: config.inKeyDistanceWeight)
                 for last in 0..<SwipeLexicon.letterCount where lastSet & (1 << last) != 0 {
-                    let endError = max(0, simd_distance(sampledTrace[n - 1], centers[last]) - tolerance)
+                    let endError = Self.locationError(simd_distance(sampledTrace[n - 1], centers[last]), tolerance: tolerance, inKeyWeight: config.inKeyDistanceWeight)
                     let endpointCost = config.endpointWeight * (startError + endError) / keyWidth
                     for wordIndex in lexicon.bucket(first: first, last: last) {
                         let wi = Int(wordIndex)
@@ -164,21 +165,24 @@ final class SwipeDecoder: Sendable {
                             pointCount += 1
                         }
                         if !complete || templateLength < minTemplateLength || templateLength > maxTemplateLength { continue }
-                        Self.resample(template, count: pointCount, length: templateLength, into: sampledTemplate)
+                        // Match the trace's spatial preprocessing. These scratch buffers
+                        // are no longer needed by the trace, so templates allocate nothing.
+                        Self.resample(template, count: pointCount, length: templateLength, into: fineTrace)
+                        Self.smooth(fineTrace, spacing: templateLength / Float(fine - 1), radius: config.smoothingRadius, into: smoothTrace)
+                        templateLength = Self.polylineLength(smoothTrace)
+                        Self.resample(smoothTrace, count: fine, length: templateLength, into: sampledTemplate)
 
-                        // 4. Location channel with branch-and-bound on the running cost.
+                        // 4. Preserve order/arc-length evidence and use the nonnegative
+                        // running location cost to prune candidates outside the top-K.
                         var cost = priorCost
                         var abandoned = false
                         for i in 0..<n {
-                            let excess = simd_distance(sampledTrace[i], sampledTemplate[i]) - tolerance
-                            if excess > 0 {
-                                let weight: Float = (i < endCount || i >= n - endCount) ? config.endSampleWeight : 1
-                                cost += weight * excess * locationScale
-                                if cost >= best.threshold { abandoned = true; break }
-                            }
+                            let distance = simd_distance(sampledTrace[i], sampledTemplate[i])
+                            let weight: Float = (i < endCount || i >= n - endCount) ? config.endSampleWeight : 1
+                            cost += weight * Self.locationError(distance, tolerance: tolerance, inKeyWeight: config.inKeyDistanceWeight) * locationScale
+                            if cost >= best.threshold { abandoned = true; break }
                         }
                         if abandoned { continue }
-
                         // 5. Shape channel.
                         cost += config.shapeWeight * Self.shapeDistance(sampledTemplate, pathLength: templateLength, against: traceShape)
                         best.insert(cost: cost, index: wordIndex)
@@ -224,13 +228,13 @@ final class SwipeDecoder: Sendable {
         return (count, length)
     }
 
-    /// The trace is first resampled to this many × `sampleCount` points so the smoothing
-    /// window is spatial (fixed pt), independent of finger speed and sensor rate.
+    /// Trace and template are first resampled to this many × `sampleCount` points so
+    /// smoothing is spatial (fixed pt), independent of finger speed and sensor rate.
     private static let fineSampleFactor = 2
 
     /// Box-filters a uniformly spaced polyline (`spacing` pt between points) with a window
     /// of ±`radius` pt into `out`. The endpoints (touch-down and lift-off) are kept exact;
-    /// the window shrinks symmetrically near them.
+    /// the window shrinks symmetrically near them. A running sum keeps work linear.
     private static func smooth(_ points: UnsafeMutableBufferPointer<SIMD2<Float>>, spacing: Float, radius: Float, into out: UnsafeMutableBufferPointer<SIMD2<Float>>) {
         let count = points.count
         let halfWindow = spacing > 0 ? min(Int(radius / spacing), count / 4) : 0
@@ -240,10 +244,19 @@ final class SwipeDecoder: Sendable {
         }
         out[0] = points[0]
         out[count - 1] = points[count - 1]
+        var lower = 0
+        var upper = 0
+        var sum = points[0]
         for i in 1..<(count - 1) {
             let h = min(halfWindow, i, count - 1 - i)
-            var sum = SIMD2<Float>.zero
-            for j in (i - h)...(i + h) { sum += points[j] }
+            while upper < i + h {
+                upper += 1
+                sum += points[upper]
+            }
+            while lower < i - h {
+                sum -= points[lower]
+                lower += 1
+            }
             out[i] = sum / Float(2 * h + 1)
         }
     }
@@ -270,20 +283,24 @@ final class SwipeDecoder: Sendable {
         var accumulated: Float = 0
         var previous = points[0]
         var i = 1
+        // Interpolated samples stay on this straight segment: its remaining length
+        // shrinks by the walked distance. Avoid another square root for every sample.
+        var remainingSegment = simd_distance(previous, points[i])
         while i < count && produced < n - 1 {
             let current = points[i]
-            let segment = simd_distance(previous, current)
-            if accumulated + segment >= interval {
-                // `segment > interval - accumulated > 0` here, so the division is safe.
-                let q = previous + (current - previous) * ((interval - accumulated) / segment)
+            if accumulated + remainingSegment >= interval {
+                let step = interval - accumulated
+                let q = previous + (current - previous) * (step / remainingSegment)
                 out[produced] = q
                 produced += 1
                 previous = q
+                remainingSegment = max(0, remainingSegment - step)
                 accumulated = 0
             } else {
-                accumulated += segment
+                accumulated += remainingSegment
                 previous = current
                 i += 1
+                if i < count { remainingSegment = simd_distance(previous, points[i]) }
             }
         }
         // Floating-point drift can leave the walk short by a sample; pin the tail.
@@ -298,6 +315,12 @@ final class SwipeDecoder: Sendable {
     private static func normalizeShape(_ points: UnsafeMutableBufferPointer<SIMD2<Float>>, pathLength: Float, into out: UnsafeMutableBufferPointer<SIMD2<Float>>) {
         let (centroid, scale) = shapeFrame(points, pathLength: pathLength)
         for i in 0..<points.count { out[i] = (points[i] - centroid) / scale }
+    }
+
+    /// Unlike a dead zone, this keeps evidence that the finger passed nearer one of two
+    /// adjacent keys. Large misses keep their full slope; small misses have a softer slope.
+    private static func locationError(_ distance: Float, tolerance: Float, inKeyWeight: Float) -> Float {
+        max(0, distance - tolerance) + inKeyWeight * min(distance, tolerance)
     }
 
     /// Mean distance between the shape-normalized `points` and an already-normalized

@@ -87,10 +87,15 @@ struct KeyboardToolbarView: View {
                 }
             } else {
                 // Slash trigger button (top-left) + predictive suggestions
-                SlashTriggerButton(isDarkMode: state.appearanceMode == .dark) {
-                    actions.insertText("/")
-                    actions.evaluateSlashCommand()
-                }
+                SlashTriggerButton(
+                    isDarkMode: state.appearanceMode == .dark,
+                    onTap: {
+                        actions.insertText("/")
+                        actions.scheduleSideEffects()
+                    },
+                    onTimer: { actions.insertQuickCommand("/timer ") },
+                    onReminder: { actions.insertQuickCommand("/remind ") }
+                )
                 if predictiveState.isActive {
                     PredictiveSuggestionsView(
                         candidates: predictiveState.candidates,
@@ -260,6 +265,8 @@ struct KeyboardToolbarView: View {
 struct SlashTriggerButton: View {
     let isDarkMode: Bool
     let onTap: () -> Void
+    let onTimer: () -> Void
+    let onReminder: () -> Void
 
     var body: some View {
         Button(action: onTap) {
@@ -278,6 +285,14 @@ struct SlashTriggerButton: View {
                 .debugHitOverlay()
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("Timer", systemImage: "timer", action: onTimer)
+            Button("Reminder", systemImage: "bell", action: onReminder)
+        }
+        .accessibilityLabel("Slash commands")
+        .accessibilityHint("Tap to insert slash. Touch and hold for Timer and Reminder.")
+        .accessibilityAction(named: Text("Insert timer command")) { onTimer() }
+        .accessibilityAction(named: Text("Insert reminder command")) { onReminder() }
     }
 }
 

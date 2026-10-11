@@ -21,7 +21,10 @@ phrases to **noon** and doesn't recognize "noon", "next week", or bare "at 3").
 
 ## Resolution pipeline
 
-The text after the last `/remind` is resolved in this order; the first match wins:
+The text after the last standalone `/remind` is resolved in this order; the first match wins.
+Embedded triggers (`abc/remind`, URL paths), `/reminder`, subsequent commands and newline-crossing
+source text do not activate it. The keyboard code button's long-press **Reminder** action inserts
+`/remind ` only; creating the reminder still requires accepting its pill.
 
 1. **Relative duration** — shorthand (`10s`, `5m`, `2hr`, `1d`, `2w`) or words (`in 15 minutes`,
    `3 days`), with or without a leading "in". **All units fire at the exact offset** `now + N`
@@ -56,6 +59,13 @@ now. Both compact (`10s`) and spaced (`10 sec`) forms work, with or without "in"
 | `1h` / `2hr` / `3hrs` | now + hours | | `1w` / `2 weeks` | now + N×7 days, same time |
 
 Real-world: `remind me in 10s`, `check oven in 45m`, `call mom in 2h`, `wake me in 8h`.
+
+English amounts (`five minutes`, `twenty-five minutes`, `an hour`) and compounds
+(`one hour and thirty minutes`, `1h30m`, `2 hours, 15 minutes`) share the timer duration grammar.
+Examples: `/remind me to call in five minutes`, `/remind in five minutes call`.
+The matched source range alone is removed from the reminder title. Days/weeks/months advance
+the local calendar; hours/minutes/seconds are elapsed time. Negative/decimal expressions are
+not interpreted by harvesting their integer fragments.
 
 ### Accepted unit synonyms (normalized)
 

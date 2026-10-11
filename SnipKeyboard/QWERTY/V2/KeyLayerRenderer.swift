@@ -326,7 +326,7 @@ final class KeyLayerRenderer {
         guard let layer = pressedHighlights.removeValue(forKey: id) else { return }
 
         CATransaction.begin()
-        CATransaction.setDisableActions(false)
+        CATransaction.setDisableActions(true)
         // Remove the layer when the fade finishes via the transaction completion block, so fast
         // typing doesn't stack a delayed `asyncAfter` closure on the main thread per release.
         CATransaction.setCompletionBlock { [weak layer] in
@@ -337,8 +337,7 @@ final class KeyLayerRenderer {
         anim.toValue = 0
         anim.duration = 0.085
         anim.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        anim.fillMode = .forwards
-        anim.isRemovedOnCompletion = false
+        anim.isRemovedOnCompletion = true
         layer.add(anim, forKey: "pressedFade")
         layer.opacity = 0
         CATransaction.commit()
@@ -552,6 +551,9 @@ final class KeyLayerRenderer {
             return .text("")
         case .returnKey:
             if let returnKeyLabel, returnKeyLabel.prominent {
+                if returnKeyLabel.label == "Done" {
+                    return .symbol(name: "checkmark", pointSize: 24, weight: .regular)
+                }
                 return .text(returnKeyLabel.label)
             }
             // Default before any label is pushed in (and whenever not prominent): outlined return symbol.

@@ -223,6 +223,12 @@
 		3948B9F066CA5E1763217ECA /* EnglishSuggestionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BC73A33829EEB2A8DABAB9 /* EnglishSuggestionContext.swift */; };
 		21C4F7E636448DEE852F9AF8 /* EnglishSuggestionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05563A0B38DB581D239F960E /* EnglishSuggestionModel.swift */; };
 		E9F7E7092C856C475036D1A5 /* EnglishSuggestionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05563A0B38DB581D239F960E /* EnglishSuggestionModel.swift */; };
+		4B45B41417002675DC539F5F /* CommandInsertionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D041899550A05259B6382DCB /* CommandInsertionPlan.swift */; };
+		C92178846F2DB319E44971DD /* CommandInsertionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D041899550A05259B6382DCB /* CommandInsertionPlan.swift */; };
+		8AABE401937A8F35643FF7ED /* EmojiLayoutGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */; };
+		AF0D187F875ED8FF1AE47B7D /* EmojiLayoutGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */; };
+		95C45D95E6899EB8FD19DFBC /* EmojiSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */; };
+		9A3A5B8D99F23F626BA2C5C9 /* EmojiSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -392,6 +398,9 @@
 		60757EF750AEA7808AFA44B8 /* EmojiSearchQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiSearchQuery.swift; path = V2/EmojiSearchQuery.swift; sourceTree = "<group>"; };
 		81BC73A33829EEB2A8DABAB9 /* EnglishSuggestionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EnglishSuggestionContext.swift; path = V2/EnglishSuggestionContext.swift; sourceTree = "<group>"; };
 		05563A0B38DB581D239F960E /* EnglishSuggestionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EnglishSuggestionModel.swift; path = V2/EnglishSuggestionModel.swift; sourceTree = "<group>"; };
+		D041899550A05259B6382DCB /* CommandInsertionPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CommandInsertionPlan.swift; path = V2/CommandInsertionPlan.swift; sourceTree = "<group>"; };
+		5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiLayoutGeometry.swift; path = V2/EmojiLayoutGeometry.swift; sourceTree = "<group>"; };
+		5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiSearchField.swift; path = V2/EmojiSearchField.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -618,6 +627,9 @@
 				60757EF750AEA7808AFA44B8 /* EmojiSearchQuery.swift */,
 				81BC73A33829EEB2A8DABAB9 /* EnglishSuggestionContext.swift */,
 				05563A0B38DB581D239F960E /* EnglishSuggestionModel.swift */,
+				D041899550A05259B6382DCB /* CommandInsertionPlan.swift */,
+				5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */,
+				5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -1062,6 +1074,9 @@
 				42D067BFF60757C91FA4EB73 /* EmojiSearchQuery.swift in Sources */,
 				98A9CED42DBC001C126ED8A0 /* EnglishSuggestionContext.swift in Sources */,
 				21C4F7E636448DEE852F9AF8 /* EnglishSuggestionModel.swift in Sources */,
+				4B45B41417002675DC539F5F /* CommandInsertionPlan.swift in Sources */,
+				8AABE401937A8F35643FF7ED /* EmojiLayoutGeometry.swift in Sources */,
+				95C45D95E6899EB8FD19DFBC /* EmojiSearchField.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1179,6 +1194,9 @@
 				C51497332356D3DFC3594854 /* EmojiSearchQuery.swift in Sources */,
 				3948B9F066CA5E1763217ECA /* EnglishSuggestionContext.swift in Sources */,
 				E9F7E7092C856C475036D1A5 /* EnglishSuggestionModel.swift in Sources */,
+				C92178846F2DB319E44971DD /* CommandInsertionPlan.swift in Sources */,
+				AF0D187F875ED8FF1AE47B7D /* EmojiLayoutGeometry.swift in Sources */,
+				9A3A5B8D99F23F626BA2C5C9 /* EmojiSearchField.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

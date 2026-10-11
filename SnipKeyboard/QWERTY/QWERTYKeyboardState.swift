@@ -31,6 +31,8 @@ enum KeyboardAppearanceMode: Equatable {
 enum KeyboardLayoutProfile: Hashable {
     case standard
     case asciiCapable
+    /// Local emoji query editor: no surface switch, wide mode/Done keys.
+    case emojiSearch
     case emailAddress
     case url
     case webSearch
@@ -59,6 +61,8 @@ enum KeyboardLayoutProfile: Hashable {
             return ("Go", true)
         case .webSearch:
             return ("Search", true)
+        case .emojiSearch:
+            return ("Done", true)
         default:
             return nil
         }
