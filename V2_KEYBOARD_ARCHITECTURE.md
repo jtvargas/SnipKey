@@ -23,9 +23,16 @@ a third-party `UIInputViewController` by removing SwiftUI from the touch and ren
   DEBUG kill switch.)
 - **Dead zones are eliminated** by tiling invisible `KeyHitView` hit cells over every key's hit
   rect and resolving touches through a binary-search `HitGrid`.
-- **The hot path is tiny and XPC-frugal:** an `ownCharacterInsertInFlight` guard skips redundant
-  cross-process context reads, and slash/predictive work is coalesced into one deferred flush per
-  runloop and pushed off-main.
+- **The hot path is tiny and XPC-free:** auto-capitalization, smart punctuation and word-delete
+  read a local `TypingContextMirror` (never the host); traits come from a per-field cache; the
+  only synchronous cross-process call per keystroke is the `insertText`/`deleteBackward` write.
+  Slash/predictive work is coalesced into one deferred flush per runloop and pushed off-main.
+- **Page and shift changes are visibility flips.** `KeyLayerRenderer` keeps one pre-built
+  `KeySurface` per page with both letter cases and all three shift icons; 123/ABC and shift
+  toggle allocate nothing and rasterize nothing.
+- **Geometry is 1:1 native iPhone portrait** (`KeyboardDimensions` reference table: 54pt row
+  pitch, 42pt keys, 6/12pt gaps, 4/3-letter side controls, 88/375 return) with a downward-biased
+  vertical hit split (`verticalHitBias`) because thumbs land low.
 
 **Stack:** Swift 5.9 · UIKit (keys) · SwiftUI (toolbar/app) · CALayer rendering · SwiftData
 (snippets) · App Group UserDefaults (settings) · CloudKit (sync) · iOS 17+.
@@ -81,7 +88,7 @@ All paths are under `/SnipKeyboard/`. V2 code lives in `QWERTY/V2/`; shared code
 | File | Role |
 |---|---|
 | `QWERTY/QWERTYKeyboardState.swift` | `@Observable` view state (shift/page/appearance/return) **+** non-observable `QWERTYInputTracking` (hot-path bookkeeping, zero re-renders). |
-| `QWERTY/KeyboardActions.swift` | Value-type struct of ~14 closures wrapping `textDocumentProxy` ops. UIKit↔SwiftUI bridge; includes the `insertCharacter` fast path. |
+| `QWERTY/KeyboardActions.swift` | Value-type struct of closures wrapping `textDocumentProxy` ops. UIKit↔SwiftUI bridge; `insertText`/`deleteBackward` advance the context mirror before the XPC write. |
 | `QWERTY/V2/ModelContainerProvider.swift` | Actor providing the App-Group SwiftData `ModelContainer`; `warmup()` started early in `viewDidLoad`. |
 
 ### Shared QWERTY infrastructure (V1 removed — V2 is the only keyboard)
@@ -121,7 +128,7 @@ KeyboardPage (.letters/.numbers/.symbols)
   → KeyboardLayoutFactory.layout(for:dims:)        // rows w/ flexible widths
   → KeyboardLayoutResolver.resolve(...)            // → [KeyFrame] (visible rect + hit rect)
   → HitGrid.build(frames)                          // row/col seam boundaries (binary search)
-  + KeyLayerRenderer.render(frames)                // CAShapeLayer + glyph per key
+  + KeyLayerRenderer.render(frames, page)          // per-page KeySurface: built once, then isHidden flips
   + rebuildHitViews(frames)                        // one KeyHitView per hit rect
 ```
 
@@ -131,21 +138,25 @@ UITouch down (delivered to KeyHitView → coordinator.touchesBegan)
   → findKey(at:)            HitGrid binary search          (O(log n) ≈ O(1))
   → smartResolved(...)      SmartTouchResolver/DynamicHitResolver bigram shift (~200ns)
   → beginPress(...)
-      • renderer.setHighlightedKey()      instant CATransaction(disableActions)
+      • renderer.setPressedKey(_:for:)     per-touch overlay, instant CATransaction(disableActions)
+      • KeyboardClickPlayer.play()         system key click (Keyboard Clicks setting honoured)
       • calloutController.presentInput()  spring (first) or instant (burst)
+      • scheduleLongPress()   400ms accent-menu Task (only if key has a menu)
+  → touchesMoved → slideClearsHysteresis()  12pt past a horizontal seam / 10pt past a vertical seam
+  → touchesEnded (or next finger-down = rollover flush) → commitPendingPress():
       • KeyboardCommitPipeline.commitCharacter():
           - smart-space eat check
-          - actions.insertCharacter():
-              ownCharacterInsertInFlight = true
-              textDocumentProxy.insertText()     ← synchronous XPC write (dominant cost)
-                └─ re-enters textDidChange → updateQWERTYState (auto-cap .words/.sentences SKIPPED)
-              ownCharacterInsertInFlight = false
-          - inputTracking.recordAction()         zero-render (plain class)
-          - touchContext.recordCharacter()       bigram weight refresh
-          - smart punctuation (only for - . " ')
-          - actions.scheduleSideEffects()        coalesced → 1 flush/runloop
-      • scheduleLongPress()   400ms accent-menu Task (only if key has a menu)
-  → touchesEnded → endPress() → highlight fades, callout dismisses
+          - actions.insertText():
+              contextMirror.append()                 local mirror first
+              ownMutationInFlight = true
+              textDocumentProxy.insertText()         ← the ONLY synchronous XPC call
+                └─ re-enters textDidChange → auto-cap from contextMirror (zero reads)
+              ownMutationInFlight = false
+          - inputTracking.recordAction()             zero-render (plain class)
+          - touchContext.recordCharacter()           bigram weight refresh
+          - smart punctuation (only for - . " ')     reads contextMirror
+          - actions.scheduleSideEffects()            coalesced → 1 flush/runloop
+      • highlight fades, callout dismisses
 ```
 
 **Deferred (post-runloop, off the touch path):** one `documentContextBeforeInput` XPC read →
@@ -193,7 +204,11 @@ fast typing (~10–12 chars/sec, faster on bursts) never drops a character or st
 ### 4.1 Verified optimizations
 | Optimization | What it does | Where |
 |---|---|---|
-| **`ownCharacterInsertInFlight` guard** | Our own `insertText` synchronously re-enters `textDidChange`; the guard skips the `.words`/`.sentences` auto-cap `documentContextBeforeInput` XPC read (a just-typed char can't start a sentence). `.allCharacters` still honored. | `KeyboardViewController.swift:79`, `~616–633`; set around `KeyboardActions.swift` insert. |
+| **`TypingContextMirror`** | Keyboard-side mirror of the text before the caret (64 graphemes, pre-reserved buffer). Advanced in lockstep with every own insert/delete; resynced from ONE `documentContextBeforeInput` read only off the keystroke path (`flushSideEffects`, `viewWillAppear`, external `textDidChange`, coalesced `selectionDidChange`). Drives auto-cap, smart punctuation, auto-cap "I", word-delete chunks and predictive validation. SwiftKey's `SKShiftStateManager` works the same way. | `QWERTY/V2/TypingContextMirror.swift`; `QWERTYInputTracking.contextMirror`. |
+| **Per-field trait cache** | `HostInputTraits` (keyboardType, appearance, returnKeyType, autocap, locale codes…) read in `refreshHostInputTraits()` only from `viewWillAppear`, external changes, `flushSideEffects` and `currentInputModeDidChangeNotification`. `updateQWERTYState` on an own insert performs zero proxy reads. | `KeyboardViewController.swift` `cachedHostInputTraits`. |
+| **KeySurface per page** | Page switch (123/ABC, auto-return-to-letters) and shift toggles are `isHidden` flips over pre-built layers; a style change (appearance/size/scale/subtitle) is the only full rebuild. `handleMemoryPressure()` drops inactive pages. | `KeyLayerRenderer.swift` `KeySurface`, `GlyphLayers`. |
+| **Staged init** | `viewDidLoad` builds only what the first keystroke needs; clipboard polling, SwiftData warm-up, reminder/timer flags and predictive warm-up run once from the first `viewDidAppear` on the next runloop turn (`performDeferredSetup`). | `KeyboardViewController.swift`. |
+| **VoiceOver elements on demand** | The ~35 `UIAccessibilityElement`s are built only while VoiceOver is running (`voiceOverStatusDidChangeNotification`), not on every page switch. | `KeyboardGestureCoordinator.rebuildAccessibilityElementsIfNeeded`. |
 | **Coalesced side-effects** | Many commits in one runloop → **one** `documentContextBeforeInput` read; `scheduleSideEffectFlush` guards on a bool and posts a single `DispatchQueue.main.async`. | `KeyboardViewController.swift:466–515`. |
 | **Async predictive** | `UITextChecker` runs off-main via `Task.detached(.userInitiated)`, 40ms debounce, stale results dropped by token guard. Never blocks insert. | `PredictiveTextEngineAsync.swift:41,67,84`. |
 | **HitGrid O(log n)** | Two binary searches (row seams, then column seams). 4 rows × ~10 keys → <4 iterations. Built only on layout change. | `KeyboardGestureCoordinator.swift:686–702`. |
@@ -295,7 +310,11 @@ Found in the code (not speculative). Severity is relative to an already-fast bas
 | 6.1 | ✅ FIXED — setting cached once per session in `configure(...)`; `SmartTouchResolver.resolve` takes `enabled` as a parameter. | — | `KeyboardGestureCoordinator.configure` |
 | 6.2 | ✅ FIXED — the `RenderSignature` short-circuit runs before any layout/grid work. | — | `performRebuildLayout` |
 | 6.3 | ✅ FIXED — `KeyHitView`s are reused/parked, never destroyed mid-session (also required so mid-gesture page swaps don't cancel the sliding touch). | — | `rebuildHitViews` |
-| 6.4 | ✅ MITIGATED — the keyboard-side context mirror (`QWERTYInputTracking.trailingContextFast`) answers most `- . " '` transforms with zero XPC; the sync read remains only as the invalidation fallback. | — | `KeyboardCommitPipeline.applySmartPunctuation` |
+| 6.4 | ✅ FIXED — `TypingContextMirror` (`QWERTYInputTracking.contextMirror`) answers every `- . " '` transform, auto-cap and word-delete with zero XPC; the host is read only off the keystroke path. | — | `KeyboardCommitPipeline.applySmartPunctuation`, `KeyboardViewController.updateAutoCapitalization` |
+| 6.7 | ✅ FIXED — page switch / shift toggle no longer tear down and re-rasterize ~35 layers (`KeySurface` per page, pre-built case/icon variants). | — | `KeyLayerRenderer` |
+| 6.8 | ✅ FIXED — `UITextInputMode.activeInputModes` no longer read in every `layoutSubviews`; cached in `HostInputTraits.localeCodes`. | — | `KeyboardViewController.refreshHostInputTraits` |
+| 6.9 | ✅ FIXED — memory warnings drop rebuildable caches (`handleMemoryPressure` chain) instead of letting iOS kill the extension. | — | `KeyboardViewController.didReceiveMemoryWarning` |
+| 6.10 | ✅ FIXED — row changes while sliding now need 10pt past the vertical seam (`SlideHysteresis.vertical`); previously any wobble across the row gap flipped keys. | — | `KeyboardGestureCoordinator.slideClearsHysteresis` |
 | 6.5 | ✅ FIXED — the save is deferred off the insert turn (`Task { @MainActor }`). | — | `QWERTYKeyboardView.insertSnippet` |
 | 6.6 | One `Task { @MainActor }` allocation per `withObservationTracking` `onChange` fire (re-registration pattern). Short-lived; negligible. | Very low | `NativeKeyboardV2View.swift:91–97` |
 

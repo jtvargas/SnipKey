@@ -187,6 +187,10 @@
 		F977E6660EB5E6D9FE1B2F3A /* ReminderDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0863C40DC54F8B0573428C40 /* ReminderDestination.swift */; };
 		F9781C3BAA457D15529F3AFC /* KeyboardLayoutResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */; };
 		FF36A9DA1C13EC27D1D755F0 /* ResolverTuning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314D660CC6FE8B02931C5358 /* ResolverTuning.swift */; };
+		A52495769B3DF8E6977530AA /* KeyboardClickPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24252D515D7969F8A1172439 /* KeyboardClickPlayer.swift */; };
+		82C2B46C2CD297C5E5E6DEE9 /* KeyboardClickPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24252D515D7969F8A1172439 /* KeyboardClickPlayer.swift */; };
+		B68FA5D084CC0E84A557E9C3 /* TypingContextMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5CFEE617C86AAB95026B0B /* TypingContextMirror.swift */; };
+		84978EBB941E30BE2BD6298C /* TypingContextMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5CFEE617C86AAB95026B0B /* TypingContextMirror.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -338,6 +342,8 @@
 		FA709295AF93424995345899 /* CalibrationLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationLabView.swift; sourceTree = "<group>"; };
 		FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PredictiveTextEngineAsync.swift; path = V2/PredictiveTextEngineAsync.swift; sourceTree = "<group>"; };
 		FEE8DB50F5227711F0A44F2E /* IntegrationsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationsView.swift; sourceTree = "<group>"; };
+		24252D515D7969F8A1172439 /* KeyboardClickPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardClickPlayer.swift; path = V2/KeyboardClickPlayer.swift; sourceTree = "<group>"; };
+		EF5CFEE617C86AAB95026B0B /* TypingContextMirror.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TypingContextMirror.swift; path = V2/TypingContextMirror.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -546,6 +552,8 @@
 				624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */,
 				F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */,
 				59C7DB60CB94B5F0CD67A47E /* CharacterTrigramLM.swift */,
+				24252D515D7969F8A1172439 /* KeyboardClickPlayer.swift */,
+				EF5CFEE617C86AAB95026B0B /* TypingContextMirror.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -968,6 +976,8 @@
 				C2E798470841C581DCDD7687 /* CalibrationCapture.swift in Sources */,
 				C67BF68846AC7970ACE1CB05 /* ResolverReplayEngine.swift in Sources */,
 				B97874AC51BB77034D5565F1 /* CharacterTrigramLM.swift in Sources */,
+				A52495769B3DF8E6977530AA /* KeyboardClickPlayer.swift in Sources */,
+				B68FA5D084CC0E84A557E9C3 /* TypingContextMirror.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1071,6 +1081,8 @@
 				D59BAAF0D552AA91E0BE20F9 /* CalibrationCapture.swift in Sources */,
 				841E0DA42C3D9F6A2A83006B /* ResolverReplayEngine.swift in Sources */,
 				9A07952948514535BCF96200 /* CharacterTrigramLM.swift in Sources */,
+				82C2B46C2CD297C5E5E6DEE9 /* KeyboardClickPlayer.swift in Sources */,
+				84978EBB941E30BE2BD6298C /* TypingContextMirror.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

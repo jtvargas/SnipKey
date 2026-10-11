@@ -14,8 +14,10 @@ struct KeyFrame: Equatable {
     let action: KeyAction
     /// Visible bounds of the key — used by the renderer.
     let rect: CGRect          // Keyboard-local coordinates (origin at top-left of keys area)
-    /// Touch-test bounds — extends to include adjacent half-gaps for middle keys, and
-    /// claims the full leading/trailing padding (to the keyboard edge) for row-edge keys.
+    /// Touch-test bounds — extends into the adjacent gaps, and claims the full
+    /// leading/trailing padding (to the keyboard edge) for row-edge keys. Vertically the
+    /// inter-row gap is split by `KeyboardDimensions.verticalHitBias` (the lower key gets
+    /// the larger share, since thumbs land low); horizontally each gap is split in half.
     /// Native iOS uses an enlarged hit zone like this so edge letters (A, L, Q, P, …) can
     /// be tapped near the keyboard edge without missing. `hitRect ⊇ rect` always.
     let hitRect: CGRect
@@ -49,7 +51,14 @@ enum KeyboardLayoutResolver {
 
         let usableKeyboardWidth = keysAreaSize.width - dims.sideEdge * 2
 
-        let rowCountForVerticalSlop = layout.rows.count
+        // Vertical slop: each inter-row gap is split between the key below (which claims
+        // `verticalHitBias` of it as its top slop) and the key above (the remainder as its
+        // bottom slop), so vertically adjacent hit rects meet exactly at one seam. The first
+        // and last rows claim exactly the keys-area top/bottom edges — never beyond, so no
+        // toolbar pixels are taken, and never short, so the hit rects tile the whole area.
+        let lowerKeySlop = dims.rowGap * dims.verticalHitBias
+        let upperKeySlop = dims.rowGap - lowerKeySlop
+        let lastRowIndex = layout.rows.count - 1
         for (rowIndex, row) in layout.rows.enumerated() {
             // Per-row width budget accounts for leading/trailing insets (rows 1 and 2 use
             // these so their letters stay the same width as row 0 instead of stretching).
@@ -60,11 +69,8 @@ enum KeyboardLayoutResolver {
             var x = dims.sideEdge + row.leadingInset
             let y = dims.topEdge + CGFloat(rowIndex) * (keyHeight + dims.rowGap)
 
-            // Vertical slop for this row — half the row gap above and below, clamped at
-            // the keys-area top and bottom edges so we don't claim toolbar pixels.
-            let halfRowGap = dims.rowGap / 2
-            let topSlop = rowIndex == 0 ? min(dims.topEdge, halfRowGap) : halfRowGap
-            let bottomSlop = rowIndex == rowCountForVerticalSlop - 1 ? min(dims.bottomEdge, halfRowGap) : halfRowGap
+            let topSlop = rowIndex == 0 ? dims.topEdge : lowerKeySlop
+            let bottomSlop = rowIndex == lastRowIndex ? dims.bottomEdge : upperKeySlop
 
             let itemCount = row.items.count
             for (columnIndex, item) in row.items.enumerated() {

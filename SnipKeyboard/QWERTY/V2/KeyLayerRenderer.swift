@@ -2,10 +2,17 @@
 //  KeyLayerRenderer.swift
 //  SnipKeyboard
 //
-//  CALayer-per-key renderer for V2. Each key has a CAShapeLayer background plus a glyph
-//  layer that's either text (CATextLayer for letters / "123" / "return" / "Go" / etc.)
+//  CALayer-per-key renderer for V2. Each key has a CAShapeLayer background plus glyph
+//  layers that are either text (CATextLayer for letters / "123" / "return" / "Go" / etc.)
 //  or an image (CALayer.contents = UIImage(systemName:)? for shift / backspace /
 //  return-when-not-prominent — matches native iOS visual fidelity).
+//
+//  Keys are grouped into one `KeySurface` per `KeyboardPage` — a container CALayer that is
+//  built once per style (appearance / dims / scale / space subtitle) and geometry. Every
+//  later visit to that page is a visibility flip: no layer allocation, no text
+//  rasterization. Letter keys carry both case glyphs and the shift key carries all three
+//  icons from build time, so shift toggles are `isHidden` flips as well. This mirrors
+//  SwiftKey's raster cache keyed by (style, size, shift): page/shift changes are pure blits.
 //
 //  Every mutation runs inside a CATransaction with implicit animations disabled,
 //  so finger-slide between keys is instant.
@@ -18,9 +25,10 @@ final class KeyLayerRenderer {
 
     // MARK: - Glyph descriptor
 
-    /// What to render inside a key. Computed per `KeyAction` + current shift state.
+    /// What to render inside a shift-invariant key. Letters and the shift key bypass this
+    /// and pre-build every shift variant (see `GlyphLayers`).
     enum KeyGlyph: Equatable {
-        /// Plain text label rendered via CATextLayer (letters, "123", "ABC", "Go", "Send").
+        /// Plain text label rendered via CATextLayer ("123", "ABC", "Go", "Send", digits).
         case text(String)
         /// SF Symbol rendered into a UIImage and assigned to a plain CALayer's `contents`.
         case symbol(name: String, pointSize: CGFloat, weight: UIImage.SymbolWeight)
@@ -28,21 +36,106 @@ final class KeyLayerRenderer {
 
     // MARK: - Per-Key Layers
 
+    /// The glyph layer(s) of one key. Variants that depend on shift state pre-build every
+    /// alternative so a state change is an `isHidden` flip, never a re-rasterization.
+    private enum GlyphLayers {
+        /// One layer (text or symbol) that never changes with shift state.
+        case single(CALayer)
+        /// Letter key: lowercase and uppercase text layers; exactly one is visible.
+        case cased(lower: CATextLayer, upper: CATextLayer)
+        /// Shift key: one icon per `ShiftState`; exactly one is visible.
+        case shift(disabled: CALayer, enabled: CALayer, locked: CALayer)
+
+        /// Glyphs sit above backgrounds (0) and pressed overlays (1).
+        private static let zPosition: CGFloat = 2
+
+        func addLayers(to container: CALayer) {
+            switch self {
+            case .single(let layer):
+                layer.zPosition = Self.zPosition
+                container.addSublayer(layer)
+            case .cased(let lower, let upper):
+                lower.zPosition = Self.zPosition
+                upper.zPosition = Self.zPosition
+                container.addSublayer(lower)
+                container.addSublayer(upper)
+            case .shift(let disabled, let enabled, let locked):
+                disabled.zPosition = Self.zPosition
+                enabled.zPosition = Self.zPosition
+                locked.zPosition = Self.zPosition
+                container.addSublayer(disabled)
+                container.addSublayer(enabled)
+                container.addSublayer(locked)
+            }
+        }
+
+        func removeFromSuperlayer() {
+            switch self {
+            case .single(let layer):
+                layer.removeFromSuperlayer()
+            case .cased(let lower, let upper):
+                lower.removeFromSuperlayer()
+                upper.removeFromSuperlayer()
+            case .shift(let disabled, let enabled, let locked):
+                disabled.removeFromSuperlayer()
+                enabled.removeFromSuperlayer()
+                locked.removeFromSuperlayer()
+            }
+        }
+    }
+
     private struct KeyLayers {
         let background: CAShapeLayer
-        /// Either a `CATextLayer` (for `.text`) or a plain `CALayer` (for `.symbol`).
-        let glyph: CALayer
-        var keyFrame: KeyFrame
+        var glyphs: GlyphLayers
+        let keyFrame: KeyFrame
+    }
+
+    /// Everything rendered for one keyboard page: a container holding the page's key
+    /// backgrounds (z 0) and glyphs (z 2). Per-touch pressed overlays (z 1) are parked in
+    /// whichever surface was active when `setPressedKey` ran. Hidden while another page
+    /// is showing; reused verbatim on the next visit.
+    private final class KeySurface {
+        /// The geometry this surface was built from. A render call whose frames differ
+        /// (keys-area resize, layout-profile change) invalidates it.
+        let frames: [KeyFrame]
+        let container = CALayer()
+        var keys: [KeyLayers] = []
+
+        init(frames: [KeyFrame]) {
+            self.frames = frames
+        }
+    }
+
+    /// Page-independent inputs that shape every key's appearance. A change invalidates all
+    /// surfaces at once; per-page geometry is validated against `KeySurface.frames` instead
+    /// (the keys-area size and layout profile are fully determined by the frames).
+    private struct SurfaceStyle: Equatable {
+        let isDark: Bool
+        let dims: KeyboardDimensions
+        let scale: CGFloat
+        let spaceBarSubtitle: String?
+    }
+
+    /// Runtime return-key label pushed in by the host. Nil until the first push: outlined
+    /// return symbol on a neutral background.
+    private struct ReturnKeyLabel: Equatable {
+        let label: String
+        let prominent: Bool
     }
 
     private weak var hostLayer: CALayer?
-    private var keys: [KeyLayers] = []
+    private var surfaces: [KeyboardPage: KeySurface] = [:]
+    private var activeSurface: KeySurface?
+    private var style: SurfaceStyle?
+    private var currentShiftState: ShiftState = .disabled
+    private var returnKeyLabel: ReturnKeyLabel?
+
     private var pressedHighlights: [ObjectIdentifier: CAShapeLayer] = [:]
 
     /// Hot-path caches for the per-touch pressed overlay. The fill color depends only on the
     /// current appearance, and the rounded-rect path only on key size + corner radius — both are
-    /// constant between full renders. Caching them avoids a `UIBezierPath`/`UIColor`/`cgColor`
-    /// allocation on every touch-down during fast typing. Invalidated in `render(...)`.
+    /// constant between style changes. Caching them avoids a `UIBezierPath`/`UIColor`/`cgColor`
+    /// allocation on every touch-down during fast typing. Invalidated when the style changes.
     private var cachedPressedColor: CGColor?
     private var pressedPathCache: [CGSize: CGPath] = [:]
 
@@ -53,25 +146,13 @@ final class KeyLayerRenderer {
     /// or text rasterizes blurry; the host layer's `contentsScale` is NOT reliable here.
     private var currentScale: CGFloat = 3.0
 
-    /// Shared highlight (shown only on the currently-pressed key).
-    /// Fill color is set per appearance mode in `render(...)` so dark mode gets a
-    /// slightly lighter tint and light mode a slightly darker one — subtle confirmation
-    /// of which key the finger is on, not an obvious overlay.
-    let highlight: CAShapeLayer = {
-        let l = CAShapeLayer()
-        l.isHidden = true
-        return l
-    }()
+    /// System UI font per point size. A page uses only ~4 distinct sizes, so sharing the
+    /// `CTFont` across its text layers turns ~60 `CTFontCreateUIFontForLanguage` calls per
+    /// surface build into ~4. Fonts are immutable; dropped only under memory pressure.
+    private var fontCache: [CGFloat: CTFont] = [:]
 
-    private var currentCornerRadius: CGFloat = 8
-    private var currentIsDark: Bool = false
-    private var currentShiftUppercase: Bool = false
-    private var currentShiftState: ShiftState = .disabled
-
-    /// Optional "EN ES"-style locale subtitle rendered inside the space bar. Set by the
-    /// coordinator on each `render(...)` call based on `KeyboardActions.activeInputLocaleCodes()`.
-    /// Nil when the user has only one input mode enabled (most users).
-    private var spaceBarSubtitle: String?
+    private var currentIsDark: Bool { style?.isDark ?? false }
+    private var currentCornerRadius: CGFloat { style?.dims.cornerRadius ?? 8 }
 
     // MARK: - Init
 
@@ -81,147 +162,148 @@ final class KeyLayerRenderer {
 
     // MARK: - Rendering
 
-    /// Rebuild all key layers for the given resolved layout. Called when the page changes
-    /// or the keyboard is resized.
-    func render(frames: [KeyFrame], dims: KeyboardDimensions, isDark: Bool, shiftState: ShiftState, scale: CGFloat, spaceBarSubtitle: String? = nil) {
+    /// Show `page` with the given resolved layout. Called on page change, resize and
+    /// appearance change. After a page's first visit under the current style, re-showing it
+    /// is a visibility flip; a style change drops every surface and rebuilds `page` only
+    /// (other pages rebuild lazily on their next visit).
+    func render(frames: [KeyFrame], page: KeyboardPage, dims: KeyboardDimensions, isDark: Bool, shiftState: ShiftState, scale: CGFloat, spaceBarSubtitle: String? = nil) {
         guard let hostLayer else { return }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
 
-        currentCornerRadius = dims.cornerRadius
-        currentIsDark = isDark
-        currentShiftState = shiftState
-        currentShiftUppercase = shiftState != .disabled
-        self.spaceBarSubtitle = spaceBarSubtitle
         if scale > 0 { currentScale = scale }
-
-        // Appearance/geometry may have changed — drop the pressed-overlay color/path caches so
-        // the next press rebuilds them once with the current palette and corner radius.
-        cachedPressedColor = nil
-        pressedPathCache.removeAll(keepingCapacity: true)
-
-        // Discard old key layers entirely — frame count and order may have changed.
-        for k in keys {
-            k.background.removeFromSuperlayer()
-            k.glyph.removeFromSuperlayer()
+        let newStyle = SurfaceStyle(isDark: isDark, dims: dims, scale: currentScale, spaceBarSubtitle: spaceBarSubtitle)
+        if newStyle != style {
+            style = newStyle
+            discardAllSurfaces()
+            // Appearance/geometry changed — drop the pressed-overlay color/path caches so
+            // the next press rebuilds them once with the current palette and corner radius.
+            cachedPressedColor = nil
+            pressedPathCache.removeAll(keepingCapacity: true)
         }
+        if shiftState != currentShiftState {
+            currentShiftState = shiftState
+            for surface in surfaces.values {
+                applyShiftState(to: surface)
+            }
+        }
+
+        if let surface = surfaces[page] {
+            if surface.frames == frames {
+                activate(surface)
+                return
+            }
+            // Same style, different geometry for this page ⇒ the keys area was resized or
+            // the layout profile changed. Both invalidate every page, not just this one.
+            discardAllSurfaces()
+        }
+
+        let surface = buildSurface(frames: frames, style: newStyle)
+        surfaces[page] = surface
+        hostLayer.addSublayer(surface.container)
+        activate(surface)
+    }
+
+    /// Make `surface` the visible one. Exactly one surface is visible at any time.
+    private func activate(_ surface: KeySurface) {
+        guard surface !== activeSurface else { return }
+        activeSurface?.container.isHidden = true
+        surface.container.isHidden = false
+        activeSurface = surface
+    }
+
+    private func discardAllSurfaces() {
+        for surface in surfaces.values {
+            surface.container.removeFromSuperlayer()
+        }
+        surfaces.removeAll(keepingCapacity: true)
+        activeSurface = nil
+        // The pressed overlays went down with their containers. Detach them so the next
+        // `setPressedKey` (the coordinator re-applies in-flight presses right after a
+        // rebuild) re-parents them into the new active surface instead of allocating.
         for layer in pressedHighlights.values {
             layer.removeFromSuperlayer()
         }
-        keys.removeAll(keepingCapacity: true)
-        pressedHighlights.removeAll(keepingCapacity: true)
-        highlight.removeFromSuperlayer()
+    }
 
-        let scale = currentScale
+    /// Build every layer of one page into a hidden container. This is the only place that
+    /// allocates key layers or rasterizes text.
+    private func buildSurface(frames: [KeyFrame], style: SurfaceStyle) -> KeySurface {
+        let surface = KeySurface(frames: frames)
+        surface.container.isHidden = true
+        if let hostLayer {
+            surface.container.frame = hostLayer.bounds
+        }
+        surface.keys.reserveCapacity(frames.count)
+
         for frame in frames {
             let background = CAShapeLayer()
             background.frame = frame.rect
-            background.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: frame.rect.size), cornerRadius: dims.cornerRadius).cgPath
-            background.fillColor = backgroundColor(for: frame.action, isDark: isDark).cgColor
+            background.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: frame.rect.size), cornerRadius: style.dims.cornerRadius).cgPath
+            background.fillColor = backgroundColor(for: frame.action, isDark: style.isDark).cgColor
             background.zPosition = 0
-            applyNativeKeyShadow(to: background, isDark: isDark)
-            hostLayer.addSublayer(background)
+            applyNativeKeyShadow(to: background, isDark: style.isDark)
+            surface.container.addSublayer(background)
 
-            let glyphLayer = makeGlyphLayer(for: frame, scale: scale, isDark: isDark)
-            glyphLayer.zPosition = 2
-            hostLayer.addSublayer(glyphLayer)
+            let glyphs = makeGlyphLayers(for: frame, scale: style.scale, isDark: style.isDark)
+            glyphs.addLayers(to: surface.container)
 
-            keys.append(KeyLayers(background: background, glyph: glyphLayer, keyFrame: frame))
+            surface.keys.append(KeyLayers(background: background, glyphs: glyphs, keyFrame: frame))
         }
-
-        // Highlight goes on top of backgrounds; uses translucent fill so glyphs stay readable.
-        // Tint adapts to appearance — slightly lighter than character keys in dark mode,
-        // slightly darker than character keys in light mode.
-        highlight.fillColor = isDark
-            ? UIColor(white: 0.55, alpha: 0.55).cgColor
-            : UIColor(white: 0.85, alpha: 0.9).cgColor
-        highlight.zPosition = 1
-        // Visibility is driven by opacity (so the highlight can fade out on release).
-        // The layer is recreated each full render, so re-establish the hidden-via-opacity state.
-        highlight.isHidden = false
-        highlight.opacity = 0
-        hostLayer.addSublayer(highlight)
+        return surface
     }
 
     // MARK: - Updates (cheap, no rebuild)
 
-    /// Update the shift state — refreshes character casing AND the shift key's glyph icon.
+    /// Update the shift state — flips character casing AND the shift key's icon on every
+    /// built surface, so a hidden page never shows stale casing when it comes back.
     func updateShiftState(_ shiftState: ShiftState) {
-        let newUppercase = shiftState != .disabled
-        let stateChanged = shiftState != currentShiftState
-        guard stateChanged else { return }
+        guard shiftState != currentShiftState else { return }
         currentShiftState = shiftState
-        currentShiftUppercase = newUppercase
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
 
-        for (index, k) in keys.enumerated() {
-            switch k.keyFrame.action {
-            case .character:
-                // Re-string the text layer (we know it's CATextLayer for character keys).
-                if let textLayer = k.glyph as? CATextLayer {
-                    textLayer.string = characterText(for: k.keyFrame.action, uppercase: newUppercase)
-                }
-            case .shift:
-                // Shift glyph swaps between three icons. The glyph layer's type may need
-                // to change if we go from .symbol → .symbol (still a CALayer). Re-render
-                // by replacing the layer entirely.
-                let scale = currentScale
-                let newLayer = makeGlyphLayer(for: k.keyFrame, scale: scale, isDark: currentIsDark)
-                newLayer.zPosition = 2
-                k.glyph.removeFromSuperlayer()
-                hostLayer?.insertSublayer(newLayer, above: k.background)
-                keys[index] = KeyLayers(background: k.background, glyph: newLayer, keyFrame: k.keyFrame)
-            default:
+        for surface in surfaces.values {
+            applyShiftState(to: surface)
+        }
+    }
+
+    /// Pure `isHidden` flips over the pre-built case/icon variants of one surface.
+    private func applyShiftState(to surface: KeySurface) {
+        let uppercase = currentShiftState != .disabled
+        for k in surface.keys {
+            switch k.glyphs {
+            case .cased(let lower, let upper):
+                lower.isHidden = uppercase
+                upper.isHidden = !uppercase
+            case .shift(let disabled, let enabled, let locked):
+                disabled.isHidden = currentShiftState != .disabled
+                enabled.isHidden = currentShiftState != .enabled
+                locked.isHidden = currentShiftState != .locked
+            case .single:
                 break
             }
         }
     }
 
-    /// Legacy single-key highlight path. V2 uses per-touch `setPressedKey(_:for:)` so rolling
-    /// typing cannot make one shared overlay jump between fingers.
-    /// Appearance is INSTANT on press (native); on clear (frame == nil) the highlight fades
-    /// its opacity out over ~120ms. A new press cancels any in-flight fade and snaps to full
-    /// opacity — so promotion to another finger / a fast new press never flickers.
-    func setHighlightedKey(_ frame: KeyFrame?) {
-        guard let frame else {
-            // Fade out on release. Needs implicit/explicit animation, so DON'T disable actions.
-            CATransaction.begin()
-            CATransaction.setDisableActions(false)
-            let anim = CABasicAnimation(keyPath: "opacity")
-            anim.fromValue = highlight.presentation()?.opacity ?? highlight.opacity
-            anim.toValue = 0
-            anim.duration = 0.12
-            anim.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            anim.fillMode = .forwards
-            anim.isRemovedOnCompletion = false
-            highlight.add(anim, forKey: "highlightFade")
-            highlight.opacity = 0
-            CATransaction.commit()
-            return
-        }
-        // Instant show — move to the key and snap to full opacity, cancelling any fade.
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        highlight.removeAnimation(forKey: "highlightFade")
-        highlight.frame = frame.rect
-        highlight.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: frame.rect.size), cornerRadius: currentCornerRadius).cgPath
-        highlight.isHidden = false
-        highlight.opacity = 1
-        CATransaction.commit()
-    }
-
     /// Press a key for a specific touch. Multiple touches can be active at once; each gets a
     /// separate layer below glyphs so rolling typing no longer makes one shared overlay jump.
+    /// The overlay lives in the active surface; if the page switched mid-press (123 swaps the
+    /// plane at touch-down) the same layer is moved over rather than re-created.
     func setPressedKey(_ frame: KeyFrame, for id: ObjectIdentifier) {
-        guard let hostLayer else { return }
+        guard let container = activeSurface?.container else { return }
 
-        let layer = pressedHighlights[id] ?? CAShapeLayer()
-        pressedHighlights[id] = layer
+        let layer: CAShapeLayer
+        if let existing = pressedHighlights[id] {
+            layer = existing
+        } else {
+            layer = CAShapeLayer()
+            pressedHighlights[id] = layer
+        }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -231,8 +313,9 @@ final class KeyLayerRenderer {
         layer.fillColor = pressedColorCGColor()
         layer.opacity = 1
         layer.zPosition = 1
-        if layer.superlayer == nil {
-            hostLayer.addSublayer(layer)
+        if layer.superlayer !== container {
+            layer.removeFromSuperlayer()
+            container.addSublayer(layer)
         }
         CATransaction.commit()
     }
@@ -273,7 +356,7 @@ final class KeyLayerRenderer {
             : UIColor(white: 0.78, alpha: 1.0)
     }
 
-    /// Appearance-constant pressed fill, resolved to a `CGColor` once per render (palette change).
+    /// Appearance-constant pressed fill, resolved to a `CGColor` once per style change.
     private func pressedColorCGColor() -> CGColor {
         if let cached = cachedPressedColor { return cached }
         let color = pressedColor().cgColor
@@ -293,41 +376,88 @@ final class KeyLayerRenderer {
         return path
     }
 
-    /// Update an individual key's text/style (used for return-key label changes).
-    /// Replaces the glyph layer because text↔symbol may switch.
+    /// Update the return key's label/style on every built surface. Replaces the glyph layer
+    /// because text↔symbol may switch. A no-op when the label is unchanged — the coordinator
+    /// re-pushes it after every `render`, and surfaces are built with the stored label, so
+    /// the per-render call costs nothing.
     func updateReturnKeyLabel(_ label: String, prominent: Bool, isDark: Bool) {
+        let newLabel = ReturnKeyLabel(label: label, prominent: prominent)
+        guard newLabel != returnKeyLabel else { return }
+        returnKeyLabel = newLabel
+        guard !surfaces.isEmpty else { return }
+
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
-        for (index, k) in keys.enumerated() where k.keyFrame.action == .returnKey {
-            let scale = currentScale
-            // Override the glyph factory's default by stashing the label override.
-            self.returnKeyOverride = (label: label, prominent: prominent)
-            let newGlyph = makeGlyphLayer(for: k.keyFrame, scale: scale, isDark: isDark)
-            newGlyph.zPosition = 2
-            self.returnKeyOverride = nil
 
-            if prominent {
-                k.background.fillColor = UIColor.systemBlue.cgColor
-            } else {
-                k.background.fillColor = backgroundColor(for: .returnKey, isDark: isDark).cgColor
+        let fill = backgroundColor(for: .returnKey, isDark: isDark).cgColor
+        for surface in surfaces.values {
+            for index in surface.keys.indices where surface.keys[index].keyFrame.action == .returnKey {
+                let k = surface.keys[index]
+                k.glyphs.removeFromSuperlayer()
+                let glyphs = makeGlyphLayers(for: k.keyFrame, scale: currentScale, isDark: isDark)
+                glyphs.addLayers(to: surface.container)
+                k.background.fillColor = fill
+                surface.keys[index].glyphs = glyphs
             }
-            k.glyph.removeFromSuperlayer()
-            hostLayer?.insertSublayer(newGlyph, above: k.background)
-            keys[index] = KeyLayers(background: k.background, glyph: newGlyph, keyFrame: k.keyFrame)
         }
+    }
+
+    // MARK: - Memory pressure
+
+    /// Keep only the visible surface (an in-flight press may be parked in it) and drop every
+    /// cache that rebuilds lazily. Other pages rebuild on their next visit exactly as a
+    /// first visit would.
+    func handleMemoryPressure() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        defer { CATransaction.commit() }
+
+        for surface in surfaces.values where surface !== activeSurface {
+            surface.container.removeFromSuperlayer()
+        }
+        surfaces = surfaces.filter { $0.value === activeSurface }
+        Self.glyphCache.removeAll()
+        pressedPathCache.removeAll()
+        fontCache.removeAll()
     }
 
     // MARK: - Glyph factory
 
-    /// Transient state read by `glyph(for:)` when re-rendering the return key with a runtime label.
-    private var returnKeyOverride: (label: String, prominent: Bool)?
+    /// Build the glyph layer(s) for a key. Letters get both cases and the shift key all
+    /// three icons, each pre-set to the current shift state; everything else is one layer.
+    private func makeGlyphLayers(for frame: KeyFrame, scale: CGFloat, isDark: Bool) -> GlyphLayers {
+        switch frame.action {
+        case .character(let c):
+            let lower = c.lowercased()
+            let upper = c.uppercased()
+            if lower == upper {
+                return .single(makeTextLayer(lower, for: frame, scale: scale, isDark: isDark))
+            }
+            let lowerLayer = makeTextLayer(lower, for: frame, scale: scale, isDark: isDark)
+            let upperLayer = makeTextLayer(upper, for: frame, scale: scale, isDark: isDark)
+            let uppercase = currentShiftState != .disabled
+            lowerLayer.isHidden = uppercase
+            upperLayer.isHidden = !uppercase
+            return .cased(lower: lowerLayer, upper: upperLayer)
+        case .shift:
+            let disabled = makeSymbolLayer(name: Self.shiftSymbolName(for: .disabled), pointSize: Self.shiftSymbolPointSize, weight: .regular, for: frame, scale: scale, isDark: isDark)
+            let enabled = makeSymbolLayer(name: Self.shiftSymbolName(for: .enabled), pointSize: Self.shiftSymbolPointSize, weight: .regular, for: frame, scale: scale, isDark: isDark)
+            let locked = makeSymbolLayer(name: Self.shiftSymbolName(for: .locked), pointSize: Self.shiftSymbolPointSize, weight: .regular, for: frame, scale: scale, isDark: isDark)
+            disabled.isHidden = currentShiftState != .disabled
+            enabled.isHidden = currentShiftState != .enabled
+            locked.isHidden = currentShiftState != .locked
+            return .shift(disabled: disabled, enabled: enabled, locked: locked)
+        default:
+            return .single(makeGlyphLayer(for: frame, scale: scale, isDark: isDark))
+        }
+    }
 
-    /// Build the appropriate glyph layer for a given key.
+    /// Build the single glyph layer for a shift-invariant key.
     private func makeGlyphLayer(for frame: KeyFrame, scale: CGFloat, isDark: Bool) -> CALayer {
         // Space bar with a locale subtitle: a parent CALayer holds the subtitle CATextLayer
         // positioned bottom-right (matches native iOS's "EN ES" placement).
-        if case .space = frame.action, let subtitle = spaceBarSubtitle, !subtitle.isEmpty {
+        if case .space = frame.action, let subtitle = style?.spaceBarSubtitle, !subtitle.isEmpty {
             let container = CALayer()
             container.frame = frame.rect
             let subtitleFont: CGFloat = 11
@@ -336,7 +466,7 @@ final class KeyLayerRenderer {
             subtitleLayer.alignmentMode = .right
             subtitleLayer.string = subtitle
             subtitleLayer.fontSize = subtitleFont
-            subtitleLayer.font = CTFontCreateUIFontForLanguage(.system, subtitleFont, nil)
+            subtitleLayer.font = uiFont(ofSize: subtitleFont)
             // Dimmer than the main glyph — matches native's secondary-text treatment.
             let secondary = isDark ? UIColor(white: 0.65, alpha: 1.0) : UIColor(white: 0.45, alpha: 1.0)
             subtitleLayer.foregroundColor = secondary.cgColor
@@ -351,67 +481,80 @@ final class KeyLayerRenderer {
             return container
         }
 
-        let glyph = self.glyph(for: frame.action)
-        switch glyph {
+        switch glyph(for: frame.action) {
         case .text(let string):
-            let textLayer = CATextLayer()
-            textLayer.contentsScale = scale
-            textLayer.alignmentMode = .center
-            let fontSize = textFontSize(for: frame.action, keyHeight: frame.rect.height)
-            // Vertically center the text within the key, with a small upward bias to match
-            // native iOS (Apple's glyphs sit slightly above mathematical center).
-            let inset = max((frame.rect.height - fontSize - 4) / 2, 0)
-            textLayer.frame = frame.rect.insetBy(dx: 0, dy: inset).offsetBy(dx: 0, dy: -1)
-            textLayer.string = string
-            textLayer.fontSize = fontSize
-            textLayer.font = CTFontCreateUIFontForLanguage(.system, fontSize, nil)
-            textLayer.foregroundColor = glyphColor(for: frame.action, isDark: isDark).cgColor
-            return textLayer
+            return makeTextLayer(string, for: frame, scale: scale, isDark: isDark)
         case .symbol(let name, let pointSize, let weight):
-            let imageLayer = CALayer()
-            imageLayer.contentsScale = scale
-            imageLayer.contentsGravity = .resizeAspect
-            let image = symbolImage(name: name, pointSize: pointSize, weight: weight, tint: glyphColor(for: frame.action, isDark: isDark))
-            imageLayer.contents = image?.cgImage
-            // Size the layer to the rendered image's pixel-perfect size, centered in the key.
-            if let image {
-                let w = image.size.width
-                let h = image.size.height
-                let originX = frame.rect.midX - w / 2
-                let originY = frame.rect.midY - h / 2
-                imageLayer.frame = CGRect(x: originX, y: originY, width: w, height: h)
-            } else {
-                imageLayer.frame = frame.rect
-            }
-            return imageLayer
+            return makeSymbolLayer(name: name, pointSize: pointSize, weight: weight, for: frame, scale: scale, isDark: isDark)
         }
     }
 
-    /// Decide whether a key should render text or an SF Symbol image.
+    private func makeTextLayer(_ string: String, for frame: KeyFrame, scale: CGFloat, isDark: Bool) -> CATextLayer {
+        let textLayer = CATextLayer()
+        textLayer.contentsScale = scale
+        textLayer.alignmentMode = .center
+        let fontSize = textFontSize(for: frame.action, keyHeight: frame.rect.height)
+        // Vertically center the text within the key, with a small upward bias to match
+        // native iOS (Apple's glyphs sit slightly above mathematical center).
+        let inset = max((frame.rect.height - fontSize - 4) / 2, 0)
+        textLayer.frame = frame.rect.insetBy(dx: 0, dy: inset).offsetBy(dx: 0, dy: -1)
+        textLayer.string = string
+        textLayer.fontSize = fontSize
+        textLayer.font = uiFont(ofSize: fontSize)
+        textLayer.foregroundColor = glyphColor(for: frame.action, isDark: isDark).cgColor
+        return textLayer
+    }
+
+    private func makeSymbolLayer(name: String, pointSize: CGFloat, weight: UIImage.SymbolWeight, for frame: KeyFrame, scale: CGFloat, isDark: Bool) -> CALayer {
+        let imageLayer = CALayer()
+        imageLayer.contentsScale = scale
+        imageLayer.contentsGravity = .resizeAspect
+        let image = symbolImage(name: name, pointSize: pointSize, weight: weight, tint: glyphColor(for: frame.action, isDark: isDark))
+        imageLayer.contents = image?.cgImage
+        // Size the layer to the rendered image's pixel-perfect size, centered in the key.
+        if let image {
+            let w = image.size.width
+            let h = image.size.height
+            let originX = frame.rect.midX - w / 2
+            let originY = frame.rect.midY - h / 2
+            imageLayer.frame = CGRect(x: originX, y: originY, width: w, height: h)
+        } else {
+            imageLayer.frame = frame.rect
+        }
+        return imageLayer
+    }
+
+    private static let shiftSymbolPointSize: CGFloat = 17
+
+    /// Match native: outline arrow when disabled, filled when enabled, capslock.fill when locked.
+    private static func shiftSymbolName(for state: ShiftState) -> String {
+        switch state {
+        case .disabled: return "shift"
+        case .enabled:  return "shift.fill"
+        case .locked:   return "capslock.fill"
+        }
+    }
+
+    /// Decide whether a key should render text or an SF Symbol image. Letters and the shift
+    /// key are built by `makeGlyphLayers` with every variant; here they yield the variant
+    /// for the current shift state.
     private func glyph(for action: KeyAction) -> KeyGlyph {
         switch action {
         case .character(let c):
-            return .text(currentShiftUppercase ? c.uppercased() : c.lowercased())
+            return .text(currentShiftState != .disabled ? c.uppercased() : c.lowercased())
         case .insertText(let label, _):
             return .text(label)
         case .shift:
-            // Match native: outline arrow when disabled, filled when enabled, capslock.fill when locked.
-            switch currentShiftState {
-            case .disabled: return .symbol(name: "shift", pointSize: 17, weight: .regular)
-            case .enabled:  return .symbol(name: "shift.fill", pointSize: 17, weight: .regular)
-            case .locked:   return .symbol(name: "capslock.fill", pointSize: 17, weight: .regular)
-            }
+            return .symbol(name: Self.shiftSymbolName(for: currentShiftState), pointSize: Self.shiftSymbolPointSize, weight: .regular)
         case .backspace:
             return .symbol(name: "delete.left", pointSize: 19, weight: .regular)
         case .space:
             return .text("")
         case .returnKey:
-            if let override = returnKeyOverride {
-                return override.prominent
-                    ? .text(override.label)
-                    : .symbol(name: "return", pointSize: 20, weight: .regular)
+            if let returnKeyLabel, returnKeyLabel.prominent {
+                return .text(returnKeyLabel.label)
             }
-            // Default before any label is pushed in: outlined return symbol.
+            // Default before any label is pushed in (and whenever not prominent): outlined return symbol.
             return .symbol(name: "return", pointSize: 20, weight: .regular)
         case .modeChange(let page):
             switch page {
@@ -422,16 +565,6 @@ final class KeyLayerRenderer {
         case .snippetToggle:
             return .symbol(name: "sparkle", pointSize: 16, weight: .regular)
         }
-    }
-
-    private func characterText(for action: KeyAction, uppercase: Bool) -> String {
-        if case .character(let c) = action {
-            return uppercase ? c.uppercased() : c.lowercased()
-        }
-        if case .insertText(let label, _) = action {
-            return label
-        }
-        return ""
     }
 
     private func textFontSize(for action: KeyAction, keyHeight: CGFloat) -> CGFloat {
@@ -448,13 +581,20 @@ final class KeyLayerRenderer {
         return round(keyHeight * 0.43)
     }
 
+    private func uiFont(ofSize size: CGFloat) -> CTFont? {
+        if let cached = fontCache[size] { return cached }
+        guard let font = CTFontCreateUIFontForLanguage(.system, size, nil) else { return nil }
+        fontCache[size] = font
+        return font
+    }
+
     /// Render an SF Symbol to a `UIImage` of pixel-perfect size at the current screen scale,
     /// tinted to the requested color.
     ///
     /// Results are memoized in a static cache keyed by (name, pointSize, weight, tint).
     /// The distinct set of symbols rendered by V2 is tiny (≤ 8 icons × 2 tints), so the
-    /// cache stays well-bounded without eviction. Eliminates `UIGraphicsImageRenderer`
-    /// work on every full render, shift toggle, and return-label change.
+    /// cache stays well-bounded without eviction; `handleMemoryPressure` empties it.
+    /// Eliminates `UIGraphicsImageRenderer` work on every surface build and return-label change.
     private struct GlyphCacheKey: Hashable {
         let name: String
         let pointSize: CGFloat
@@ -498,6 +638,8 @@ final class KeyLayerRenderer {
             return isDark
                 ? UIColor(white: 0.40, alpha: 0.55)
                 : UIColor(white: 1.0, alpha: 0.94)
+        case .returnKey where returnKeyLabel?.prominent == true:
+            return .systemBlue
         case .returnKey, .shift, .backspace, .modeChange, .snippetToggle:
             return isDark
                 ? UIColor(white: 0.40, alpha: 0.55)
@@ -520,7 +662,7 @@ final class KeyLayerRenderer {
 
     private func glyphColor(for action: KeyAction, isDark: Bool) -> UIColor {
         if case .returnKey = action {
-            let prominent = returnKeyOverride?.prominent ?? false
+            let prominent = returnKeyLabel?.prominent ?? false
             if !prominent {
                 return isDark ? UIColor(white: 0.48, alpha: 1.0) : UIColor(white: 0.82, alpha: 1.0)
             }

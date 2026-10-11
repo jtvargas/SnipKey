@@ -76,6 +76,11 @@ final class NativeKeyboardV2View: UIView {
         coordinator.adjustCaret = block
     }
 
+    /// Forward a memory warning to the keys surface (drops rebuildable caches only).
+    func handleMemoryPressure() {
+        coordinator.handleMemoryPressure()
+    }
+
     // MARK: - Observation
 
     /// Subscribe to @Observable state mutations. `withObservationTracking` only fires once

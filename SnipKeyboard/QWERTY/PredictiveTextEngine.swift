@@ -50,7 +50,7 @@ final class PredictiveTextTracker: @unchecked Sendable {
 
     /// Cached supplementary lexicon from UIInputViewController.
     /// Contains user contacts, shortcuts (e.g., "omw" → "On my way!").
-    /// Set once from viewDidLoad via requestSupplementaryLexicon.
+    /// Set once from `performDeferredSetup` (first viewDidAppear) via requestSupplementaryLexicon.
     var lexicon: UILexicon?
 
     /// Last known candidates — used to avoid redundant @Observable mutations

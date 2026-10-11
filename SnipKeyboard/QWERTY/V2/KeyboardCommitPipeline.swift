@@ -6,7 +6,10 @@
 //  auto-period and predictive triggers stay consistent across commit paths.
 //
 //  Smart-punctuation and auto-cap-"i" transforms (Phase E) run AFTER `insertText`
-//  but BEFORE slash/predictive evaluation so the latter see the final text.
+//  but BEFORE slash/predictive evaluation so the latter see the final text. Every
+//  context decision here reads `QWERTYInputTracking.contextMirror` — the controller
+//  advances it in lockstep with each proxy mutation — so no commit path performs a
+//  synchronous `documentContextBeforeInput` read.
 //
 
 import UIKit
@@ -38,10 +41,8 @@ enum KeyboardCommitPipeline {
             if eatSet.contains(textToInsert) { actions.deleteBackward() }
         }
 
-        // `insertCharacter` marks the host's synchronous textDidChange re-entrancy as
-        // our own insert, so the controller skips the redundant auto-cap context read.
         KeyboardSignposts.interval("insertXPC") {
-            actions.insertCharacter(textToInsert)
+            actions.insertText(textToInsert)
         }
         state.inputTracking.recordAction(.character)
         if let scalar = textToInsert.first {
@@ -146,19 +147,19 @@ enum KeyboardCommitPipeline {
     }
 
     /// One word-tier backspace tick (native's escalated hold-to-delete): removes the
-    /// trailing whitespace run plus the word before it in a single visual chunk. One
-    /// synchronous cross-process context read per tick — word ticks run at ~350ms, far off
-    /// the per-keystroke hot path. Returns the number of deletions performed; always ≥ 1
-    /// when any context text might exist (empty/unavailable context falls back to a single
-    /// delete so a held backspace never stalls, even when the host exposes no context).
+    /// trailing whitespace run plus the word before it in a single visual chunk, sized from
+    /// the context mirror (zero XPC). Returns the number of deletions performed; always ≥ 1
+    /// so a held backspace never stalls. If the mirror is shorter than the real document
+    /// tail (only possible mid-burst, before the next flush re-syncs it), the tick deletes
+    /// what the mirror can vouch for and the following tick continues from fresh context.
     @discardableResult
     static func commitWordBackspace(
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) -> Int {
         state.inputTracking.pendingSmartSpace = false
-        let context = actions.documentContextBeforeInput() ?? ""
-        let chunk = wordDeletionChunk(context: context)
+        let chunk = wordDeletionChunk(
+            context: state.inputTracking.contextMirror.lastCharacters(TypingContextMirror.capacity))
         for _ in 0..<chunk { actions.deleteBackward() }
         state.inputTracking.recordAction(.other)
         state.inputTracking.touchContext.recordNonCharacter()
@@ -169,8 +170,10 @@ enum KeyboardCommitPipeline {
     /// Number of `Character`s (grapheme-safe — emoji count as one deleteBackward each) one
     /// word-tier tick removes: the trailing whitespace/newline run, then the non-whitespace
     /// run before it, clamped to [1, 30] so a pathological chunk can't monopolize the main
-    /// thread with XPC deletes. Pure — self-testable.
-    static func wordDeletionChunk(context: String) -> Int {
+    /// thread with XPC deletes. Pure — self-testable with a String; the runtime passes the
+    /// mirror's character slice.
+    static func wordDeletionChunk<Context: BidirectionalCollection>(context: Context) -> Int
+    where Context.Element == Character {
         guard !context.isEmpty else { return 1 }
         var count = 0
         var idx = context.endIndex
@@ -227,14 +230,14 @@ enum KeyboardCommitPipeline {
 
     // MARK: - Smart Punctuation
 
-    /// Run en-US smart-punctuation transforms based on what was just inserted.
-    /// Modifies the document by `deleteBackward` + `insertText` to swap straight
-    /// characters for typographic ones.
+    /// Run en-US smart-punctuation transforms based on what was just inserted (already
+    /// appended to the mirror). Modifies the document by `deleteBackward` + `insertText`
+    /// to swap straight characters for typographic ones.
     ///
     /// Returns `true` if it mutated the document. Early-returns unless the inserted
-    /// character can actually trigger a transform, and prefers the keyboard-side context
-    /// mirror over the synchronous cross-process `documentContextBeforeInput` read — so
-    /// even the four trigger characters usually cost zero XPC on the touch path.
+    /// character can actually trigger a transform; the four trigger characters inspect at
+    /// most four trailing mirror characters, so the letter path and the trigger path both
+    /// cost zero XPC.
     @discardableResult
     private static func applySmartPunctuation(
         justInserted: String,
@@ -242,76 +245,52 @@ enum KeyboardCommitPipeline {
         state: QWERTYKeyboardState,
         actions: KeyboardActions
     ) -> Bool {
-        // Only these four characters can trigger a smart-punctuation transform.
-        // Skipping the context read for everything else keeps the letter path read-free.
-        switch justInserted {
-        case "-", ".", "\"", "'":
-            break
-        default:
-            return false
-        }
-        let context: String
-        if let fast = state.inputTracking.trailingContextFast {
-            context = fast
-        } else if let real = actions.documentContextBeforeInput() {
-            context = real
-        } else {
-            return false
-        }
-        guard !context.isEmpty else { return false }
-
+        let mirror = state.inputTracking.contextMirror
         switch justInserted {
         case "-" where traits.smartDashesEnabled:
             // `--` → em-dash. Only fire on the SECOND `-` (i.e. the trailing two chars are `--`,
             // and the char before that — if any — is NOT a `-` so we don't keep collapsing).
-            if context.hasSuffix("--") {
-                let beforeDashes = context.dropLast(2)
-                if beforeDashes.last != "-" {
-                    actions.deleteBackward()
-                    actions.deleteBackward()
-                    actions.insertText("\u{2014}")  // —
-                    return true
-                }
+            guard mirror.character(fromEnd: 1) == "-", mirror.character(fromEnd: 2) != "-" else {
+                return false
             }
-            return false
+            actions.deleteBackward()
+            actions.deleteBackward()
+            actions.insertText("\u{2014}")  // —
+            return true
         case "." where traits.smartDashesEnabled:
             // `...` → ellipsis. Same single-fire guard.
-            if context.hasSuffix("...") {
-                let beforeDots = context.dropLast(3)
-                if beforeDots.last != "." {
-                    actions.deleteBackward()
-                    actions.deleteBackward()
-                    actions.deleteBackward()
-                    actions.insertText("\u{2026}")  // …
-                    return true
-                }
+            guard mirror.character(fromEnd: 1) == ".", mirror.character(fromEnd: 2) == ".",
+                  mirror.character(fromEnd: 3) != "." else {
+                return false
             }
-            return false
+            actions.deleteBackward()
+            actions.deleteBackward()
+            actions.deleteBackward()
+            actions.insertText("\u{2026}")  // …
+            return true
         case "\"" where traits.smartQuotesEnabled:
-            replaceJustInsertedQuote(context: context, open: "\u{201C}", close: "\u{201D}", actions: actions)
+            replaceJustInsertedQuote(mirror: mirror, open: "\u{201C}", close: "\u{201D}", actions: actions)
             return true
         case "'" where traits.smartQuotesEnabled:
-            replaceJustInsertedQuote(context: context, open: "\u{2018}", close: "\u{2019}", actions: actions)
+            replaceJustInsertedQuote(mirror: mirror, open: "\u{2018}", close: "\u{2019}", actions: actions)
             return true
         default:
             return false
         }
     }
 
-    /// Replace the just-inserted straight quote (last char of `context`) with the right
-    /// typographic variant. Uses an alternation rule: if the character immediately before
-    /// the quote is whitespace, newline, an opening bracket, or empty (start of doc), use
-    /// the opening quote; otherwise use the closing quote.
+    /// Replace the just-inserted straight quote (last mirrored character) with the right
+    /// typographic variant. Alternation rule: if the character immediately before the
+    /// quote is whitespace, newline, an opening bracket/quote, or absent (start of doc),
+    /// use the opening quote; otherwise use the closing quote.
     private static func replaceJustInsertedQuote(
-        context: String,
+        mirror: TypingContextMirror,
         open: String,
         close: String,
         actions: KeyboardActions
     ) {
-        // Strip the just-inserted straight quote from the end to examine what came before.
-        let beforeQuote = context.dropLast()
         let useOpening: Bool
-        if let priorChar = beforeQuote.last {
+        if let priorChar = mirror.character(fromEnd: 1) {
             useOpening = priorChar.isWhitespace || priorChar.isNewline
                 || priorChar == "(" || priorChar == "[" || priorChar == "{"
                 || priorChar == "\u{201C}" || priorChar == "\u{2018}"
@@ -326,17 +305,14 @@ enum KeyboardCommitPipeline {
 
     /// If the cursor now sits right after `" i "` (or `"i "` at start of doc), replace
     /// the lone lowercase "i" with "I". Mirrors Apple's auto-cap heuristic for the English
-    /// first-person pronoun. Prefers the keyboard-side context mirror (zero XPC).
+    /// first-person pronoun. Reads the context mirror (zero XPC).
     private static func applyAutoCapitalizationOfI(state: QWERTYKeyboardState, actions: KeyboardActions) {
-        guard let context = state.inputTracking.trailingContextFast
-                ?? actions.documentContextBeforeInput() else { return }
-        // We just inserted a space, so the context ends with " ". Pattern: "...{word_break}i ".
-        guard context.hasSuffix("i ") else { return }
-        let withoutTrailingSpace = context.dropLast()        // "...i"
-        let beforeI = withoutTrailingSpace.dropLast()        // "..."
+        let mirror = state.inputTracking.contextMirror
+        // We just inserted a space, so the mirror ends with " ". Pattern: "...{word_break}i ".
+        guard mirror.character(fromEnd: 0) == " ", mirror.character(fromEnd: 1) == "i" else { return }
 
         let isWordBoundary: Bool
-        if let priorChar = beforeI.last {
+        if let priorChar = mirror.character(fromEnd: 2) {
             isWordBoundary = priorChar.isWhitespace || priorChar.isNewline
                 || priorChar == "(" || priorChar == "[" || priorChar == "{"
                 || priorChar == "\""  || priorChar == "\u{201C}" || priorChar == "\u{2018}"
