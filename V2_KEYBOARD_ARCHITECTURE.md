@@ -204,7 +204,7 @@ fast typing (~10–12 chars/sec, faster on bursts) never drops a character or st
 ### 4.1 Verified optimizations
 | Optimization | What it does | Where |
 |---|---|---|
-| **`TypingContextMirror`** | Keyboard-side mirror of the text before the caret (64 graphemes, pre-reserved buffer). Advanced in lockstep with every own insert/delete; resynced from ONE `documentContextBeforeInput` read only off the keystroke path (`flushSideEffects`, `viewWillAppear`, external `textDidChange`, coalesced `selectionDidChange`). Drives auto-cap, smart punctuation, auto-cap "I", word-delete chunks and predictive validation. SwiftKey's `SKShiftStateManager` works the same way. | `QWERTY/V2/TypingContextMirror.swift`; `QWERTYInputTracking.contextMirror`. |
+| **`TypingContextMirror`** | Keyboard-side mirror of the text before the caret (64 graphemes, pre-reserved buffer). Advanced in lockstep with every own insert/delete; resynced from ONE `documentContextBeforeInput` read only off the keystroke path (`flushSideEffects`, `viewWillAppear`, external `textDidChange`, coalesced `selectionDidChange`). Drives auto-cap, smart punctuation, auto-cap "I", word-delete chunks and predictive validation. This is SnipKey's implementation; SwiftKey symbol names alone do not establish equivalent internals. | `QWERTY/V2/TypingContextMirror.swift`; `QWERTYInputTracking.contextMirror`. |
 | **Per-field trait cache** | `HostInputTraits` (keyboardType, appearance, returnKeyType, autocap, locale codes…) read in `refreshHostInputTraits()` only from `viewWillAppear`, external changes, `flushSideEffects` and `currentInputModeDidChangeNotification`. `updateQWERTYState` on an own insert performs zero proxy reads. | `KeyboardViewController.swift` `cachedHostInputTraits`. |
 | **KeySurface per page** | Page switch (123/ABC, auto-return-to-letters) and shift toggles are `isHidden` flips over pre-built layers; a style change (appearance/size/scale/subtitle) is the only full rebuild. `handleMemoryPressure()` drops inactive pages. | `KeyLayerRenderer.swift` `KeySurface`, `GlyphLayers`. |
 | **Staged init** | `viewDidLoad` builds only what the first keystroke needs; clipboard polling, SwiftData warm-up, reminder/timer flags and predictive warm-up run once from the first `viewDidAppear` on the next runloop turn (`performDeferredSetup`). | `KeyboardViewController.swift`. |
@@ -299,6 +299,74 @@ Two complementary mechanisms guarantee every point resolves to exactly one key:
 - 12pt directional hysteresis before the tracked key changes on slide.
 - `deinit` cancels all outstanding Tasks.
 
+### 5.5 English swipe typing
+
+**Product setting:** Settings → Experimental → **Swipe to Type**, enabled by default in Debug and
+Release. Stored in SwiftData and mirrored to App Group defaults. Reopening the keyboard refreshes
+the setting; disabling restores the existing tap/slide path. No Full Access or network is required.
+Swipe is limited to the letters page and fields permitting smart transforms (not URL, email or
+numeric/literal fields). Legacy commit-on-down timing never arms swipe.
+
+| Component | Responsibility |
+|---|---|
+| `SwipeTypes.swift` | Timestamped points, lowercase key-center geometry, ranked word candidates. |
+| `SwipeGestureController.swift` | Single owner, buffered recognition, cancellation, bounded 512-point capture. |
+| `SwipeTrailLayer.swift` | Age-limited Catmull-Rom trail; coalesced samples painted once per display frame, explicit lift fade. |
+| `SwipeLexicon.swift` | Immutable 50,000-word English lexicon, flat letter storage, first/last-letter buckets and word-frequency priors. |
+| `SwipeDecoder.swift` | Arc-length resampling and smoothing; location, shape and direct endpoint costs plus frequency prior. |
+| `SwipeTypingEngine.swift` | Background one-time lexicon loading, readiness gate, synchronous lift decoding to preserve input order. |
+
+The coordinator buffers from touch-down but leaves ordinary taps and short slide corrections
+unchanged. Recognition requires 1.5 key widths of travel and an excursion of at least 0.8 widths
+from the starting point; jitter near the origin does not activate it. A direct short slide such
+as W→E remains a correction, not the word “we”: tap such words or use a wider swipe curve.
+These are SnipKey thresholds, not recovered platform constants.
+
+Recognition cancels the letter's long-press timer, highlight and callout. Other finger-downs
+during an active swipe are ignored. Rollover-committed letters and accent-menu presses cannot
+later become swipes. Lift includes the final point, decodes once, and inserts the best word;
+cancellation, geometry changes, host context changes or keyboard disappearance drop the trace.
+Taps remain available while the lexicon loads.
+
+`commitSwipeWord` applies current shift casing, inserts a leading separator after an existing
+letter/digit and a trailing smart space. Subsequent punctuation consumes that smart space.
+Up to two alternatives use the existing toolbar replacement path, replacing the committed
+word **and its trailing space**. Publishing alternatives invalidates earlier asynchronous
+predictions; subsequent edits/caret changes invalidate them. Own-write callback classification
+still uses the controller's existing 50ms heuristic; unusual host echo timing needs device checks.
+
+Repeated letters collapse geometrically; frequency distinguishes identical paths such as
+“god”/“good”. Selected apostrophe-free stems become contractions, while “well”, “were”,
+“ill”, “id” and “its” remain literal. This is an offline unigram decoder: no contextual neural
+model, learned user vocabulary or non-English lexicon. Out-of-vocabulary names are best tapped.
+Candidate confidence is relative ranking, not a calibrated correctness probability.
+
+**SwiftKey evidence boundary.** The inspected Microsoft SwiftKey 4.3.7 IPA is FairPlay-encrypted.
+Exported symbols included `SKFlowGestureRecognizer` (`beforeRecognizedPoints`,
+`minimumDistanceToRecognize`), `SKFlowProcessor`, `flowEnabled`, `FlowSmootherCatmullRom`,
+`FluencyTouchHistory.appendTrace`, and continuous-touch curve/direction/endpoint scoring names.
+They support an architectural inference of buffered capture → trace decoder → prediction commit
+with a separate trail. They do not reveal executable bodies, scoring weights, training data or
+accuracy. SnipKey's shape/location matcher is independently implemented; no SwiftKey/QuickPath
+equivalence is claimed.
+
+**Resource regeneration:** uses [Norvig's word counts](https://norvig.com/ngrams/) and the local
+macOS Web2 dictionary as a word gate. Generator comments record source attribution and exact
+input/output hashes; attribution is not a redistribution-license determination.
+
+```sh
+python3 tooling/swipe/build_swipe_lexicon.py /path/to/count_1w.txt \
+  SnipKeyboard/Resources/swipe-lexicon-en.txt --dictionary /usr/share/dict/words
+```
+
+The resource is copied into both app and keyboard-extension bundles. Regeneration was byte-identical,
+including after reversing input order. A throwaway executable exercised the real decoder and capture
+code: 19 words with ideal and deterministic noisy paths ranked correctly first (38/38), plus checks
+for contractions, repeated letters, lift endpoints, jitter, ownership, cancellation and bounded
+capture. This small synthetic smoke is not a real-user accuracy benchmark; phone typing and trail
+appearance require manual validation. No permanent tests or simulator were added.
+
+
 ---
 
 ## 6. Optimization Opportunities & Risks
@@ -374,6 +442,7 @@ per-key SwiftUI path were removed. Smart Touch Targeting is likewise always on
 |---|---|---|---|
 | **Next-gen touch engine** | `useProbabilisticHitResolver` | `true` | 2D power-diagram resolver + per-user learning vs legacy 1D shift |
 | Auto-capitalization | `autoCapitalizationEnabled` | `true` | Sentence/word auto-cap + auto-"I" |
+| Swipe to Type | `swipeTypingEnabled` | `true` | Offline English swipe decoding; refreshed when the keyboard appears |
 | Debug hit overlay | `debugHitOverlayEnabled` | `false` | Red hit-cell outlines; + live Voronoi cells when the engine is on |
 | Shadow-mode logging | `shadowLoggingEnabled` | `false` | Records acting-vs-shadow resolver disagreement (tuning/telemetry) |
 
@@ -393,4 +462,5 @@ which intentionally avoids main-thread work mid-typing.
 - **Callouts / accent menus:** `KeyboardCalloutView.swift` + `CalloutController.swift` + `AccentMap.swift`.
 - **Snippets / slash:** `SlashCommandEngine.swift` + toolbar in `QWERTYKeyboardView.swift`.
 - **Predictive text:** `PredictiveTextEngineAsync.swift`.
+- **Swipe recognition / ranking:** `SwipeGestureController.swift` + `SwipeDecoder.swift`; see §5.5 for lexicon regeneration and limitations.
 - **XPC / state hydration:** `KeyboardViewController.swift` + `KeyboardActions.swift` + `QWERTYKeyboardState.swift`.

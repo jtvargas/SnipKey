@@ -148,6 +148,12 @@ class KeyboardViewController: UIInputViewController {
     /// Coalescer guard for `scheduleTypingContextResync` (selection-driven mirror re-sync).
     private var typingContextResyncScheduled = false
 
+    /// Only selection callbacks need the extra selected-text host read during reconciliation.
+    private var selectionContextValidationNeeded = false
+
+    /// Prevent an already-queued side-effect flush from rearming predictions after dismissal.
+    private var isKeyboardVisible = false
+
     /// Staged init (SwiftKey: `_perInstanceSetUp` → `_postKeyboardAppearanceSetUp`).
     /// `viewDidLoad` builds only what the first frame and first keystroke need;
     /// `performDeferredSetup` runs once, one runloop turn after the first `viewDidAppear`.
@@ -266,6 +272,7 @@ class KeyboardViewController: UIInputViewController {
                 // A caret move invalidates the pending smart space — the cursor is no longer
                 // right after a suggestion's trailing space, so don't eat an arbitrary space.
                 self.qwertyState.inputTracking.pendingSmartSpace = false
+                self.resetPredictivePipeline()
                 // The context mirror tracks text BEFORE the caret: re-sync it (coalesced,
                 // next turn) even for hosts that don't echo programmatic moves back through
                 // `selectionDidChange`.
@@ -278,6 +285,9 @@ class KeyboardViewController: UIInputViewController {
             activeInputLocaleCodes: { [weak self] in
                 // O(1): computed in `refreshHostInputTraits`, never on a layout pass.
                 self?.cachedHostInputTraits.localeCodes ?? []
+            },
+            showSwipeAlternatives: { [weak self] committed, alternatives in
+                self?.showSwipeAlternatives(committed: committed, alternatives: alternatives)
             },
             v2CalloutView: v2CalloutView
         )
@@ -437,6 +447,7 @@ class KeyboardViewController: UIInputViewController {
         requestSupplementaryLexicon { [weak self] lexicon in
             self?.predictiveEngineAsync.lexicon = lexicon
         }
+        nativeV2KeysView?.refreshSwipeSettings()
 
         // Legacy snippet-grid channels (`KeyboardView` posts these). Routed through the
         // own-mutation helpers so the context mirror stays in lockstep with the document.
@@ -476,6 +487,8 @@ class KeyboardViewController: UIInputViewController {
             queue: nil
         ) { [weak self] _ in
             guard let self else { return }
+            self.nativeV2KeysView?.cancelActiveInteraction()
+            self.resetPredictivePipeline()
             self.refreshHostInputTraits()
             self.updateQWERTYState()
         }
@@ -509,9 +522,27 @@ class KeyboardViewController: UIInputViewController {
 
     /// Re-sync the context mirror from one real `documentContextBeforeInput` read. Off the
     /// keystroke path only: `viewWillAppear`, external `textDidChange`, the coalesced
-    /// selection re-sync below, and the flush (which passes its own read to `reset(to:)`).
-    private func resyncTypingContextFromHost() {
-        qwertyState.inputTracking.contextMirror.reset(to: textDocumentProxy.documentContextBeforeInput)
+    /// selection re-sync below, and the flush (which reuses the returned context).
+    @discardableResult
+    private func resyncTypingContextFromHost() -> String? {
+        let context = textDocumentProxy.documentContextBeforeInput
+        let mirror = qwertyState.inputTracking.contextMirror
+        // Late selection callbacks can be echoes of our own insert. Preserve swipe
+        // alternatives only when the host still agrees with the replayed caret context.
+        let matchesMirror = context.map {
+            $0.suffix(TypingContextMirror.capacity)
+                .elementsEqual(mirror.lastCharacters(TypingContextMirror.capacity))
+        } ?? mirror.isEmpty
+        let hasSelection = selectionContextValidationNeeded
+            && textDocumentProxy.selectedText?.isEmpty == false
+        selectionContextValidationNeeded = false
+        if !matchesMirror || hasSelection {
+            nativeV2KeysView?.cancelActiveInteraction()
+            qwertyState.inputTracking.pendingSmartSpace = false
+            resetPredictivePipeline()
+        }
+        mirror.reset(to: context)
+        return context
     }
 
     /// Caret moves (host taps, space-bar cursor drag steps) arrive as a stream of selection
@@ -563,7 +594,10 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        isKeyboardVisible = true
         setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
+        nativeV2KeysView?.refreshSwipeSettings()
+        resetPredictivePipeline()
         // The focused field may differ from the last appearance: one traits refresh and one
         // context read here, so the first keystroke after appearing is read-free.
         refreshHostInputTraits()
@@ -590,6 +624,9 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        isKeyboardVisible = false
+        nativeV2KeysView?.cancelActiveInteraction()
+        resetPredictivePipeline()
         stopClipboardPolling()
         // Persist shadow-mode telemetry + learned per-user offsets off the hot path.
         TypingTelemetry.shared.flush()
@@ -664,6 +701,12 @@ class KeyboardViewController: UIInputViewController {
     /// synchronously can't put a read back on the keystroke path.
     override func selectionDidChange(_ textInput: UITextInput?) {
         guard !ownMutationInFlight else { return }
+        selectionContextValidationNeeded = true
+        if !textDidChangeIsOwnEcho {
+            nativeV2KeysView?.cancelActiveInteraction()
+            qwertyState.inputTracking.pendingSmartSpace = false
+            resetPredictivePipeline()
+        }
         scheduleTypingContextResync()
     }
     
@@ -675,9 +718,14 @@ class KeyboardViewController: UIInputViewController {
             // advanced before the proxy call and the field's traits can't have changed, so
             // the only thing to recompute is auto-cap — from local state, zero host reads.
             updateAutoCapitalization()
+            if !ownMutationInFlight {
+                scheduleTypingContextResync()
+            }
         } else {
             // External change (host edit, autocorrect in another field, field switch,
             // selection-driven edit): pay the traits + context reads once, here.
+            nativeV2KeysView?.cancelActiveInteraction()
+            resetPredictivePipeline()
             refreshHostInputTraits()
             resyncTypingContextFromHost()
             updateQWERTYState()
@@ -725,10 +773,9 @@ class KeyboardViewController: UIInputViewController {
         // next keystroke's commit reads them with zero XPC. Traits are field-constant, so being at
         // most one keystroke stale is harmless and field switches are picked up on the next change.
         refreshHostInputTraits()
-        let context = textDocumentProxy.documentContextBeforeInput
-        // The mirror replayed our own mutations already; this read makes it byte-exact with
-        // the host again (host-side transforms, truncation) before the next burst.
-        qwertyState.inputTracking.contextMirror.reset(to: context)
+        // Compare before replacing the mirror, so host-side transforms or caret changes
+        // invalidate candidates even when the callback arrived inside our echo window.
+        let context = resyncTypingContextFromHost()
         runSlashEvaluation(context: context)
         runReminderEvaluation(context: context)
         runTimerEvaluation(context: context)
@@ -813,8 +860,8 @@ class KeyboardViewController: UIInputViewController {
     /// coalesced V2 flush and the synchronous V1 closure. The heavy UITextChecker work
     /// is dispatched off-main by `predictiveEngineAsync`.
     private func runPredictiveEvaluation(context: String?) {
-        // Skip when showing snippet grid or when slash command is active.
-        guard !qwertyState.showingSnippets else {
+        // Skip while hidden, when showing snippet grid, or when slash command is active.
+        guard isKeyboardVisible, !qwertyState.showingSnippets else {
             resetPredictivePipeline()
             return
         }
@@ -831,6 +878,14 @@ class KeyboardViewController: UIInputViewController {
             resetPredictivePipeline()
             return
         }
+        // Swipe runner-ups own the bar while the swiped word (+ space) is still what's before
+        // the caret; the next edit lets ordinary predictions take over.
+        if predictiveTextState.candidates.first?.source == .swipe {
+            if qwertyState.inputTracking.contextMirror.hasSuffix(predictiveTextState.partialWord) {
+                return
+            }
+            resetPredictivePipeline()
+        }
         predictiveEngineAsync.schedule(context: context) { [weak self] candidates, partialWord in
             guard let self else { return }
             // The result lands ≥40ms after scheduling; the mirror (advanced by every commit
@@ -845,6 +900,27 @@ class KeyboardViewController: UIInputViewController {
             self.predictiveTextState.updateCandidates(candidates, partialWord: partialWord)
             self.updateTouchPrior(candidates: candidates, partialWord: partialWord)
         }
+    }
+
+    /// Toolbar runner-ups for a swiped word. Each candidate replaces the committed word AND
+    /// its trailing space (`replacementLength`), and the existing suggestion-accept path
+    /// re-inserts the chosen word + smart space.
+    private func showSwipeAlternatives(committed: String, alternatives: [String]) {
+        // Invalidate both debounced work and already-running results before taking over
+        // the toolbar, including the no-runner-up case.
+        resetPredictivePipeline()
+        guard !alternatives.isEmpty else { return }
+        let replaced = committed + " "
+        let candidates = alternatives.map {
+            PredictiveCandidate(
+                text: $0,
+                role: .completion,
+                source: .swipe,
+                confidence: 0.5,
+                replacementLength: replaced.count
+            )
+        }
+        predictiveTextState.updateCandidates(candidates, partialWord: replaced)
     }
 
     /// Clear every prediction surface, including the invisible next-character prior used by
@@ -950,6 +1026,10 @@ class KeyboardViewController: UIInputViewController {
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                if self.qwertyState.showingSnippets {
+                    self.nativeV2KeysView?.cancelActiveInteraction()
+                    self.resetPredictivePipeline()
+                }
                 self.nativeV2KeysView?.isHidden = self.qwertyState.showingSnippets
                 self.observeSnippetsForKeysVisibility()
             }

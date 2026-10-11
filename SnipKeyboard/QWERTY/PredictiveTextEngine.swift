@@ -23,6 +23,8 @@ enum PredictiveCandidateSource: String, Equatable, Sendable {
     case textCheckerCompletion
     case textCheckerGuess
     case lexicon
+    /// Runner-up of a swipe decode; accepting replaces the committed word + its space.
+    case swipe
 }
 
 struct PredictiveCandidate: Identifiable, Equatable, Sendable {
@@ -359,7 +361,8 @@ class PredictiveTextState {
     /// Current word candidates to display in the toolbar (max 3)
     var candidates: [PredictiveCandidate] = []
 
-    /// The partial word being completed (used to know how many chars to delete on selection)
+    /// Exact suffix validated before replacement: a typed partial word, or a committed
+    /// swipe word plus its trailing space. Candidates carry the matching deletion length.
     var partialWord: String = ""
 
     /// User-dismissed for the rest of this keyboard session via long-press on the middle

@@ -224,6 +224,29 @@ struct SettingsView: View {
                         AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
                     }
 
+                    Toggle(isOn: $currentSettings.swipeTypingEnabled) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "hand.draw.fill")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Color.blue)
+                                .cornerRadius(6)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Swipe to Type")
+                                    .font(.custom("IBMPlexMono-Medium", size: 15))
+                                Text("Glide across letters to type a word (English)")
+                                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.blue)
+                    .onChange(of: currentSettings.swipeTypingEnabled) { _, newValue in
+                        AppGroupSettings.setBool(newValue, forKey: AppGroupSettings.Key.swipeTypingEnabled)
+                    }
+
                     // DEBUG-only diagnostics: hit-test overlay, next-gen touch engine, shadow logging,
                     // and the shadow telemetry report. Release locks the engines ON and these OFF
                     // (via KeyboardFeatureFlags), so none of these appear in shipping builds.
@@ -540,6 +563,10 @@ struct SettingsView: View {
                         forKey: AppGroupSettings.Key.autoCapitalizationEnabled
                     )
                     AppGroupSettings.setBool(
+                        myCurrentSettings.swipeTypingEnabled,
+                        forKey: AppGroupSettings.Key.swipeTypingEnabled
+                    )
+                    AppGroupSettings.setBool(
                         myCurrentSettings.debugHitOverlayEnabled,
                         forKey: AppGroupSettings.Key.debugHitOverlayEnabled
                     )
@@ -583,6 +610,7 @@ struct SettingsView: View {
         currentSettings.afterPasteAction = .space
         currentSettings.isQWERTYKeyboardEnabled = false
         currentSettings.autoCapitalizationEnabled = true
+        currentSettings.swipeTypingEnabled = true
         currentSettings.debugHitOverlayEnabled = false
         currentSettings.useProbabilisticHitResolver = true
         currentSettings.shadowLoggingEnabled = false
@@ -590,6 +618,7 @@ struct SettingsView: View {
         currentSettings.reminderDestination = .snipKey
         currentSettings.timerIntegrationEnabled = false
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.autoCapitalizationEnabled)
+        AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.swipeTypingEnabled)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.debugHitOverlayEnabled)
         AppGroupSettings.setBool(true, forKey: AppGroupSettings.Key.useProbabilisticHitResolver)
         AppGroupSettings.setBool(false, forKey: AppGroupSettings.Key.shadowLoggingEnabled)

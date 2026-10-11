@@ -81,6 +81,14 @@ final class NativeKeyboardV2View: UIView {
         coordinator.handleMemoryPressure()
     }
 
+    func refreshSwipeSettings() {
+        coordinator.refreshSwipeSettings()
+    }
+
+    func cancelActiveInteraction() {
+        coordinator.cancelActiveInteraction()
+    }
+
     // MARK: - Observation
 
     /// Subscribe to @Observable state mutations. `withObservationTracking` only fires once

@@ -96,6 +96,51 @@ enum KeyboardCommitPipeline {
         actions.scheduleSideEffects()
     }
 
+    /// Commit a swiped word:
+    ///   • a space is inserted BEFORE the word when the caret sits right after a letter or
+    ///     digit (swipe straight after a typed word), never after whitespace/punctuation;
+    ///   • the word is cased by the current shift state (one-shot shift → capitalised,
+    ///     caps lock → uppercase) and one-shot shift clears like any character commit;
+    ///   • a trailing "smart" space follows, so punctuation attaches to the word and the next
+    ///     swipe needs no explicit space; that space counts as a typed space for the
+    ///     double-space period rule.
+    /// Runner-ups go to the toolbar via `showSwipeAlternatives`.
+    static func commitSwipeWord(
+        _ candidates: [SwipeCandidate],
+        state: QWERTYKeyboardState,
+        actions: KeyboardActions
+    ) {
+        guard let best = candidates.first else { return }
+        let cased: (String) -> String
+        switch state.shiftState {
+        case .disabled: cased = { $0 }
+        case .enabled:  cased = { $0.prefix(1).uppercased() + $0.dropFirst() }
+        case .locked:   cased = { $0.uppercased() }
+        }
+        let word = cased(best.word)
+
+        let mirror = state.inputTracking.contextMirror
+        let needsLeadingSpace: Bool
+        if let last = mirror.character(fromEnd: 0) {
+            needsLeadingSpace = last.isLetter || last.isNumber
+        } else {
+            needsLeadingSpace = false
+        }
+        state.inputTracking.pendingSmartSpace = false
+        actions.insertText((needsLeadingSpace ? " " : "") + word + " ")
+        state.inputTracking.pendingSmartSpace = true
+
+        // Bookkeeping: the word reads as "characters then a space" to the auto-period rule,
+        // and the language prior restarts at a word boundary.
+        state.inputTracking.recordAction(.character)
+        state.inputTracking.recordAction(.space)
+        state.inputTracking.touchContext.recordNonCharacter()
+        state.handleShiftAfterCharacter()
+
+        actions.showSwipeAlternatives(word, candidates.dropFirst().map { cased($0.word) })
+        actions.scheduleSideEffects()
+    }
+
     /// Commit space. Inserts auto-period (". ") if the previous keystrokes were
     /// character + space + space. Otherwise inserts a normal space.
     static func commitSpace(

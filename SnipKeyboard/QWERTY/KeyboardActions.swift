@@ -145,6 +145,12 @@ struct KeyboardActions {
     /// Rendered as a subtitle on the space bar when more than one input mode is enabled.
     let activeInputLocaleCodes: () -> [String]
 
+    /// Publish the runner-up words of a just-committed swipe to the toolbar so a tap can
+    /// replace the committed word (+ its trailing space). `committed` is the word that is
+    /// now in the document; `alternatives` are ranked best-first. Call even when there are
+    /// no alternatives: publishing invalidates pending predictions and clears the old row.
+    let showSwipeAlternatives: (_ committed: String, _ alternatives: [String]) -> Void
+
     /// Shared V2 callout view, pre-mounted on `KeyboardViewController.view`. Nil in previews.
     /// The V2 gesture coordinator presents/dismisses it directly; rect conversion
     /// from coordinator coords to root-view coords happens via the coordinator
@@ -171,6 +177,7 @@ struct KeyboardActions {
         adjustCaret: { _ in },
         inputTraits: { .defaults },
         activeInputLocaleCodes: { [] },
+        showSwipeAlternatives: { _, _ in },
         v2CalloutView: nil
     )
 }
