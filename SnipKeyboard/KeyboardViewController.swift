@@ -46,6 +46,8 @@ class KeyboardViewController: UIInputViewController {
     /// means keys-area touches bypass SwiftUI's event-aware hit-testing entirely, so there
     /// are no dead zones between keys. Only created when V2 is enabled.
     private var nativeV2KeysView: NativeKeyboardV2View?
+    private var emojiKeyboardView: EmojiKeyboardView?
+    private var predictionContext: String?
     
     // MARK: - Slash Command
     
@@ -286,6 +288,9 @@ class KeyboardViewController: UIInputViewController {
                 // O(1): computed in `refreshHostInputTraits`, never on a layout pass.
                 self?.cachedHostInputTraits.localeCodes ?? []
             },
+            acceptPredictiveCandidate: { [weak self] candidate in
+                self?.acceptPredictiveCandidate(candidate)
+            },
             showSwipeAlternatives: { [weak self] committed, alternatives in
                 self?.showSwipeAlternatives(committed: committed, alternatives: alternatives)
             },
@@ -318,7 +323,7 @@ class KeyboardViewController: UIInputViewController {
 
         // Kick off SwiftData container construction immediately on a background task.
         // This is first-frame work, not deferrable: `KeyboardViewExt` only mounts the
-        // toolbar — and flips `showingSnippets` so the keys view becomes visible — once
+        // toolbar — and selects the typing surface so the keys view becomes visible — once
         // `ModelContainerProvider.get()` returns. Starting here (vs. SwiftUI's `.task`)
         // overlaps the ~50–200ms SQLite + CloudKit setup with our own view construction.
         Task { await ModelContainerProvider.shared.warmup() }
@@ -383,8 +388,8 @@ class KeyboardViewController: UIInputViewController {
         self.nativeV2KeysView = keysView
         // Hidden while the snippet grid is showing (SwiftUI renders the grid full-screen);
         // visible when the keyboard is showing. Kept in sync via observation.
-        keysView.isHidden = qwertyState.showingSnippets
-        observeSnippetsForKeysVisibility()
+        keysView.isHidden = qwertyState.surface != .typing
+        observeKeyboardSurface()
 
         // V2 callout overlay — mounted on the root view so it can overlap the toolbar
         // and draw above the top row of keys. The V2 gesture coordinator references this
@@ -626,6 +631,7 @@ class KeyboardViewController: UIInputViewController {
         super.viewWillDisappear(animated)
         isKeyboardVisible = false
         nativeV2KeysView?.cancelActiveInteraction()
+        emojiKeyboardView?.cancelInteraction()
         resetPredictivePipeline()
         stopClipboardPolling()
         // Persist shadow-mode telemetry + learned per-user offsets off the hot path.
@@ -734,7 +740,7 @@ class KeyboardViewController: UIInputViewController {
         // Only post selection notifications when snippet view is active.
         // These are consumed by KeyboardView's observers and serve no purpose
         // during QWERTY typing — skipping them avoids N observer calls per keystroke.
-        if qwertyState.showingSnippets {
+        if qwertyState.surface == .snippets {
             let selectedText = getSelectedText()
             
             if !selectedText.isEmpty{
@@ -785,7 +791,7 @@ class KeyboardViewController: UIInputViewController {
     /// NLP timer evaluation from an already-read context snapshot. Gated on the Timer integration —
     /// when it's off (or the snippet grid is showing), `/timer` is inert and no pill appears.
     private func runTimerEvaluation(context: String?) {
-        guard timerIntegrationEnabled, !qwertyState.showingSnippets else {
+        guard timerIntegrationEnabled, qwertyState.surface == .typing else {
             timerSuggestionState.clear()
             return
         }
@@ -795,7 +801,7 @@ class KeyboardViewController: UIInputViewController {
     /// NLP reminder evaluation from an already-read context snapshot. Cheap: `update` early-outs
     /// unless the text contains the `/remind` trigger, and the detector is allocated once.
     private func runReminderEvaluation(context: String?) {
-        guard !qwertyState.showingSnippets else {
+        guard qwertyState.surface == .typing else {
             reminderSuggestionState.clear()
             return
         }
@@ -849,7 +855,7 @@ class KeyboardViewController: UIInputViewController {
     /// coalesced V2 flush and the synchronous V1 closure.
     private func runSlashEvaluation(context: String?) {
         // Skip evaluation when showing snippet grid (not in QWERTY mode).
-        guard !qwertyState.showingSnippets else { return }
+        guard qwertyState.surface == .typing else { return }
         let result = slashCommandTracker.evaluate(context: context)
         if result.changed {
             slashCommandState.updateActivation(isActive: result.isActive, query: result.query)
@@ -861,7 +867,8 @@ class KeyboardViewController: UIInputViewController {
     /// is dispatched off-main by `predictiveEngineAsync`.
     private func runPredictiveEvaluation(context: String?) {
         // Skip while hidden, when showing snippet grid, or when slash command is active.
-        guard isKeyboardVisible, !qwertyState.showingSnippets else {
+        guard isKeyboardVisible, qwertyState.surface == .typing,
+              cachedHostInputTraits.allowsSmartTransforms else {
             resetPredictivePipeline()
             return
         }
@@ -881,24 +888,23 @@ class KeyboardViewController: UIInputViewController {
         // Swipe runner-ups own the bar while the swiped word (+ space) is still what's before
         // the caret; the next edit lets ordinary predictions take over.
         if predictiveTextState.candidates.first?.source == .swipe {
-            if qwertyState.inputTracking.contextMirror.hasSuffix(predictiveTextState.partialWord) {
+            if predictionContext == context.map({ String($0.suffix(64)) }) {
                 return
             }
             resetPredictivePipeline()
         }
-        predictiveEngineAsync.schedule(context: context) { [weak self] candidates, partialWord in
+        let boundedContext = context.map { String($0.suffix(64)) }
+        predictiveEngineAsync.schedule(context: boundedContext) { [weak self] candidates, snapshot in
             guard let self else { return }
-            // The result lands ≥40ms after scheduling; the mirror (advanced by every commit
-            // since) says whether the partial word is still what's before the caret — no
-            // host read on the main thread between keystrokes.
-            guard !partialWord.isEmpty,
-                  self.qwertyState.inputTracking.contextMirror.hasSuffix(partialWord)
-            else {
+            guard self.qwertyState.surface == .typing,
+                  let expected = snapshot.contextBeforeInput,
+                  self.qwertyState.inputTracking.contextMirror.lastCharacters(64).elementsEqual(expected) else {
                 self.resetPredictivePipeline()
                 return
             }
-            self.predictiveTextState.updateCandidates(candidates, partialWord: partialWord)
-            self.updateTouchPrior(candidates: candidates, partialWord: partialWord)
+            self.predictionContext = expected
+            self.predictiveTextState.updateCandidates(candidates, partialWord: snapshot.partialWord)
+            self.updateTouchPrior(candidates: candidates, partialWord: snapshot.partialWord)
         }
     }
 
@@ -920,12 +926,38 @@ class KeyboardViewController: UIInputViewController {
                 replacementLength: replaced.count
             )
         }
+        predictionContext = String(qwertyState.inputTracking.contextMirror.lastCharacters(64))
         predictiveTextState.updateCandidates(candidates, partialWord: replaced)
+    }
+
+    private func acceptPredictiveCandidate(_ candidate: PredictiveCandidate) {
+        guard isKeyboardVisible, qwertyState.surface == .typing,
+              predictiveTextState.candidates.contains(candidate),
+              let expected = predictionContext,
+              textDocumentProxy.documentContextBeforeInput.map({ String($0.suffix(64)) }) == expected,
+              textDocumentProxy.selectedText?.isEmpty != false else {
+            resetPredictivePipeline()
+            scheduleTypingContextResync()
+            return
+        }
+        resetPredictivePipeline()
+        if candidate.role == .typed {
+            insertOwnText(" ")
+        } else {
+            for _ in 0..<candidate.replacementLength { deleteOwnBackward() }
+            insertOwnText(candidate.text + " ")
+        }
+        qwertyState.inputTracking.recordAction(.character)
+        qwertyState.inputTracking.recordAction(.space)
+        qwertyState.inputTracking.pendingSmartSpace = true
+        qwertyState.handleShiftAfterCharacter()
+        scheduleSideEffectFlush()
     }
 
     /// Clear every prediction surface, including the invisible next-character prior used by
     /// smart touch. Use whenever another toolbar mode owns the row or the context goes stale.
     private func resetPredictivePipeline() {
+        predictionContext = nil
         predictiveTextState.dismiss()
         predictiveEngineAsync.reset()
         updateTouchPrior(candidates: [], partialWord: "")
@@ -1016,24 +1048,70 @@ class KeyboardViewController: UIInputViewController {
 
     // MARK: - V2 Keys Visibility
 
-    /// Keep the directly-mounted V2 keys view in sync with `showingSnippets`: hide it while
-    /// the snippet grid is showing (the SwiftUI host draws the grid full-screen), show it when
-    /// the keyboard is up. `withObservationTracking` fires once per registration, so we
-    /// re-register inside the callback to keep listening — same pattern as `NativeKeyboardV2View`.
-    private func observeSnippetsForKeysVisibility() {
+    /// Observation callbacks run after the surface mutation; only one surface receives touches.
+    private func observeKeyboardSurface() {
         withObservationTracking {
-            _ = qwertyState.showingSnippets
+            _ = qwertyState.surface
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if self.qwertyState.showingSnippets {
-                    self.nativeV2KeysView?.cancelActiveInteraction()
-                    self.resetPredictivePipeline()
-                }
-                self.nativeV2KeysView?.isHidden = self.qwertyState.showingSnippets
-                self.observeSnippetsForKeysVisibility()
+                self.syncKeyboardSurface()
+                self.observeKeyboardSurface()
             }
         }
+    }
+
+    private func syncKeyboardSurface() {
+        nativeV2KeysView?.cancelActiveInteraction()
+        emojiKeyboardView?.cancelInteraction()
+        resetPredictivePipeline()
+        qwertyState.inputTracking.pendingSmartSpace = false
+        qwertyState.inputTracking.resetAutoPeriodTracking()
+        qwertyState.inputTracking.touchContext.recordNonCharacter()
+        slashCommandState.updateActivation(isActive: false, query: "")
+        reminderSuggestionState.clear()
+        timerSuggestionState.clear()
+        nativeV2KeysView?.isHidden = qwertyState.surface != .typing
+        if qwertyState.surface == .emoji {
+            if emojiKeyboardView == nil {
+                var actions = keyboardActionsStruct
+                actions.insertText = { [weak self] text in
+                    guard let self else { return }
+                    self.prepareEmojiEdit()
+                    self.insertOwnText(text)
+                }
+                actions.deleteBackward = { [weak self] in
+                    guard let self else { return }
+                    self.prepareEmojiEdit()
+                    self.deleteOwnBackward()
+                }
+                let panel = EmojiKeyboardView(actions: actions) { [weak self] in
+                    self?.qwertyState.surface = .typing
+                }
+                panel.translatesAutoresizingMaskIntoConstraints = false
+                view.insertSubview(panel, belowSubview: v2CalloutView)
+                NSLayoutConstraint.activate([
+                    panel.topAnchor.constraint(equalTo: view.topAnchor),
+                    panel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                    panel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                    panel.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+                ])
+                emojiKeyboardView = panel
+            }
+            emojiKeyboardView?.isHidden = false
+            emojiKeyboardView?.prepareForPresentation(isDark: qwertyState.appearanceMode == .dark)
+        } else {
+            emojiKeyboardView?.isHidden = true
+            if qwertyState.surface == .typing { scheduleSideEffectFlush() }
+        }
+    }
+
+    private func prepareEmojiEdit() {
+        qwertyState.inputTracking.pendingSmartSpace = false
+        qwertyState.inputTracking.resetAutoPeriodTracking()
+        qwertyState.inputTracking.touchContext.recordNonCharacter()
+        TouchOffsetModel.shared.discardPending()
+        resetPredictivePipeline()
     }
 
     // MARK: - QWERTY State Updates
@@ -1061,6 +1139,9 @@ class KeyboardViewController: UIInputViewController {
         }
         if qwertyState.appearanceMode != newMode {
             qwertyState.appearanceMode = newMode
+            if qwertyState.surface == .emoji {
+                emojiKeyboardView?.prepareForPresentation(isDark: newMode == .dark)
+            }
         }
         // Optional: `traitCollectionDidChange` can run before `viewDidLoad` creates the button.
         nextKeyboardButton?.setTitleColor(traits.keyboardAppearance == .dark ? .white : .black, for: [])

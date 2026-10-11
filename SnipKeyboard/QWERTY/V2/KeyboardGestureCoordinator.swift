@@ -142,7 +142,7 @@ final class KeyboardGestureCoordinator: UIView {
             return nativeCommitTiming ? .pendingCharacter : .committedOnDown
         case .backspace, .shift:
             return .actedOnDown
-        case .space, .returnKey, .snippetToggle:
+        case .space, .returnKey, .emojiToggle:
             return .pendingOnLift
         case .modeChange:
             // Native: the plane switches at finger-down (enables 123-slide-to-symbol).
@@ -159,7 +159,7 @@ final class KeyboardGestureCoordinator: UIView {
             return .pendingCharacter
         case .space, .returnKey:
             return .pendingOnLift
-        case .backspace, .shift, .modeChange, .snippetToggle:
+        case .backspace, .shift, .modeChange, .emojiToggle:
             return .cancelled
         }
     }
@@ -647,6 +647,18 @@ final class KeyboardGestureCoordinator: UIView {
             element.accessibilityLabel = accessibilityLabel(for: frame.action)
             element.accessibilityHint = accessibilityHint(for: frame.action)
             element.accessibilityTraits = [.keyboardKey]
+            if frame.action == .emojiToggle {
+                element.accessibilityCustomActions = [
+                    UIAccessibilityCustomAction(name: "Emoji") { [weak self] _ in
+                        self?.state?.surface = .emoji
+                        return true
+                    },
+                    UIAccessibilityCustomAction(name: "Snippets") { [weak self] _ in
+                        self?.state?.surface = .snippets
+                        return true
+                    }
+                ]
+            }
             return element
         }
         accessibilityElements = elements
@@ -675,7 +687,7 @@ final class KeyboardGestureCoordinator: UIView {
             case .numbers: return "numbers"
             case .symbols: return "symbols"
             }
-        case .snippetToggle:    return "snippets"
+        case .emojiToggle:     return "Emoji"
         }
     }
 
@@ -683,7 +695,7 @@ final class KeyboardGestureCoordinator: UIView {
         switch action {
         case .shift:        "Double tap for caps lock"
         case .space:        "Hold and drag to move the cursor"
-        case .snippetToggle: "Switch to snippet list"
+        case .emojiToggle: "Open emoji. Hold for Emoji and Snippets."
         default:            nil
         }
     }
@@ -705,8 +717,8 @@ final class KeyboardGestureCoordinator: UIView {
             KeyboardCommitPipeline.commitReturn(state: state, actions: actions)
         case .modeChange(let page):
             KeyboardCommitPipeline.commitModeChange(to: page, state: state, actions: actions)
-        case .snippetToggle:
-            state.showingSnippets = true
+        case .emojiToggle:
+            state.surface = .emoji
         case .shift:
             state.toggleShift(at: ProcessInfo.processInfo.systemUptime)
             rendererRef.updateShiftState(state.shiftState)
@@ -805,7 +817,7 @@ final class KeyboardGestureCoordinator: UIView {
         case .returnKey: action = "return"
         case .shift: action = "shift"
         case .modeChange: action = "mode"
-        case .snippetToggle: action = "other"
+        case .emojiToggle: action = "other"
         }
 
         var priorDict: [String: Float]?
@@ -974,8 +986,10 @@ final class KeyboardGestureCoordinator: UIView {
                     rendererRef.setPressedKey(under, for: id)
                 }
             }
-        case .returnKey, .snippetToggle:
-            break  // commit on release for these
+        case .emojiToggle:
+            press.longPressTask = scheduleLongPress(touchID: id, key: key)
+        case .returnKey:
+            break  // commit on release
         }
 
         activePresses[id] = press
@@ -1228,10 +1242,15 @@ final class KeyboardGestureCoordinator: UIView {
         // already cased the item, so this is a literal insert (`commitText`) plus the one-shot
         // shift clear a character commit would perform.
         var accentInserted = false
-        if id == mostRecentTouchID, case .actions(_, _, _) = calloutController.mode {
+        if id == mostRecentTouchID, case .actions(let base, _, let selectedIndex) = calloutController.mode,
+           base == press.key, press.phase == .accentMenu {
             if committed, let selected = calloutController.commitActions(), let state = state, let actions = actions {
-                KeyboardCommitPipeline.commitText(selected, state: state, actions: actions)
-                state.handleShiftAfterCharacter()
+                if case .emojiToggle = base.action {
+                    state.surface = selectedIndex == 0 ? .emoji : .snippets
+                } else {
+                    KeyboardCommitPipeline.commitText(selected, state: state, actions: actions)
+                    state.handleShiftAfterCharacter()
+                }
                 accentInserted = true
             }
         }
@@ -1261,8 +1280,8 @@ final class KeyboardGestureCoordinator: UIView {
                 case .modeChange(let page):
                     // Legacy timing only — native switches the plane at touch-down.
                     KeyboardCommitPipeline.commitModeChange(to: page, state: state, actions: actions)
-                case .snippetToggle:
-                    state.showingSnippets = true
+                case .emojiToggle:
+                    state.surface = .emoji
                 default:
                     break
                 }
@@ -1538,14 +1557,18 @@ final class KeyboardGestureCoordinator: UIView {
     /// Create a task that opens the accent menu after 400ms iff the press is still on `key`.
     /// Returns the task so it can be stored on the `ActivePress` and cancelled if needed.
     private func scheduleLongPress(touchID id: ObjectIdentifier, key: KeyFrame) -> Task<Void, Never>? {
-        guard case .character(let c) = key.action else { return nil }
-        // In URL / email fields, long-pressing "." offers domain TLDs (.com, .net, …),
-        // matching native iOS. Everywhere else, "." shows its normal accent menu (ellipsis).
         let menu: [String]?
-        if c == ".", let kt = actions?.inputTraits().keyboardType, kt == .URL || kt == .emailAddress {
-            menu = AccentMap.domainMenu()
-        } else {
-            menu = AccentMap.menu(for: c, uppercased: (state?.shiftState ?? .disabled) != .disabled)
+        switch key.action {
+        case .emojiToggle:
+            menu = ["Emoji", "Snippets"]
+        case .character(let c):
+            if c == ".", let kt = actions?.inputTraits().keyboardType, kt == .URL || kt == .emailAddress {
+                menu = AccentMap.domainMenu()
+            } else {
+                menu = AccentMap.menu(for: c, uppercased: (state?.shiftState ?? .disabled) != .disabled)
+            }
+        default:
+            return nil
         }
         guard let menu else { return nil }
         return Task { @MainActor [weak self] in
@@ -1555,7 +1578,8 @@ final class KeyboardGestureCoordinator: UIView {
             // own the menu. A rollover-flushed press (.committed) can't — its character is
             // final, exactly like native.
             guard var press = self.activePresses[id], press.key == key,
-                  press.phase == .pendingCharacter || press.phase == .committedOnDown else { return }
+                  press.phase == .pendingCharacter || press.phase == .committedOnDown
+                    || (key.action == .emojiToggle && press.phase == .pendingOnLift) else { return }
             if press.phase == .committedOnDown {
                 // Legacy timing only: the character was optimistically committed at
                 // touch-down — undo it so the accent insertion replaces it cleanly. Under
@@ -1570,7 +1594,9 @@ final class KeyboardGestureCoordinator: UIView {
             // Accent menu becomes the visual focus — promote this touch to most-recent.
             self.mostRecentTouchID = id
             self.calloutController.beginActions(for: key, items: menu)
-            self.lightImpactHaptic.impactOccurred(intensity: 0.8)
+            if key.action != .emojiToggle {
+                self.lightImpactHaptic.impactOccurred(intensity: 0.8)
+            }
         }
     }
 
@@ -1673,7 +1699,7 @@ extension KeyboardGestureCoordinator {
             (.shift, .actedOnDown),
             (.space, .pendingOnLift),
             (.returnKey, .pendingOnLift),
-            (.snippetToggle, .pendingOnLift),
+            (.emojiToggle, .pendingOnLift),
             (.modeChange(.numbers), .actedOnDown),
         ]
         for (action, expected) in nativeExpectations
@@ -1689,7 +1715,7 @@ extension KeyboardGestureCoordinator {
             (.shift, .actedOnDown),
             (.space, .pendingOnLift),
             (.returnKey, .pendingOnLift),
-            (.snippetToggle, .pendingOnLift),
+            (.emojiToggle, .pendingOnLift),
             (.modeChange(.numbers), .pendingOnLift),
         ]
         for (action, expected) in legacyExpectations
@@ -1706,7 +1732,7 @@ extension KeyboardGestureCoordinator {
             (.backspace, .cancelled),
             (.shift, .cancelled),
             (.modeChange(.symbols), .cancelled),
-            (.snippetToggle, .cancelled),
+            (.emojiToggle, .cancelled),
         ]
         for (action, expected) in retargetExpectations
         where phaseAfterRetarget(to: action) != expected {
@@ -1714,7 +1740,7 @@ extension KeyboardGestureCoordinator {
         }
         // A retarget must never fabricate a down-acting or terminal phase.
         for action: KeyAction in [.character("z"), .space, .backspace, .shift,
-                                  .modeChange(.letters), .snippetToggle, .returnKey] {
+                                  .modeChange(.letters), .emojiToggle, .returnKey] {
             let p = phaseAfterRetarget(to: action)
             if p == .actedOnDown || p == .committed || p == .committedOnDown || p == .accentMenu {
                 failures.append("phaseAfterRetarget(\(action)) produced illegal phase \(p)")

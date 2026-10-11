@@ -358,11 +358,11 @@ final class KeyboardCalloutView: UIView {
 
     private func configureActionsMode(chars: [String], keyFrame: CGRect, selectedIndex: Int, isDark: Bool, parentWidth: CGFloat) {
         let slotCount = max(chars.count, 1)
-        // Widen slots (and shrink the font) for multi-character entries like ".com" so they
-        // don't clip in the default 44pt accent slot.
         let isMultiChar = chars.contains { $0.count > 1 }
-        let slotW: CGFloat = isMultiChar ? 58 : Self.actionSlotWidth
         let fontSz: CGFloat = isMultiChar ? 17 : Self.actionFontSize
+        let font = UIFont.systemFont(ofSize: fontSz, weight: .regular)
+        let textWidth = chars.reduce(CGFloat.zero) { max($0, ($1 as NSString).size(withAttributes: [.font: font]).width) }
+        let slotW = min(max(Self.actionSlotWidth, ceil(textWidth) + 20), max(1, parentWidth - 4) / CGFloat(slotCount))
         currentActionSlotWidth = slotW
         let bubbleWidth = CGFloat(slotCount) * slotW
         let bubbleHeight = Self.actionBubbleHeight
@@ -401,6 +401,8 @@ final class KeyboardCalloutView: UIView {
             let l = UILabel()
             l.textAlignment = .center
             l.font = UIFont.systemFont(ofSize: Self.actionFontSize, weight: .regular)
+            l.adjustsFontSizeToFitWidth = true
+            l.minimumScaleFactor = 0.7
             addSubview(l)
             actionLabels.append(l)
         }
@@ -411,7 +413,7 @@ final class KeyboardCalloutView: UIView {
         for (i, label) in actionLabels.enumerated() {
             label.isHidden = false
             label.text = chars[i]
-            label.font = UIFont.systemFont(ofSize: fontSz, weight: .regular)
+            label.font = font
             label.frame = CGRect(x: CGFloat(i) * slotW, y: 0, width: slotW, height: bubbleHeight)
             label.textColor = (i == safeIndex) ? .white : (isDark ? .white : .black)
         }

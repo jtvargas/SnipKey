@@ -130,8 +130,8 @@ enum KeyboardLayoutFactory {
 
     // MARK: - Bottom Row
 
-    /// Bottom row used on every page: [modeChange] [snippetToggle] [space] [returnKey].
-    /// 123 and ✦ are `sideControlKeyWidth` (native 123/globe), return is `returnKeyWidth`,
+    /// Bottom row used on every page: [modeChange] [emojiToggle] [space] [returnKey].
+    /// 123 and Emoji are `sideControlKeyWidth`, return is `returnKeyWidth`,
     /// space is greedy. Profile rows add shortcut keys at the side-control width; the URL
     /// profile has no space bar, so its `.com` key takes the greedy slot instead (as native).
     private static func bottomRow(profile: KeyboardLayoutProfile, modeTarget: KeyboardPage, dims: KeyboardDimensions) -> KeyboardRow {
@@ -144,7 +144,7 @@ enum KeyboardLayoutFactory {
         case .emailAddress:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 shortcutItem("@", width: shortcutWidth),
                 KeyboardLayoutItem(action: .space, width: .available),
                 shortcutItem(".", width: shortcutWidth),
@@ -153,7 +153,7 @@ enum KeyboardLayoutFactory {
         case .url:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 shortcutItem("/", width: shortcutWidth),
                 shortcutItem(".", width: shortcutWidth),
                 KeyboardLayoutItem(action: .insertText(label: ".com", output: ".com"), width: .available),
@@ -162,7 +162,7 @@ enum KeyboardLayoutFactory {
         case .webSearch:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 KeyboardLayoutItem(action: .space, width: .available),
                 shortcutItem(".", width: shortcutWidth),
                 KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
@@ -170,7 +170,7 @@ enum KeyboardLayoutFactory {
         case .twitter:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 shortcutItem("@", width: shortcutWidth),
                 KeyboardLayoutItem(action: .space, width: .available),
                 shortcutItem("#", width: shortcutWidth),
@@ -179,7 +179,7 @@ enum KeyboardLayoutFactory {
         case .standard, .asciiCapable:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 KeyboardLayoutItem(action: .space, width: .available),
                 KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
             ]

@@ -122,17 +122,22 @@ final class QWERTYInputTracking {
 
 // MARK: - Keyboard Render State (@Observable — only view-affecting properties)
 
+/// Exactly one keyboard surface owns touch routing at a time.
+enum KeyboardSurface: Equatable {
+    case typing
+    case emoji
+    case snippets
+}
+
 /// Only contains properties that SwiftUI views actually read.
 /// Mutations here DO trigger view invalidation, but only when something
 /// the user can see actually changes (shift icon, page layout, etc.).
 @MainActor
 @Observable
 class QWERTYKeyboardState {
-    // MARK: Mode Toggle
-    /// When true, shows the snippet grid instead of the QWERTY keyboard.
-    /// Defaults to true (snippet list) — overridden by KeyboardViewExt when
-    /// the experimental QWERTY keyboard setting is enabled.
-    var showingSnippets: Bool = true
+    // MARK: Surface
+    /// Hydrated from the QWERTY setting when the shared data container is ready.
+    var surface: KeyboardSurface = .snippets
 
     // MARK: QWERTY State
     /// Current keyboard page (letters, numbers, symbols)

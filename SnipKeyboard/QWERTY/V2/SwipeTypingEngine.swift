@@ -27,7 +27,7 @@ final class SwipeTypingEngine: @unchecked Sendable {
         loadQueue.async { [self] in
             guard !loadRequested else { return }
             loadRequested = true
-            guard let lexicon = SwipeLexicon.loadBundled() else {
+            guard let lexicon = SwipeLexicon.sharedForSuggestionsAndSwipe else {
                 NSLog("[SnipKeyboard] swipe lexicon missing — swipe typing disabled")
                 return
             }

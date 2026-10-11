@@ -206,31 +206,7 @@ struct KeyboardToolbarView: View {
     // MARK: - Predictive Text Selection
 
     private func handlePredictiveSelection(_ candidate: PredictiveCandidate) {
-        if candidate.role == .typed {
-            predictiveState.dismiss()
-            return
-        }
-        guard (actions.documentContextBeforeInput() ?? "").hasSuffix(predictiveState.partialWord) else {
-            predictiveState.dismiss()
-            actions.evaluatePredictiveText()
-            return
-        }
-
-        // Delete the partial word characters
-        let charsToDelete = candidate.replacementLength
-        for _ in 0..<charsToDelete {
-            actions.deleteBackward()
-        }
-
-        // Insert the full suggestion + trailing space
-        actions.insertText(candidate.text + " ")
-        // Mark the trailing space as a "smart space" so the next punctuation attaches to
-        // the word (native iOS behavior). Consumed/cleared in the commit pipeline.
-        state.inputTracking.pendingSmartSpace = true
-
-        // Reset and re-evaluate
-        predictiveState.dismiss()
-        actions.evaluatePredictiveText()
+        actions.acceptPredictiveCandidate(candidate)
     }
 
     // MARK: - Reminder Creation

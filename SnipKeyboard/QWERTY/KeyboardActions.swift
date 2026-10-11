@@ -69,10 +69,10 @@ struct HostInputTraits {
 struct KeyboardActions {
     /// Insert text into the active text field. The controller advances the context mirror
     /// and flags the host's synchronous `textDidChange` re-entrancy as our own mutation.
-    let insertText: (String) -> Void
+    var insertText: (String) -> Void
 
     /// Delete one character backward
-    let deleteBackward: () -> Void
+    var deleteBackward: () -> Void
 
     /// Switch to the next keyboard (globe key)
     let advanceToNextInputMode: () -> Void
@@ -145,6 +145,9 @@ struct KeyboardActions {
     /// Rendered as a subtitle on the space bar when more than one input mode is enabled.
     let activeInputLocaleCodes: () -> [String]
 
+    /// Validate the current host context before accepting a toolbar candidate.
+    let acceptPredictiveCandidate: (PredictiveCandidate) -> Void
+
     /// Publish the runner-up words of a just-committed swipe to the toolbar so a tap can
     /// replace the committed word (+ its trailing space). `committed` is the word that is
     /// now in the document; `alternatives` are ranked best-first. Call even when there are
@@ -177,6 +180,7 @@ struct KeyboardActions {
         adjustCaret: { _ in },
         inputTraits: { .defaults },
         activeInputLocaleCodes: { [] },
+        acceptPredictiveCandidate: { _ in },
         showSwipeAlternatives: { _, _ in },
         v2CalloutView: nil
     )

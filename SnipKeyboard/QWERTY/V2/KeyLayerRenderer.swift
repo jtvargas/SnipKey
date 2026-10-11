@@ -562,8 +562,8 @@ final class KeyLayerRenderer {
             case .numbers: return .text("123")
             case .symbols: return .text("#+=")
             }
-        case .snippetToggle:
-            return .symbol(name: "sparkle", pointSize: 16, weight: .regular)
+        case .emojiToggle:
+            return .symbol(name: "face.smiling", pointSize: 20, weight: .regular)
         }
     }
 
@@ -640,7 +640,7 @@ final class KeyLayerRenderer {
                 : UIColor(white: 1.0, alpha: 0.94)
         case .returnKey where returnKeyLabel?.prominent == true:
             return .systemBlue
-        case .returnKey, .shift, .backspace, .modeChange, .snippetToggle:
+        case .returnKey, .shift, .backspace, .modeChange, .emojiToggle:
             return isDark
                 ? UIColor(white: 0.40, alpha: 0.55)
                 : UIColor(red: 0.674, green: 0.704, blue: 0.747, alpha: 0.88)

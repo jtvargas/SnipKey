@@ -70,7 +70,7 @@ All paths are under `/SnipKeyboard/`. V2 code lives in `QWERTY/V2/`; shared code
 | `QWERTY/V2/SpaceBarCursorController.swift` | Space long-press → caret drag mode (250ms / 14pt to engage). |
 | `QWERTY/V2/AccentMap.swift` | Static lookup of accent variants + domain (`.com`/`.net`/…) menu. |
 | `QWERTY/SlashCommandEngine.swift` | Slash `/query` detection + tiered fuzzy snippet matching. |
-| `QWERTY/V2/PredictiveTextEngineAsync.swift` | `UITextChecker` off-main, 40ms debounce, token-guarded coalescing. |
+| `QWERTY/V2/PredictiveTextEngineAsync.swift` | Serial background prediction queue, 40ms debounce, token and exact-context validation. |
 | `QWERTY/QWERTYKeyboardView.swift` | SwiftUI toolbar (slash pills, predictive pills), debug overlay. |
 
 ### Next-Gen Touch Engine (default ON) — see §3.4
@@ -160,8 +160,8 @@ UITouch down (delivered to KeyHitView → coordinator.touchesBegan)
 ```
 
 **Deferred (post-runloop, off the touch path):** one `documentContextBeforeInput` XPC read →
-slash evaluation + predictive scheduling; predictive runs off-main via `Task.detached` after a
-40ms debounce.
+slash evaluation + predictive scheduling; ranking and `UITextChecker` run on a serial background
+queue after a 40ms debounce.
 
 ### 3.4 Next-Gen Touch Engine (`smartResolved` path, default ON)
 
@@ -210,7 +210,7 @@ fast typing (~10–12 chars/sec, faster on bursts) never drops a character or st
 | **Staged init** | `viewDidLoad` builds only what the first keystroke needs; clipboard polling, SwiftData warm-up, reminder/timer flags and predictive warm-up run once from the first `viewDidAppear` on the next runloop turn (`performDeferredSetup`). | `KeyboardViewController.swift`. |
 | **VoiceOver elements on demand** | The ~35 `UIAccessibilityElement`s are built only while VoiceOver is running (`voiceOverStatusDidChangeNotification`), not on every page switch. | `KeyboardGestureCoordinator.rebuildAccessibilityElementsIfNeeded`. |
 | **Coalesced side-effects** | Many commits in one runloop → **one** `documentContextBeforeInput` read; `scheduleSideEffectFlush` guards on a bool and posts a single `DispatchQueue.main.async`. | `KeyboardViewController.swift:466–515`. |
-| **Async predictive** | `UITextChecker` runs off-main via `Task.detached(.userInitiated)`, 40ms debounce, stale results dropped by token guard. Never blocks insert. | `PredictiveTextEngineAsync.swift:41,67,84`. |
+| **Async predictive** | English model and `UITextChecker` run on a serial background queue, with 40ms debounce and token cancellation. Exact bounded context is checked on publication and against the host on acceptance. | `PredictiveTextEngineAsync.swift`, `KeyboardViewController.swift`. |
 | **HitGrid O(log n)** | Two binary searches (row seams, then column seams). 4 rows × ~10 keys → <4 iterations. Built only on layout change. | `KeyboardGestureCoordinator.swift:686–702`. |
 | **Smart-touch ~200ns** | Row-filtered frame loop + bigram weight lookup + pure-math `DynamicHitResolver`. Plausible, uninstrumented. | `SmartTouchResolver.swift:30–76`, `DynamicHitResolver.swift:39–108`. |
 | **Glyph cache** | SF Symbol renders memoized by `(name, size, weight, tintRGBA)`. Bounded by the ~6-symbol set. | `KeyLayerRenderer.swift:343–376`. |
@@ -366,6 +366,71 @@ for contractions, repeated letters, lift endpoints, jitter, ownership, cancellat
 capture. This small synthetic smoke is not a real-user accuracy benchmark; phone typing and trail
 appearance require manual validation. No permanent tests or simulator were added.
 
+### 5.6 Emoji surface and hold chooser
+
+`KeyboardSurface` exclusively selects `.typing`, `.emoji`, or `.snippets`. Tap the smiley key
+next to 123 to open emoji; hold for 400ms to use the existing action callout with **Emoji**
+and **Snippets** destinations. Selection changes surfaces, never inserts the menu label.
+VoiceOver exposes both destinations as custom actions. No new haptics are added.
+
+`EmojiKeyboardView` is lazily mounted as a full-height UIKit sibling of the native keys.
+Its reusable collection cells display nine Unicode categories, recent selections, and
+long-press skin-tone variants (including mixed-tone sequences). ABC returns to typing;
+backspace deletes host text and supports holding. Host appearance changes preserve search.
+Surface changes cancel active key/delete/menu interactions and clear stale predictions.
+
+Search embeds the same native keys with an isolated state, context mirror, caret, actions,
+and callout. Query edits never reach the host document or summon another keyboard.
+Choosing a result inserts only its emoji. English names and category controls are accessible.
+Recents retain exact sequences, deduplicate, cap at 40, and use a local defaults mirror;
+shared App Group persistence is used only with Full Access. Browsing/search require no network.
+
+`EmojiCatalog` decodes the bundled binary plist once off-main: 3,781 fully-qualified
+Unicode 16.0 sequences, 1,906 bases, nine categories. The data comes from
+[Unicode emoji-test.txt](https://www.unicode.org/Public/emoji/16.0/emoji-test.txt),
+not SwiftKey assets; Unicode License V3 is bundled. Regenerate with:
+
+```sh
+python3 scripts/generate_emoji_catalog.py
+```
+
+SwiftKey's inspected resource inventory contains eight category records, versioned variant
+records, and `SKEmojiProcessorDelegate.insertEmoji` parameters for skin-tone and insertion
+source. This is static resource/header evidence, not observed runtime behavior or recovered
+implementation. SnipKey's UI and catalog are independently implemented.
+
+### 5.7 English suggestions
+
+`EnglishSuggestionModel` reuses the immutable 50,000-word swipe lexicon (loaded once across
+both consumers) and a bounded [Norvig bigram corpus](https://norvig.com/ngrams/count_2w.txt):
+32,768 pairs, 5,946 predecessors, at most 24 successors each, plus unigram priors for `a`/`I`.
+Prefix completion starts at one character. A nonempty partial retains its literal typed slot,
+then the best and alternate distinct choices. Whitespace enables next-word choices with a
+zero-length replacement span. Ranking combines frequency, preceding-word context and bounded
+one-edit corrections including transpositions; system spelling supplements it. Apostrophes,
+curly contractions, title case, caps and supplementary lexicon shortcuts retain their spans.
+The existing system-checker path remains for other languages.
+
+Space does **not** autoaccept a correction. Toolbar acceptance is centralized in the controller:
+candidate membership, the exact 64-character input snapshot and an empty host selection must
+still match. It then inserts the chosen word plus smart space (typed-slot acceptance adds only
+the space). Swipe alternatives use the same validation. URL/email/literal fields opt out.
+
+```sh
+python3 tooling/swipe/build_english_bigrams.py /path/to/count_2w.txt /path/to/count_1w.txt \
+  SnipKeyboard/Resources/swipe-lexicon-en.txt SnipKeyboard/Resources/english-bigrams-en.tsv
+```
+
+Generators record input digests and attribution; Norvig's code license does not establish
+a separate corpus redistribution license. This is a bounded web-frequency model, not neural
+prediction or SwiftKey accuracy parity. Uncommon contexts back off to frequency.
+
+Throwaway executable smoke checks exercised actual bundled data: emoji search, variants,
+local grapheme/caret edits and recents persistence; English prefixes, `hte` → `the`,
+`recieve` → `receive`, `thank ` → `you`, contextual `I c` → `can` versus `of c` → `course`,
+contractions, casing and boundaries. No permanent tests or simulator were added.
+UIKit layout, hold selection and real-host typing remain physical-device manual checks.
+
 
 ---
 
@@ -386,9 +451,6 @@ Found in the code (not speculative). Severity is relative to an already-fast bas
 | 6.5 | ✅ FIXED — the save is deferred off the insert turn (`Task { @MainActor }`). | — | `QWERTYKeyboardView.insertSnippet` |
 | 6.6 | One `Task { @MainActor }` allocation per `withObservationTracking` `onChange` fire (re-registration pattern). Short-lived; negligible. | Very low | `NativeKeyboardV2View.swift:91–97` |
 
-**Note on a claim that didn't fully match:** the predictive engine is described as a "background
-serial queue" but is actually `Task.detached` + cancellation-based coalescing (functionally
-equivalent for debouncing; technically structured concurrency, not a `DispatchQueue`).
 
 ---
 
@@ -461,6 +523,7 @@ which intentionally avoids main-thread work mid-typing.
 - **Touch accuracy:** `SmartTouchResolver.swift` + `DynamicHitResolver.swift` (+ bigram data).
 - **Callouts / accent menus:** `KeyboardCalloutView.swift` + `CalloutController.swift` + `AccentMap.swift`.
 - **Snippets / slash:** `SlashCommandEngine.swift` + toolbar in `QWERTYKeyboardView.swift`.
-- **Predictive text:** `PredictiveTextEngineAsync.swift`.
+- **Predictive text:** `PredictiveTextEngineAsync.swift` + `EnglishSuggestionModel.swift`; see §5.7.
 - **Swipe recognition / ranking:** `SwipeGestureController.swift` + `SwipeDecoder.swift`; see §5.5 for lexicon regeneration and limitations.
+- **Emoji / local search:** `EmojiKeyboardView.swift` + `EmojiCatalog.swift`; see §5.6.
 - **XPC / state hydration:** `KeyboardViewController.swift` + `KeyboardActions.swift` + `QWERTYKeyboardState.swift`.
