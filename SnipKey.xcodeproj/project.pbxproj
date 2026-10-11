@@ -229,6 +229,8 @@
 		AF0D187F875ED8FF1AE47B7D /* EmojiLayoutGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */; };
 		95C45D95E6899EB8FD19DFBC /* EmojiSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */; };
 		9A3A5B8D99F23F626BA2C5C9 /* EmojiSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */; };
+		F459EF742EACB2E02E7CDCF3 /* EmojiShortcodeQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBACB5C6431AD1912A55D925 /* EmojiShortcodeQuery.swift */; };
+		A64D99624B128AC90F64782F /* EmojiShortcodeQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBACB5C6431AD1912A55D925 /* EmojiShortcodeQuery.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -401,6 +403,7 @@
 		D041899550A05259B6382DCB /* CommandInsertionPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CommandInsertionPlan.swift; path = V2/CommandInsertionPlan.swift; sourceTree = "<group>"; };
 		5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiLayoutGeometry.swift; path = V2/EmojiLayoutGeometry.swift; sourceTree = "<group>"; };
 		5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiSearchField.swift; path = V2/EmojiSearchField.swift; sourceTree = "<group>"; };
+		BBACB5C6431AD1912A55D925 /* EmojiShortcodeQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiShortcodeQuery.swift; path = V2/EmojiShortcodeQuery.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -630,6 +633,7 @@
 				D041899550A05259B6382DCB /* CommandInsertionPlan.swift */,
 				5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */,
 				5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */,
+				BBACB5C6431AD1912A55D925 /* EmojiShortcodeQuery.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -1077,6 +1081,7 @@
 				4B45B41417002675DC539F5F /* CommandInsertionPlan.swift in Sources */,
 				8AABE401937A8F35643FF7ED /* EmojiLayoutGeometry.swift in Sources */,
 				95C45D95E6899EB8FD19DFBC /* EmojiSearchField.swift in Sources */,
+				F459EF742EACB2E02E7CDCF3 /* EmojiShortcodeQuery.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1197,6 +1202,7 @@
 				C92178846F2DB319E44971DD /* CommandInsertionPlan.swift in Sources */,
 				AF0D187F875ED8FF1AE47B7D /* EmojiLayoutGeometry.swift in Sources */,
 				9A3A5B8D99F23F626BA2C5C9 /* EmojiSearchField.swift in Sources */,
+				A64D99624B128AC90F64782F /* EmojiShortcodeQuery.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

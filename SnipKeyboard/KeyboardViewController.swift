@@ -48,6 +48,7 @@ class KeyboardViewController: UIInputViewController {
     private var nativeV2KeysView: NativeKeyboardV2View?
     private var emojiKeyboardView: EmojiKeyboardView?
     private var emojiSearchActive = false
+    private lazy var inlineEmojiRecents = EmojiRecentsStore()
     private var predictionContext: String?
     
     // MARK: - Slash Command
@@ -192,29 +193,10 @@ class KeyboardViewController: UIInputViewController {
             hasFullAccess: { [weak self] in
                 self?.hasFullAccess ?? false
             },
-            requestReminder: { [weak self] in
-                guard let self = self else { return }
-                // 🔔 quick button. Requires Full Access; the app owns the one-time authorization
-                // prompt. DEBUG uses a short delay for testing; release uses the required 120s.
-                // Routed through the selected destination (convert the relative delay to an
-                // absolute fire date so SnipKey + Reminders App share one router).
-                guard self.hasFullAccess else {
-                    print("[Reminder] Full Access required to schedule from the keyboard")
-                    return
-                }
-                #if DEBUG
-                let delay: TimeInterval = 10
-                #else
-                let delay: TimeInterval = 120
-                #endif
-                self.routeReminder(title: "SnipKey",
-                                   body: "Time to use SnipKey!",
-                                   fireDate: Date().addingTimeInterval(delay))
-            },
             createReminder: { [weak self] body, fireDate in
                 guard let self = self else { return }
                 // NLP `/remind … at <time>` flow: deliver at the parsed absolute time via the
-                // selected destination. Same Full Access requirement as `requestReminder`.
+                // selected destination. Scheduling requires Full Access.
                 guard self.hasFullAccess else {
                     print("[Reminder] Full Access required to schedule from the keyboard")
                     return
@@ -514,6 +496,9 @@ class KeyboardViewController: UIInputViewController {
     /// context; `ownMutationInFlight` tells that re-entrancy to do no host reads.
     private func insertOwnText(_ text: String) {
         qwertyState.inputTracking.contextMirror.append(text)
+        if !text.isEmpty, qwertyState.isDocumentEmpty {
+            qwertyState.isDocumentEmpty = false
+        }
         ownMutationInFlight = true
         textDocumentProxy.insertText(text)
         ownMutationInFlight = false
@@ -551,6 +536,15 @@ class KeyboardViewController: UIInputViewController {
             resetPredictivePipeline()
         }
         mirror.reset(to: context)
+        // Before-caret emptiness alone also describes the start of a populated field.
+        // Read the remaining proxy facets only for an apparently empty prefix, off touch-down.
+        let isEmpty = context?.isEmpty != false
+            && !textDocumentProxy.hasText
+            && textDocumentProxy.documentContextAfterInput?.isEmpty != false
+            && textDocumentProxy.selectedText?.isEmpty != false
+        if qwertyState.isDocumentEmpty != isEmpty {
+            qwertyState.isDocumentEmpty = isEmpty
+        }
         return context
     }
 
@@ -907,6 +901,23 @@ class KeyboardViewController: UIInputViewController {
             }
             resetPredictivePipeline()
         }
+        // Parse the full host window before bounding the worker input: truncation must not
+        // turn an embedded colon into a false start-of-document shortcode.
+        let shortcode = context.flatMap(EmojiShortcodeQuery.parse)
+        if let shortcode,
+           !shortcode.canReplace(contextAfterInput: textDocumentProxy.documentContextAfterInput)
+            || textDocumentProxy.selectedText?.isEmpty == false {
+            resetPredictivePipeline()
+            return
+        }
+        if predictiveTextState.partialWord != shortcode?.triggerText,
+           shortcode != nil || predictiveTextState.isEmojiQueryActive {
+            predictionContext = nil
+        }
+        predictiveTextState.prepareForEmojiQuery(shortcode?.triggerText)
+        if shortcode != nil {
+            updateTouchPrior(candidates: [], partialWord: "")
+        }
         let boundedContext = context.map { String($0.suffix(64)) }
         predictiveEngineAsync.schedule(context: boundedContext) { [weak self] candidates, snapshot in
             guard let self else { return }
@@ -916,9 +927,17 @@ class KeyboardViewController: UIInputViewController {
                 self.resetPredictivePipeline()
                 return
             }
+            if shortcode != nil || snapshot.partialWord.hasPrefix(":"),
+               shortcode?.triggerText != snapshot.partialWord {
+                self.resetPredictivePipeline()
+                return
+            }
             self.predictionContext = expected
             self.predictiveTextState.updateCandidates(candidates, partialWord: snapshot.partialWord)
-            self.updateTouchPrior(candidates: candidates, partialWord: snapshot.partialWord)
+            self.updateTouchPrior(
+                candidates: shortcode == nil ? candidates : [],
+                partialWord: shortcode == nil ? snapshot.partialWord : ""
+            )
         }
     }
 
@@ -973,10 +992,33 @@ class KeyboardViewController: UIInputViewController {
         guard isKeyboardVisible, qwertyState.surface == .typing,
               predictiveTextState.candidates.contains(candidate),
               let expected = predictionContext,
-              textDocumentProxy.documentContextBeforeInput.map({ String($0.suffix(64)) }) == expected,
+              let currentContext = textDocumentProxy.documentContextBeforeInput,
+              String(currentContext.suffix(64)) == expected,
               textDocumentProxy.selectedText?.isEmpty != false else {
             resetPredictivePipeline()
             scheduleTypingContextResync()
+            return
+        }
+        if candidate.source == .emoji {
+            guard let shortcode = EmojiShortcodeQuery.parse(currentContext),
+                  shortcode.triggerText == predictiveTextState.partialWord,
+                  shortcode.triggerText.count == candidate.replacementLength,
+                  shortcode.canReplace(contextAfterInput: textDocumentProxy.documentContextAfterInput) else {
+                resetPredictivePipeline()
+                scheduleTypingContextResync()
+                return
+            }
+            nativeV2KeysView?.cancelActiveInteraction()
+            prepareEmojiEdit()
+            qwertyState.inputTracking.contextMirror.reset(to: currentContext)
+            for _ in 0..<candidate.replacementLength { deleteOwnBackward() }
+            // A shortcode is replaced literally; do not add a space before punctuation
+            // or disturb the user's existing whitespace after the caret.
+            insertOwnText(candidate.text)
+            inlineEmojiRecents.reload(allowSharedAccess: hasFullAccess)
+            inlineEmojiRecents.record(candidate.text)
+            qwertyState.handleShiftAfterCharacter()
+            scheduleSideEffectFlush()
             return
         }
         resetPredictivePipeline()

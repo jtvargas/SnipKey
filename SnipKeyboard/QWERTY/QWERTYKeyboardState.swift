@@ -154,6 +154,9 @@ class QWERTYKeyboardState {
     var shiftState: ShiftState = .disabled
 
     // MARK: Text Input Context (updated by KeyboardViewController)
+    /// True only when the controller has confirmed that the entire host field is empty.
+    var isDocumentEmpty: Bool = false
+
     /// Display label for the return key (e.g., "return", "Send", "Go", "Search")
     var returnKeyLabel: String = "return"
 

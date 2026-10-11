@@ -472,6 +472,12 @@ The top-left code button retains tap-to-insert `/`. Hold it for a native context
 Timer and Reminder; VoiceOver also exposes named actions. Each inserts `/timer ` or `/remind `,
 not a scheduled notification. Existing integration settings and explicit Create acceptance remain.
 
+When the host field is empty, a bell immediately left of Paste inserts `/remind ` through the same
+command path. It remains available without clipboard content. `isDocumentEmpty` is refreshed with
+the coalesced host reconciliation: empty before/after context, `hasText == false`, and no selection;
+the start of a populated field is not empty. Own insertion hides it immediately without a proxy read.
+The obsolete fixed-delay reminder action has been removed; scheduling still requires Create acceptance.
+
 `CommandInsertionPlan` computes a single selection-aware host edit. A selection receives insertion
 only; a live slash query is replaced only at a token boundary. Other text is retained with a
 separating space. The controller reads fresh host context, cancels stale touches/predictions and
@@ -487,6 +493,39 @@ or a trailing duration; calendar days/weeks/months retain wall-clock semantics.
 The actual parser/insertion smoke identified 29 baseline gaps and passed 84 final checks, including
 false triggers, exact deletion spans, selected-text safety, huge values and calendar-relative days.
 Decimal/negative durations are rejected rather than partially harvested as unrelated integers.
+
+### 5.9 Inline colon emoji suggestions
+
+`EmojiShortcodeQuery` recognizes a token at the caret such as `:`, `:sm`, `:eyes`, or `:eyes:`.
+Opening colons require a document/whitespace/opening-punctuation boundary; URLs, times, embedded
+identifiers, escaped colons and double colons do not activate. ASCII letters, digits, underscores,
+hyphens and signed aliases are accepted. Open tokens cannot replace the left half of a shortcode.
+
+The existing serial `PredictiveTextEngineAsync` queue handles the query before word prediction.
+`EmojiCatalog.loadBundled()` shares one off-main decode between inline suggestions and the browser.
+Matching uses Unicode English names/keywords plus common Slack aliases (not the complete Slack
+alias inventory). Exact names/aliases rank first; all matching base emoji are offered, without
+tone duplicates or the word row's three-result cap. Bare colon browses all 1,906 bases.
+
+`PredictiveTextState.prepareForEmojiQuery` reserves the emoji row immediately, including while
+pending or unmatched; command pills retain their existing precedence. `EmojiSuggestionsView`
+uses a lazy horizontal row with 44pt targets and spoken names. A new token resets scrolling;
+identical publications preserve it. iOS 26 automatic scroll-edge effects are hidden because they
+blurred the entire short toolbar in the native host probe. Explicit colon queries remain available
+after ordinary word suggestions are dismissed for the session.
+
+Acceptance revalidates candidate membership, the existing 64-grapheme context snapshot, the full
+host-window token, after-caret boundary and empty selection. It replaces exactly the colon token,
+adds no space, clears smart-space/auto-period/prior state, and records recents. There is no automatic
+conversion on typing a closing colon. Emoji results never supply the next-letter touch prior.
+
+Throwaway probes exercised the actual catalog/tracker/state and UIKit prediction queue: `:eyes`
+ranked eyes first, `:sm` returned 40 options, aliases/false triggers/mid-token boundaries passed,
+and stale/cancelled results did not publish. Actual UIKit text edits preserved a Unicode prefix
+and punctuation. The production SwiftUI toolbar was rendered in 36 width/theme/state scenarios;
+its real scroll view preserved/reset offsets as intended at 320, 440 and 768pt. Final finger feel
+and host-app proxy behavior still require the physical-device check. No permanent tests or simulator.
+
 
 
 

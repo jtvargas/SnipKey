@@ -20,8 +20,9 @@ path + the `/remind` NLP parser this routes) and **[`REMINDER_NLP.md`](REMINDER_
 - **Create reminders in** — a picker: **SnipKey** (default) or **Reminders App**. "Reminders App"
   is selectable only once permission is granted.
 
-Both keyboard reminder paths honor the destination: the typed `/remind … <time>` **Create reminder**
-pill *and* the 🔔 quick button.
+Reminder creation honors the destination when the `/remind … <time>` **Create reminder** pill is
+accepted. The empty-field bell beside Paste and the code button's long-press **Reminder** action
+only insert `/remind `; neither schedules a notification by itself.
 
 ---
 
@@ -46,8 +47,8 @@ like every other keyboard setting, so the keyboard can read them synchronously a
 
 ```
 Keyboard (reads destination ONCE per session in viewDidLoad — never on the keystroke path)
-  /remind "Create reminder" pill ┐
-  🔔 quick button                ┘──► KeyboardViewController.routeReminder(title, body, fireDate)
+  Empty-field bell / code-button Reminder action → inserts "/remind "
+  /remind "Create reminder" pill ───► KeyboardViewController.routeReminder(title, body, fireDate)
         │
         ├─ effectiveReminderDestination == .snipKey
         │     → LocalNotificationScheduler.schedule(...)            (existing behavior, unchanged)

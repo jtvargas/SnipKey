@@ -5,10 +5,7 @@ import Observation
 final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     static let searchAdditionalHeight = EmojiSurfaceGeometry.searchAdditionalHeight
     private static let catalogTask = Task.detached(priority: .userInitiated) { () throws -> EmojiCatalog in
-        guard let url = Bundle.main.url(forResource: "emoji-en", withExtension: "plist") else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-        return try EmojiCatalog.load(from: url)
+        try EmojiCatalog.loadBundled()
     }
 
     private let actions: KeyboardActions
@@ -531,7 +528,7 @@ final class EmojiKeyboardView: UIView, UICollectionViewDataSource, UICollectionV
             advanceToNextInputMode: {},
             documentContextBeforeInput: { [weak self] in self?.query.contextBeforeInput },
             screenWidthProvider: { [weak self] in self?.bounds.width ?? 393 },
-            openApp: {}, hasFullAccess: { false }, requestReminder: {},
+            openApp: {}, hasFullAccess: { false },
             createReminder: { _, _ in }, createTimer: { _, _ in }, pasteFromClipboard: {},
             copySnippetFile: { _ in .noFullAccess }, evaluateSlashCommand: {}, evaluatePredictiveText: {},
             scheduleSideEffects: { [weak self] in

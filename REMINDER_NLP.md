@@ -23,8 +23,9 @@ phrases to **noon** and doesn't recognize "noon", "next week", or bare "at 3").
 
 The text after the last standalone `/remind` is resolved in this order; the first match wins.
 Embedded triggers (`abc/remind`, URL paths), `/reminder`, subsequent commands and newline-crossing
-source text do not activate it. The keyboard code button's long-press **Reminder** action inserts
-`/remind ` only; creating the reminder still requires accepting its pill.
+source text do not activate it. The keyboard code button's long-press **Reminder** action and the
+empty-field bell beside Paste insert `/remind ` only; creating the reminder still requires accepting
+its pill. The bell is hidden for populated fields, including when the caret is at their beginning.
 
 1. **Relative duration** — shorthand (`10s`, `5m`, `2hr`, `1d`, `2w`) or words (`in 15 minutes`,
    `3 days`), with or without a leading "in". **All units fire at the exact offset** `now + N`

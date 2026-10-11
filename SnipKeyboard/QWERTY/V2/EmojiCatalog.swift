@@ -56,6 +56,20 @@ final class EmojiCatalog: Decodable, Sendable {
         baseEntries = groups.flatMap(\.entries)
     }
 
+    // Both the browser's detached task and the prediction queue share this one decode.
+    // Keep the Result private so all access enforces the off-main loading contract.
+    private static let bundled: Result<EmojiCatalog, Error> = Result {
+        guard let url = Bundle.main.url(forResource: "emoji-en", withExtension: "plist") else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        return try load(from: url)
+    }
+
+    static func loadBundled() throws -> EmojiCatalog {
+        precondition(!Thread.isMainThread, "Load the emoji catalog off the main thread")
+        return try bundled.get()
+    }
+
     static func load(from url: URL) throws -> EmojiCatalog {
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
         return try PropertyListDecoder().decode(EmojiCatalog.self, from: data)
@@ -104,6 +118,72 @@ final class EmojiCatalog: Decodable, Sendable {
         result.append(contentsOf: leading.prefix(limit - result.count))
         result.append(contentsOf: other.prefix(limit - result.count))
         return result
+    }
+
+    /// Inline shortcodes have no display limit and always omit skin-tone variants.
+    /// Unicode names/keywords remain authoritative; these small aliases cover common
+    /// Slack spellings whose names differ from Unicode (not a full Slack alias table).
+    private static let shortcodeAliases: [String: [String]] = [
+        "😄": ["smile"], "😃": ["smiley"], "😏": ["smirk"],
+        "😀": ["grinning"], "😁": ["grin"], "😂": ["joy"],
+        "🤣": ["rofl"], "😊": ["blush"], "🙂": ["slightly smiling face"],
+        "🙃": ["upside down face"], "😉": ["wink"], "😌": ["relieved"],
+        "😍": ["heart eyes"], "🥰": ["smiling face with 3 hearts"],
+        "😘": ["kissing heart"], "😗": ["kissing"], "😚": ["kissing closed eyes"],
+        "😙": ["kissing smiling eyes"], "😎": ["sunglasses"], "🤓": ["nerd face"],
+        "😛": ["stuck out tongue"], "😜": ["stuck out tongue winking eye"],
+        "😝": ["stuck out tongue closed eyes"], "😆": ["laughing", "satisfied"],
+        "😢": ["cry"], "😭": ["sob"], "😠": ["angry"], "😡": ["rage"],
+        "😱": ["scream"], "😴": ["sleeping"], "😪": ["sleepy"],
+        "😐": ["neutral face"], "😑": ["expressionless"], "😕": ["confused"],
+        "😔": ["pensive"], "😞": ["disappointed"], "😅": ["sweat smile"],
+        "😇": ["innocent"], "🤔": ["thinking face", "thinking"],
+        "🤗": ["hugging face"], "🤩": ["star struck"], "🥳": ["partying face"],
+        "👍": ["thumbsup", "thumbs up", "+1"], "👎": ["thumbsdown", "thumbs down", "-1"],
+        "👊": ["facepunch", "punch"], "✊": ["fist"], "✌️": ["v"],
+        "👋": ["wave"], "👏": ["clap"], "🙌": ["raised hands"], "🙏": ["pray"],
+        "💪": ["muscle"], "💩": ["poop", "shit", "hankey"],
+        "❤️": ["heart"], "💔": ["broken heart"], "💯": ["100"],
+        "🔥": ["fire"], "🎉": ["tada"], "💥": ["boom", "collision"],
+        "✅": ["white check mark"], "❌": ["x"],
+        "🚀": ["rocket"], "💻": ["computer"], "📱": ["iphone"],
+        "⚠️": ["warning"], "🏳️‍🌈": ["rainbow flag"]
+    ]
+
+    func searchShortcodes(_ query: String) -> [Int] {
+        guard !query.isEmpty else { return baseEntries }
+        // Normalization treats underscores/hyphens as spaces, except signed aliases.
+        let normalized: String
+        if (query.first == "+" || query.first == "-"),
+           query.dropFirst().allSatisfy({ $0.isNumber }) {
+            normalized = query
+        } else {
+            normalized = Self.normalize(query)
+        }
+        guard !normalized.isEmpty else { return [] }
+        let tokens = normalized.split(separator: " ")
+        var exact: [Int] = []
+        var leading: [Int] = []
+        var other: [Int] = []
+        for index in baseEntries {
+            let entry = entries[index]
+            let aliases = Self.shortcodeAliases[entry.text]
+            let exactAlias = aliases?.contains(normalized) == true
+            let leadingAlias = aliases?.contains(where: { $0.hasPrefix(normalized) }) == true
+            let keywordMatch = tokens.allSatisfy { entry.keywords.contains($0) }
+            guard exactAlias || leadingAlias || keywordMatch else { continue }
+            if exactAlias || (keywordMatch && Self.normalize(entry.name) == normalized) {
+                exact.append(index)
+            } else if leadingAlias || entry.keywords.hasPrefix(normalized) {
+                leading.append(index)
+            } else {
+                other.append(index)
+            }
+        }
+        // Each base index is visited once, preserving Unicode order within each rank.
+        exact.append(contentsOf: leading)
+        exact.append(contentsOf: other)
+        return exact
     }
 
     private static func normalize(_ text: String) -> String {

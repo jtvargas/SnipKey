@@ -27,6 +27,7 @@ enum PredictiveCandidateSource: String, Equatable, Sendable {
     case englishContext
     /// Runner-up of a swipe decode; accepting replaces the committed word + its space.
     case swipe
+    case emoji
 }
 
 struct PredictiveCandidate: Identifiable, Equatable, Sendable {
@@ -35,9 +36,10 @@ struct PredictiveCandidate: Identifiable, Equatable, Sendable {
     let source: PredictiveCandidateSource
     let confidence: Float
     let replacementLength: Int
+    var displayName: String? = nil
 
     var id: String {
-        "\(role.rawValue):\(text.lowercased())"
+        source == .emoji ? text : "\(role.rawValue):\(text.lowercased())"
     }
 }
 
@@ -51,6 +53,7 @@ final class PredictiveTextTracker: @unchecked Sendable {
     private lazy var textChecker = UITextChecker()
     private lazy var language = preferredLanguage()
     private lazy var englishModel = EnglishSuggestionModel.loadBundled()
+    private lazy var emojiCatalog = try? EmojiCatalog.loadBundled()
     private var supplementaryEntries: [(input: String, text: String)] = []
 
     /// Cached supplementary lexicon from UIInputViewController.
@@ -69,6 +72,17 @@ final class PredictiveTextTracker: @unchecked Sendable {
     func evaluate(context: String?) -> (candidates: [PredictiveCandidate], partialWord: String) {
         guard let context = context, !context.isEmpty else {
             return ([], "")
+        }
+
+        if let shortcode = EmojiShortcodeQuery.parse(context) {
+            guard let emojiCatalog else { return ([], shortcode.triggerText) }
+            let replacementLength = shortcode.triggerText.count
+            let candidates = emojiCatalog.searchShortcodes(shortcode.query).map { index in
+                let entry = emojiCatalog.entries[index]
+                return PredictiveCandidate(text: entry.text, role: .completion, source: .emoji,
+                    confidence: 1, replacementLength: replacementLength, displayName: entry.name)
+            }
+            return (candidates, shortcode.triggerText)
         }
 
         let english = language == "en" || language.hasPrefix("en_")
@@ -434,19 +448,22 @@ final class PredictiveTextTracker: @unchecked Sendable {
 @MainActor
 @Observable
 class PredictiveTextState {
-    /// Current word candidates to display in the toolbar (max 3)
+    /// Up to three word choices, or all matching base emoji for an explicit shortcode.
     var candidates: [PredictiveCandidate] = []
 
-    /// Exact suffix validated before replacement: a typed partial word, or a committed
-    /// swipe word plus its trailing space. Candidates carry the matching deletion length.
+    /// Exact suffix validated before replacement: a typed partial word, colon token,
+    /// or committed swipe word plus its trailing space. Candidates carry deletion length.
     var partialWord: String = ""
 
-    /// User-dismissed for the rest of this keyboard session via long-press on the middle
-    /// pill. Resets next time the keyboard mounts. While `true`, `updateSuggestions` is a no-op.
+    /// User-dismissed ordinary predictions for this keyboard session. Explicit colon
+    /// queries remain available. Resets next time the keyboard mounts.
     var dismissedForSession: Bool = false
 
     /// Whether suggestions are available and should be shown
     var isActive: Bool { !candidates.isEmpty }
+
+    /// Reserves the emoji row while its serial background evaluation is pending.
+    var isEmojiQueryActive = false
 
     var suggestions: [String] { candidates.map(\.text) }
 
@@ -454,10 +471,29 @@ class PredictiveTextState {
     /// All stored properties use literal defaults that don't touch main-actor state.
     nonisolated init() {}
 
+    /// Called synchronously before scheduling predictions. Preserve an identical query
+    /// (and its scroll position), but never display results for an older colon token.
+    func prepareForEmojiQuery(_ triggerText: String?) {
+        if let triggerText {
+            if !isEmojiQueryActive { isEmojiQueryActive = true }
+            if partialWord != triggerText {
+                if !candidates.isEmpty { candidates = [] }
+                partialWord = triggerText
+            }
+        } else if isEmojiQueryActive {
+            dismiss()
+        }
+    }
+
     /// Update suggestions from tracker evaluation.
     /// All setters use equality guards to prevent unnecessary re-renders.
     func updateCandidates(_ candidates: [PredictiveCandidate], partialWord: String) {
-        guard !dismissedForSession else { return }
+        let isEmojiQuery = EmojiShortcodeQuery.parse(partialWord) != nil
+        guard !dismissedForSession || isEmojiQuery else {
+            if isEmojiQueryActive { dismiss() }
+            return
+        }
+        if isEmojiQueryActive != isEmojiQuery { isEmojiQueryActive = isEmojiQuery }
         if self.candidates != candidates {
             self.candidates = candidates
         }
@@ -488,6 +524,7 @@ class PredictiveTextState {
 
     /// Clear all suggestions
     func dismiss() {
+        if isEmojiQueryActive { isEmojiQueryActive = false }
         if !candidates.isEmpty {
             candidates = []
         }
