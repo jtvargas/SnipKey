@@ -20,9 +20,9 @@ import UIKit
 /// Threading model:
 /// - The engine is `@MainActor`-isolated so `schedule(context:completion:)` and the token
 ///   bookkeeping cannot race.
-/// - The heavy `tracker.evaluate(context:)` work runs on one serial queue. This preserves
-///   `PredictiveTextTracker`'s cached state while keeping `UITextChecker` off the main actor.
-/// - Results hop back to `MainActor` only when the scheduled token is still current.
+/// - All model loading, tokenization, ranking, and UITextChecker work run on one serial
+///   queue. Scheduling captures the supplied String value without tokenizing on main.
+/// - Results hop back to MainActor only when their scheduled token is still current.
 @MainActor
 final class PredictiveTextEngineAsync {
 
@@ -53,25 +53,26 @@ final class PredictiveTextEngineAsync {
         }
     }
 
-    /// Schedule a predictive-text evaluation for the given context.
-    /// Fires `completion` on the main actor with the new suggestions when this scheduled call
-    /// is still the latest and the result has changed.
-    func schedule(context: String?, completion: @escaping @MainActor (_ candidates: [PredictiveCandidate], _ partialWord: String) -> Void) {
+    /// Publish each latest evaluation, including unchanged candidates. The caller must
+    /// validate the exact supplied context against its current mirror before display and
+    /// again before acceptance; a matching suffix does not prove the context is current.
+    /// Publishing every latest snapshot also recovers from an earlier result rejected
+    /// by the caller because its document context moved without a new schedule.
+    func schedule(context: String?, completion: @escaping @MainActor (
+        _ candidates: [PredictiveCandidate], _ snapshot: PredictiveTextSnapshot
+    ) -> Void) {
         currentToken &+= 1
         let myToken = currentToken
         let snapshot = context
 
         pendingWorkItem?.cancel()
-        var workItem: DispatchWorkItem!
-        workItem = DispatchWorkItem { [weak self, tracker] in
-            guard !workItem.isCancelled else { return }
+        let workItem = DispatchWorkItem { [weak self, tracker] in
             let result = tracker.evaluate(context: snapshot)
+            let resultSnapshot = PredictiveTextSnapshot(contextBeforeInput: snapshot, partialWord: result.partialWord)
             Task { @MainActor [weak self] in
                 guard let self, self.currentToken == myToken else { return }
-                guard self.pendingWorkItem === workItem else { return }
-                if result.changed {
-                    completion(result.candidates, result.partialWord)
-                }
+                self.pendingWorkItem = nil
+                completion(result.candidates, resultSnapshot)
             }
         }
 
@@ -79,12 +80,10 @@ final class PredictiveTextEngineAsync {
         queue.asyncAfter(deadline: .now() + Self.debounce, execute: workItem)
     }
 
-    /// Reset the cached "last suggestions" state. Use after suggestion selection
-    /// so the next keystroke is treated as a fresh sequence.
+    /// Invalidate in-flight predictions after acceptance, host trait changes, or dismissal.
     func reset() {
         currentToken &+= 1
         pendingWorkItem?.cancel()
         pendingWorkItem = nil
-        queue.async { [tracker] in tracker.reset() }
     }
 }

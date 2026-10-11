@@ -128,6 +128,10 @@
 		4357CA1F7209133EF8A7BB31 /* TimerParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */; };
 		47E09081072FF9E2DEC87BA3 /* TimerParseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C362B061B2E4FC3332F901 /* TimerParseEngine.swift */; };
 		531D9A19F182A54F591CCDD8 /* trigram-en.bin in Resources */ = {isa = PBXBuildFile; fileRef = 501CDE2D77800335FB2DD5DE /* trigram-en.bin */; };
+		12539B4BDEE5D3D8D1CCF850 /* swipe-lexicon-en.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0B0765F7704591FE218FFDE9 /* swipe-lexicon-en.txt */; };
+		70E59B434B3B5AB62F7518B5 /* emoji-en.plist in Resources */ = {isa = PBXBuildFile; fileRef = 870E8BD34F6B988C8E5C7925 /* emoji-en.plist */; };
+		A8064DA3131E66803805C973 /* emoji-unicode-license.txt in Resources */ = {isa = PBXBuildFile; fileRef = 8FC926131C45B1366D495E5C /* emoji-unicode-license.txt */; };
+		98E3206297E6E80785F50B64 /* english-bigrams-en.tsv in Resources */ = {isa = PBXBuildFile; fileRef = 711F46983B7B759433E78721 /* english-bigrams-en.tsv */; };
 		5AA1CF567B54EAE8DFCBAF2F /* ReminderDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0863C40DC54F8B0573428C40 /* ReminderDestination.swift */; };
 		5AA259C84646E2C6725970F5 /* KeyboardLayoutFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D266147F73D266AED224E /* KeyboardLayoutFactory.swift */; };
 		5F658D6000CB59E3322A6785 /* CalloutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCB146313BAC73C4D3C608 /* CalloutController.swift */; };
@@ -178,6 +182,10 @@
 		E9395E039E047952A59EE0E8 /* KeyLayerRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */; };
 		EBA12BC3F47C57B75EBA44F4 /* RemindersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F559D4F5BD052FAD0F47B8 /* RemindersView.swift */; };
 		EE29CE4DCF6CF86E5D53F808 /* trigram-en.bin in Resources */ = {isa = PBXBuildFile; fileRef = 501CDE2D77800335FB2DD5DE /* trigram-en.bin */; };
+		1C7F373D4DCE1F1A3C5DBA47 /* swipe-lexicon-en.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0B0765F7704591FE218FFDE9 /* swipe-lexicon-en.txt */; };
+		8CA472C67482CAEC103A0059 /* emoji-en.plist in Resources */ = {isa = PBXBuildFile; fileRef = 870E8BD34F6B988C8E5C7925 /* emoji-en.plist */; };
+		D8F5EE7E9B52CC5E91875700 /* emoji-unicode-license.txt in Resources */ = {isa = PBXBuildFile; fileRef = 8FC926131C45B1366D495E5C /* emoji-unicode-license.txt */; };
+		11C8F07F9590A30FC1025BC3 /* english-bigrams-en.tsv in Resources */ = {isa = PBXBuildFile; fileRef = 711F46983B7B759433E78721 /* english-bigrams-en.tsv */; };
 		EE3A895ADA9EFDA4F1FF82A7 /* KeyLayerRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D5B35F1D244395798B02A /* KeyLayerRenderer.swift */; };
 		EFE5647EEF13001D16377DCC /* NativeKeyboardV2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EB0CF160026E9B1BAF2EE5 /* NativeKeyboardV2View.swift */; };
 		F2B3C4D5E6F7A8B9C0D1E2F4 /* ShadowTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B3C4D5E6F7A8B9C0D1E2F3 /* ShadowTelemetryView.swift */; };
@@ -187,6 +195,42 @@
 		F977E6660EB5E6D9FE1B2F3A /* ReminderDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0863C40DC54F8B0573428C40 /* ReminderDestination.swift */; };
 		F9781C3BAA457D15529F3AFC /* KeyboardLayoutResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3248BAFB68906AE381C2A875 /* KeyboardLayoutResolver.swift */; };
 		FF36A9DA1C13EC27D1D755F0 /* ResolverTuning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314D660CC6FE8B02931C5358 /* ResolverTuning.swift */; };
+		A52495769B3DF8E6977530AA /* KeyboardClickPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24252D515D7969F8A1172439 /* KeyboardClickPlayer.swift */; };
+		82C2B46C2CD297C5E5E6DEE9 /* KeyboardClickPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24252D515D7969F8A1172439 /* KeyboardClickPlayer.swift */; };
+		B68FA5D084CC0E84A557E9C3 /* TypingContextMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5CFEE617C86AAB95026B0B /* TypingContextMirror.swift */; };
+		84978EBB941E30BE2BD6298C /* TypingContextMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5CFEE617C86AAB95026B0B /* TypingContextMirror.swift */; };
+		DC22F985DF76BC2474F31E0A /* SwipeGestureController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BF64DC081ED44DD43EBA77F /* SwipeGestureController.swift */; };
+		293B915315368AB505F327A8 /* SwipeGestureController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BF64DC081ED44DD43EBA77F /* SwipeGestureController.swift */; };
+		6C2A9C79A640733DAAAD9041 /* SwipeTrailLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A52581B4224C8FEEE01EACF /* SwipeTrailLayer.swift */; };
+		1FA1E3466119AC442DC88A28 /* SwipeTrailLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A52581B4224C8FEEE01EACF /* SwipeTrailLayer.swift */; };
+		556601B79B7BD52BB473A6BB /* SwipeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6467E9644A73BB838B0D683 /* SwipeTypes.swift */; };
+		5B17CEA7B00A4917D51F3D7B /* SwipeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6467E9644A73BB838B0D683 /* SwipeTypes.swift */; };
+		BA4BB5636B69C94FCDAEF8B8 /* SwipeTypingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D23BA45D594E613BC8D009 /* SwipeTypingEngine.swift */; };
+		4626E6E44F9400657E105827 /* SwipeTypingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D23BA45D594E613BC8D009 /* SwipeTypingEngine.swift */; };
+		39FB7ACD81C1A1AEA64CC63D /* SwipeDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1138E9B202734AEDD2A8DF /* SwipeDecoder.swift */; };
+		C2DC70BCE5691D6EB4DCE1B6 /* SwipeDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1138E9B202734AEDD2A8DF /* SwipeDecoder.swift */; };
+		D7EC711A3091AF8588E623BF /* SwipeLexicon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E926117DD575AEC4760B2D /* SwipeLexicon.swift */; };
+		7C8A3F523B08B4B2F6E7DC41 /* SwipeLexicon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E926117DD575AEC4760B2D /* SwipeLexicon.swift */; };
+		7C2AE9E4E157DC8F2D2C83BF /* EmojiCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A0E6E9B958D0BABE66F6AB /* EmojiCatalog.swift */; };
+		CA4BCF174FD7094BB8FA4CE8 /* EmojiCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A0E6E9B958D0BABE66F6AB /* EmojiCatalog.swift */; };
+		EE2068B9467583B1069CFCAB /* EmojiCollectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86414321779F92B352739F8 /* EmojiCollectionViews.swift */; };
+		6CD7FAEB4C31440C583666F2 /* EmojiCollectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86414321779F92B352739F8 /* EmojiCollectionViews.swift */; };
+		765B53922DBEEA4A1391F28B /* EmojiKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE41F1386E708DA8DDBE59C3 /* EmojiKeyboardView.swift */; };
+		A8603414E73001C57616261B /* EmojiKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE41F1386E708DA8DDBE59C3 /* EmojiKeyboardView.swift */; };
+		42D067BFF60757C91FA4EB73 /* EmojiSearchQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60757EF750AEA7808AFA44B8 /* EmojiSearchQuery.swift */; };
+		C51497332356D3DFC3594854 /* EmojiSearchQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60757EF750AEA7808AFA44B8 /* EmojiSearchQuery.swift */; };
+		98A9CED42DBC001C126ED8A0 /* EnglishSuggestionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BC73A33829EEB2A8DABAB9 /* EnglishSuggestionContext.swift */; };
+		3948B9F066CA5E1763217ECA /* EnglishSuggestionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BC73A33829EEB2A8DABAB9 /* EnglishSuggestionContext.swift */; };
+		21C4F7E636448DEE852F9AF8 /* EnglishSuggestionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05563A0B38DB581D239F960E /* EnglishSuggestionModel.swift */; };
+		E9F7E7092C856C475036D1A5 /* EnglishSuggestionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05563A0B38DB581D239F960E /* EnglishSuggestionModel.swift */; };
+		4B45B41417002675DC539F5F /* CommandInsertionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D041899550A05259B6382DCB /* CommandInsertionPlan.swift */; };
+		C92178846F2DB319E44971DD /* CommandInsertionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D041899550A05259B6382DCB /* CommandInsertionPlan.swift */; };
+		8AABE401937A8F35643FF7ED /* EmojiLayoutGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */; };
+		AF0D187F875ED8FF1AE47B7D /* EmojiLayoutGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */; };
+		95C45D95E6899EB8FD19DFBC /* EmojiSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */; };
+		9A3A5B8D99F23F626BA2C5C9 /* EmojiSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */; };
+		F459EF742EACB2E02E7CDCF3 /* EmojiShortcodeQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBACB5C6431AD1912A55D925 /* EmojiShortcodeQuery.swift */; };
+		A64D99624B128AC90F64782F /* EmojiShortcodeQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBACB5C6431AD1912A55D925 /* EmojiShortcodeQuery.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -299,6 +343,10 @@
 		426457EB9F7B0F45CB1E0766 /* KeyboardGestureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardGestureCoordinator.swift; path = V2/KeyboardGestureCoordinator.swift; sourceTree = "<group>"; };
 		46A932ACF8B6A03A6226FDA3 /* ResolverSelfTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResolverSelfTests.swift; sourceTree = "<group>"; };
 		501CDE2D77800335FB2DD5DE /* trigram-en.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = "trigram-en.bin"; path = "SnipKeyboard/Resources/trigram-en.bin"; sourceTree = SOURCE_ROOT; };
+		0B0765F7704591FE218FFDE9 /* swipe-lexicon-en.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = "swipe-lexicon-en.txt"; path = "SnipKeyboard/Resources/swipe-lexicon-en.txt"; sourceTree = SOURCE_ROOT; };
+		870E8BD34F6B988C8E5C7925 /* emoji-en.plist */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; name = "emoji-en.plist"; path = "SnipKeyboard/Resources/emoji-en.plist"; sourceTree = SOURCE_ROOT; };
+		8FC926131C45B1366D495E5C /* emoji-unicode-license.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = "emoji-unicode-license.txt"; path = "SnipKeyboard/Resources/emoji-unicode-license.txt"; sourceTree = SOURCE_ROOT; };
+		711F46983B7B759433E78721 /* english-bigrams-en.tsv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "english-bigrams-en.tsv"; path = "SnipKeyboard/Resources/english-bigrams-en.tsv"; sourceTree = SOURCE_ROOT; };
 		59C7DB60CB94B5F0CD67A47E /* CharacterTrigramLM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CharacterTrigramLM.swift; path = V2/CharacterTrigramLM.swift; sourceTree = "<group>"; };
 		624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalibrationCapture.swift; path = V2/CalibrationCapture.swift; sourceTree = "<group>"; };
 		67EFFD6A3EE38AE91528FF2B /* EventKitReminderService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventKitReminderService.swift; sourceTree = "<group>"; };
@@ -338,6 +386,24 @@
 		FA709295AF93424995345899 /* CalibrationLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationLabView.swift; sourceTree = "<group>"; };
 		FAF46C9D98AF9FA5A91A9E05 /* PredictiveTextEngineAsync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PredictiveTextEngineAsync.swift; path = V2/PredictiveTextEngineAsync.swift; sourceTree = "<group>"; };
 		FEE8DB50F5227711F0A44F2E /* IntegrationsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationsView.swift; sourceTree = "<group>"; };
+		24252D515D7969F8A1172439 /* KeyboardClickPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KeyboardClickPlayer.swift; path = V2/KeyboardClickPlayer.swift; sourceTree = "<group>"; };
+		EF5CFEE617C86AAB95026B0B /* TypingContextMirror.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TypingContextMirror.swift; path = V2/TypingContextMirror.swift; sourceTree = "<group>"; };
+		1BF64DC081ED44DD43EBA77F /* SwipeGestureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwipeGestureController.swift; path = V2/SwipeGestureController.swift; sourceTree = "<group>"; };
+		4A52581B4224C8FEEE01EACF /* SwipeTrailLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwipeTrailLayer.swift; path = V2/SwipeTrailLayer.swift; sourceTree = "<group>"; };
+		C6467E9644A73BB838B0D683 /* SwipeTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwipeTypes.swift; path = V2/SwipeTypes.swift; sourceTree = "<group>"; };
+		06D23BA45D594E613BC8D009 /* SwipeTypingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwipeTypingEngine.swift; path = V2/SwipeTypingEngine.swift; sourceTree = "<group>"; };
+		AD1138E9B202734AEDD2A8DF /* SwipeDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwipeDecoder.swift; path = V2/SwipeDecoder.swift; sourceTree = "<group>"; };
+		24E926117DD575AEC4760B2D /* SwipeLexicon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwipeLexicon.swift; path = V2/SwipeLexicon.swift; sourceTree = "<group>"; };
+		87A0E6E9B958D0BABE66F6AB /* EmojiCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiCatalog.swift; path = V2/EmojiCatalog.swift; sourceTree = "<group>"; };
+		F86414321779F92B352739F8 /* EmojiCollectionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiCollectionViews.swift; path = V2/EmojiCollectionViews.swift; sourceTree = "<group>"; };
+		DE41F1386E708DA8DDBE59C3 /* EmojiKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiKeyboardView.swift; path = V2/EmojiKeyboardView.swift; sourceTree = "<group>"; };
+		60757EF750AEA7808AFA44B8 /* EmojiSearchQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiSearchQuery.swift; path = V2/EmojiSearchQuery.swift; sourceTree = "<group>"; };
+		81BC73A33829EEB2A8DABAB9 /* EnglishSuggestionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EnglishSuggestionContext.swift; path = V2/EnglishSuggestionContext.swift; sourceTree = "<group>"; };
+		05563A0B38DB581D239F960E /* EnglishSuggestionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EnglishSuggestionModel.swift; path = V2/EnglishSuggestionModel.swift; sourceTree = "<group>"; };
+		D041899550A05259B6382DCB /* CommandInsertionPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CommandInsertionPlan.swift; path = V2/CommandInsertionPlan.swift; sourceTree = "<group>"; };
+		5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiLayoutGeometry.swift; path = V2/EmojiLayoutGeometry.swift; sourceTree = "<group>"; };
+		5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiSearchField.swift; path = V2/EmojiSearchField.swift; sourceTree = "<group>"; };
+		BBACB5C6431AD1912A55D925 /* EmojiShortcodeQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmojiShortcodeQuery.swift; path = V2/EmojiShortcodeQuery.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -404,6 +470,10 @@
 			isa = PBXGroup;
 			children = (
 				501CDE2D77800335FB2DD5DE /* trigram-en.bin */,
+				0B0765F7704591FE218FFDE9 /* swipe-lexicon-en.txt */,
+				870E8BD34F6B988C8E5C7925 /* emoji-en.plist */,
+				8FC926131C45B1366D495E5C /* emoji-unicode-license.txt */,
+				711F46983B7B759433E78721 /* english-bigrams-en.tsv */,
 				0662D7AC2BB9DDB900DEC4B9 /* SnipKeyboard.entitlements */,
 				066E69D62BB9831900D971E8 /* KeyboardViewController.swift */,
 				066E69D82BB9831900D971E8 /* Info.plist */,
@@ -546,6 +616,24 @@
 				624C3952FD2FB84D726AAF29 /* CalibrationCapture.swift */,
 				F7F292BE9DA2C4C6C615DE2B /* ResolverReplayEngine.swift */,
 				59C7DB60CB94B5F0CD67A47E /* CharacterTrigramLM.swift */,
+				24252D515D7969F8A1172439 /* KeyboardClickPlayer.swift */,
+				EF5CFEE617C86AAB95026B0B /* TypingContextMirror.swift */,
+				1BF64DC081ED44DD43EBA77F /* SwipeGestureController.swift */,
+				4A52581B4224C8FEEE01EACF /* SwipeTrailLayer.swift */,
+				C6467E9644A73BB838B0D683 /* SwipeTypes.swift */,
+				06D23BA45D594E613BC8D009 /* SwipeTypingEngine.swift */,
+				AD1138E9B202734AEDD2A8DF /* SwipeDecoder.swift */,
+				24E926117DD575AEC4760B2D /* SwipeLexicon.swift */,
+				87A0E6E9B958D0BABE66F6AB /* EmojiCatalog.swift */,
+				F86414321779F92B352739F8 /* EmojiCollectionViews.swift */,
+				DE41F1386E708DA8DDBE59C3 /* EmojiKeyboardView.swift */,
+				60757EF750AEA7808AFA44B8 /* EmojiSearchQuery.swift */,
+				81BC73A33829EEB2A8DABAB9 /* EnglishSuggestionContext.swift */,
+				05563A0B38DB581D239F960E /* EnglishSuggestionModel.swift */,
+				D041899550A05259B6382DCB /* CommandInsertionPlan.swift */,
+				5B16E35E35F7B0CDD993E906 /* EmojiLayoutGeometry.swift */,
+				5E9E28F888117CC7DF2783A7 /* EmojiSearchField.swift */,
+				BBACB5C6431AD1912A55D925 /* EmojiShortcodeQuery.swift */,
 			);
 			path = QWERTY;
 			sourceTree = "<group>";
@@ -877,6 +965,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				EE29CE4DCF6CF86E5D53F808 /* trigram-en.bin in Resources */,
+				1C7F373D4DCE1F1A3C5DBA47 /* swipe-lexicon-en.txt in Resources */,
+				8CA472C67482CAEC103A0059 /* emoji-en.plist in Resources */,
+				D8F5EE7E9B52CC5E91875700 /* emoji-unicode-license.txt in Resources */,
+				11C8F07F9590A30FC1025BC3 /* english-bigrams-en.tsv in Resources */,
 				066E69F52BB9CB7900D971E8 /* IBMPlexMono-Medium.ttf in Resources */,
 				066E69F62BB9CB7C00D971E8 /* IBMPlexMono-Regular.ttf in Resources */,
 				066E69F72BB9CB7F00D971E8 /* IBMPlexMono-SemiBold.ttf in Resources */,
@@ -890,6 +982,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				531D9A19F182A54F591CCDD8 /* trigram-en.bin in Resources */,
+				12539B4BDEE5D3D8D1CCF850 /* swipe-lexicon-en.txt in Resources */,
+				70E59B434B3B5AB62F7518B5 /* emoji-en.plist in Resources */,
+				A8064DA3131E66803805C973 /* emoji-unicode-license.txt in Resources */,
+				98E3206297E6E80785F50B64 /* english-bigrams-en.tsv in Resources */,
 				066FAF172BB216170086F135 /* Preview Assets.xcassets in Resources */,
 				06F4F3102BB6270F00399C78 /* IBMPlexMono-SemiBold.ttf in Resources */,
 				066FAF142BB216170086F135 /* Assets.xcassets in Resources */,
@@ -968,6 +1064,24 @@
 				C2E798470841C581DCDD7687 /* CalibrationCapture.swift in Sources */,
 				C67BF68846AC7970ACE1CB05 /* ResolverReplayEngine.swift in Sources */,
 				B97874AC51BB77034D5565F1 /* CharacterTrigramLM.swift in Sources */,
+				A52495769B3DF8E6977530AA /* KeyboardClickPlayer.swift in Sources */,
+				B68FA5D084CC0E84A557E9C3 /* TypingContextMirror.swift in Sources */,
+				DC22F985DF76BC2474F31E0A /* SwipeGestureController.swift in Sources */,
+				6C2A9C79A640733DAAAD9041 /* SwipeTrailLayer.swift in Sources */,
+				556601B79B7BD52BB473A6BB /* SwipeTypes.swift in Sources */,
+				BA4BB5636B69C94FCDAEF8B8 /* SwipeTypingEngine.swift in Sources */,
+				39FB7ACD81C1A1AEA64CC63D /* SwipeDecoder.swift in Sources */,
+				D7EC711A3091AF8588E623BF /* SwipeLexicon.swift in Sources */,
+				7C2AE9E4E157DC8F2D2C83BF /* EmojiCatalog.swift in Sources */,
+				EE2068B9467583B1069CFCAB /* EmojiCollectionViews.swift in Sources */,
+				765B53922DBEEA4A1391F28B /* EmojiKeyboardView.swift in Sources */,
+				42D067BFF60757C91FA4EB73 /* EmojiSearchQuery.swift in Sources */,
+				98A9CED42DBC001C126ED8A0 /* EnglishSuggestionContext.swift in Sources */,
+				21C4F7E636448DEE852F9AF8 /* EnglishSuggestionModel.swift in Sources */,
+				4B45B41417002675DC539F5F /* CommandInsertionPlan.swift in Sources */,
+				8AABE401937A8F35643FF7ED /* EmojiLayoutGeometry.swift in Sources */,
+				95C45D95E6899EB8FD19DFBC /* EmojiSearchField.swift in Sources */,
+				F459EF742EACB2E02E7CDCF3 /* EmojiShortcodeQuery.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1071,6 +1185,24 @@
 				D59BAAF0D552AA91E0BE20F9 /* CalibrationCapture.swift in Sources */,
 				841E0DA42C3D9F6A2A83006B /* ResolverReplayEngine.swift in Sources */,
 				9A07952948514535BCF96200 /* CharacterTrigramLM.swift in Sources */,
+				82C2B46C2CD297C5E5E6DEE9 /* KeyboardClickPlayer.swift in Sources */,
+				84978EBB941E30BE2BD6298C /* TypingContextMirror.swift in Sources */,
+				293B915315368AB505F327A8 /* SwipeGestureController.swift in Sources */,
+				1FA1E3466119AC442DC88A28 /* SwipeTrailLayer.swift in Sources */,
+				5B17CEA7B00A4917D51F3D7B /* SwipeTypes.swift in Sources */,
+				4626E6E44F9400657E105827 /* SwipeTypingEngine.swift in Sources */,
+				C2DC70BCE5691D6EB4DCE1B6 /* SwipeDecoder.swift in Sources */,
+				7C8A3F523B08B4B2F6E7DC41 /* SwipeLexicon.swift in Sources */,
+				CA4BCF174FD7094BB8FA4CE8 /* EmojiCatalog.swift in Sources */,
+				6CD7FAEB4C31440C583666F2 /* EmojiCollectionViews.swift in Sources */,
+				A8603414E73001C57616261B /* EmojiKeyboardView.swift in Sources */,
+				C51497332356D3DFC3594854 /* EmojiSearchQuery.swift in Sources */,
+				3948B9F066CA5E1763217ECA /* EnglishSuggestionContext.swift in Sources */,
+				E9F7E7092C856C475036D1A5 /* EnglishSuggestionModel.swift in Sources */,
+				C92178846F2DB319E44971DD /* CommandInsertionPlan.swift in Sources */,
+				AF0D187F875ED8FF1AE47B7D /* EmojiLayoutGeometry.swift in Sources */,
+				9A3A5B8D99F23F626BA2C5C9 /* EmojiSearchField.swift in Sources */,
+				A64D99624B128AC90F64782F /* EmojiShortcodeQuery.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

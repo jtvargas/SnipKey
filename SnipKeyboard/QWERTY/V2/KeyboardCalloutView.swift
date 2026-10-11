@@ -139,6 +139,12 @@ final class KeyboardCalloutView: UIView {
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
 
+        // Only this presentation may animate the balloon. A previous slide or action-menu
+        // spring must not keep moving/scaling a subsequent key's freshly assigned frame.
+        layer.removeAnimation(forKey: "calloutMove")
+        layer.removeAnimation(forKey: "calloutScale")
+        layer.transform = CATransform3DIdentity
+
         switch mode {
         case .input(let character, let keyFrame):
             configureInputMode(character: character, keyFrame: keyFrame, isDark: isDark, parentWidth: parentWidth)
@@ -146,10 +152,9 @@ final class KeyboardCalloutView: UIView {
             configureActionsMode(chars: chars, keyFrame: keyFrame, selectedIndex: selectedIndex, isDark: isDark, parentWidth: parentWidth)
         }
 
-        // A mid-fade callout (opacity dropping toward 0) counts as hidden for the spring
-        // decision. Cancel any in-flight fade-out and snap to full opacity instantly so a
-        // new key never reuses a half-faded bubble.
-        let wasHidden = (layer.presentation()?.opacity ?? layer.opacity) < 0.01
+        // The model opacity is zero as soon as release starts; a fresh press must
+        // not inherit a half-faded presentation or need a presentation-layer copy.
+        let wasHidden = layer.opacity < 0.01
         layer.removeAnimation(forKey: "calloutFade")
         layer.opacity = 1
         currentMode = mode
@@ -196,34 +201,27 @@ final class KeyboardCalloutView: UIView {
         }
     }
 
-    /// Hide the callout. Fades opacity out briefly for a deliberate single press
-    /// (native feel); snaps instantly during a fast-typing burst (`fade: false`), since a
-    /// fade on the single shared layer would read as the next character dimming.
+    /// Brief explicit release fade; cancellation snaps immediately. Never leave motion or
+    /// scale attached to the shared layer for the next press to inherit.
     func hide(fade: Bool = true) {
+        let opacity = layer.presentation()?.opacity ?? layer.opacity
         currentMode = nil
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer.removeAnimation(forKey: "calloutMove")
         layer.removeAnimation(forKey: "calloutScale")
-
-        if fade {
-            CATransaction.begin()
-            CATransaction.setDisableActions(false)
-            let anim = CABasicAnimation(keyPath: "opacity")
-            anim.fromValue = layer.presentation()?.opacity ?? layer.opacity
-            anim.toValue = 0
-            anim.duration = 0.07
-            anim.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            anim.fillMode = .forwards
-            anim.isRemovedOnCompletion = false
-            layer.add(anim, forKey: "calloutFade")
-            layer.opacity = 0
-            CATransaction.commit()
-        } else {
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            layer.removeAnimation(forKey: "calloutFade")
-            layer.transform = CATransform3DIdentity
-            layer.opacity = 0
-            CATransaction.commit()
+        layer.removeAnimation(forKey: "calloutFade")
+        layer.transform = CATransform3DIdentity
+        layer.opacity = 0
+        if fade, opacity > 0 {
+            let animation = CABasicAnimation(keyPath: "opacity")
+            animation.fromValue = opacity
+            animation.toValue = 0
+            animation.duration = 0.07
+            animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            layer.add(animation, forKey: "calloutFade")
         }
+        CATransaction.commit()
     }
 
     /// Update the highlighted action slot without rebuilding (long-press drag).
@@ -358,11 +356,11 @@ final class KeyboardCalloutView: UIView {
 
     private func configureActionsMode(chars: [String], keyFrame: CGRect, selectedIndex: Int, isDark: Bool, parentWidth: CGFloat) {
         let slotCount = max(chars.count, 1)
-        // Widen slots (and shrink the font) for multi-character entries like ".com" so they
-        // don't clip in the default 44pt accent slot.
         let isMultiChar = chars.contains { $0.count > 1 }
-        let slotW: CGFloat = isMultiChar ? 58 : Self.actionSlotWidth
         let fontSz: CGFloat = isMultiChar ? 17 : Self.actionFontSize
+        let font = UIFont.systemFont(ofSize: fontSz, weight: .regular)
+        let textWidth = chars.reduce(CGFloat.zero) { max($0, ($1 as NSString).size(withAttributes: [.font: font]).width) }
+        let slotW = min(max(Self.actionSlotWidth, ceil(textWidth) + 20), max(1, parentWidth - 4) / CGFloat(slotCount))
         currentActionSlotWidth = slotW
         let bubbleWidth = CGFloat(slotCount) * slotW
         let bubbleHeight = Self.actionBubbleHeight
@@ -401,6 +399,8 @@ final class KeyboardCalloutView: UIView {
             let l = UILabel()
             l.textAlignment = .center
             l.font = UIFont.systemFont(ofSize: Self.actionFontSize, weight: .regular)
+            l.adjustsFontSizeToFitWidth = true
+            l.minimumScaleFactor = 0.7
             addSubview(l)
             actionLabels.append(l)
         }
@@ -411,7 +411,7 @@ final class KeyboardCalloutView: UIView {
         for (i, label) in actionLabels.enumerated() {
             label.isHidden = false
             label.text = chars[i]
-            label.font = UIFont.systemFont(ofSize: fontSz, weight: .regular)
+            label.font = font
             label.frame = CGRect(x: CGFloat(i) * slotW, y: 0, width: slotW, height: bubbleHeight)
             label.textColor = (i == safeIndex) ? .white : (isDark ? .white : .black)
         }

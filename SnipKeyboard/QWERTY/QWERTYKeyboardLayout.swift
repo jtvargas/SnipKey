@@ -17,7 +17,7 @@ enum KeyAction: Hashable {
     case space                      // Space bar
     case returnKey                  // Return / enter
     case modeChange(KeyboardPage)   // Switch to letters, numbers, or symbols page
-    case snippetToggle              // Toggle to snippets list (long-press = switch keyboard)
+    case emojiToggle                // Tap: emoji browser; hold: Emoji / Snippets chooser
 }
 
 // MARK: - Layout Definitions
@@ -33,8 +33,8 @@ struct QWERTYKeyboardLayout {
         "ASDFGHJKL".map { .character(String($0)) },
         // Row 2: [Shift] Z X C V B N M [Backspace]
         [.shift] + "ZXCVBNM".map { .character(String($0)) } + [.backspace],
-        // Row 3: [123] [Snippets] [Space] [Return]
-        [.modeChange(.numbers), .snippetToggle, .space, .returnKey]
+        // Row 3: [123] [Emoji] [Space] [Return]
+        [.modeChange(.numbers), .emojiToggle, .space, .returnKey]
     ]
 
     static func lettersRows(for profile: KeyboardLayoutProfile) -> [[KeyAction]] {
@@ -52,8 +52,8 @@ struct QWERTYKeyboardLayout {
         "-/:;()$&@\"".map { .character(String($0)) },
         // Row 2: [#+=] . , ? ! '  [Backspace]
         [.modeChange(.symbols)] + ".,?!'".map { .character(String($0)) } + [.backspace],
-        // Row 3: [ABC] [Snippets] [Space] [Return]
-        [.modeChange(.letters), .snippetToggle, .space, .returnKey]
+        // Row 3: [ABC] [Emoji] [Space] [Return]
+        [.modeChange(.letters), .emojiToggle, .space, .returnKey]
     ]
 
     // MARK: Symbols Page (#+=)
@@ -65,8 +65,8 @@ struct QWERTYKeyboardLayout {
         ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"].map { .character($0) },
         // Row 2: [123] . , ? ! ' [Backspace]
         [.modeChange(.numbers)] + ".,?!'".map { .character(String($0)) } + [.backspace],
-        // Row 3: [ABC] [Snippets] [Space] [Return]
-        [.modeChange(.letters), .snippetToggle, .space, .returnKey]
+        // Row 3: [ABC] [Emoji] [Space] [Return]
+        [.modeChange(.letters), .emojiToggle, .space, .returnKey]
     ]
 
     // MARK: - Page Lookup
@@ -88,16 +88,18 @@ struct QWERTYKeyboardLayout {
             "[]{}#%^*+=".map { .character(String($0)) },
             ["_", "\\", "|", "~", "<", ">", "`", "^", "{", "}"].map { .character($0) },
             [.modeChange(.numbers)] + ".,?!'".map { .character(String($0)) } + [.backspace],
-            [.modeChange(.letters), .snippetToggle, .space, .returnKey]
+            [.modeChange(.letters), .emojiToggle, .space, .returnKey]
         ]
     }
 
     static func bottomRow(for profile: KeyboardLayoutProfile, modeTarget: KeyboardPage) -> [KeyAction] {
         switch profile {
+        case .emojiSearch:
+            return [.modeChange(modeTarget), .space, .returnKey]
         case .emailAddress:
             return [
                 .modeChange(modeTarget),
-                .snippetToggle,
+                .emojiToggle,
                 .insertText(label: "@", output: "@"),
                 .space,
                 .insertText(label: ".", output: "."),
@@ -106,7 +108,7 @@ struct QWERTYKeyboardLayout {
         case .url:
             return [
                 .modeChange(modeTarget),
-                .snippetToggle,
+                .emojiToggle,
                 .insertText(label: "/", output: "/"),
                 .insertText(label: ".", output: "."),
                 .insertText(label: ".com", output: ".com"),
@@ -115,7 +117,7 @@ struct QWERTYKeyboardLayout {
         case .webSearch:
             return [
                 .modeChange(modeTarget),
-                .snippetToggle,
+                .emojiToggle,
                 .space,
                 .insertText(label: ".", output: "."),
                 .returnKey
@@ -123,14 +125,14 @@ struct QWERTYKeyboardLayout {
         case .twitter:
             return [
                 .modeChange(modeTarget),
-                .snippetToggle,
+                .emojiToggle,
                 .insertText(label: "@", output: "@"),
                 .space,
                 .insertText(label: "#", output: "#"),
                 .returnKey
             ]
         case .standard, .asciiCapable:
-            return [.modeChange(modeTarget), .snippetToggle, .space, .returnKey]
+            return [.modeChange(modeTarget), .emojiToggle, .space, .returnKey]
         }
     }
 
@@ -141,7 +143,7 @@ struct QWERTYKeyboardLayout {
         switch action {
         case .character, .insertText, .space, .returnKey:
             return false
-        case .shift, .backspace, .modeChange, .snippetToggle:
+        case .shift, .backspace, .modeChange, .emojiToggle:
             return true
         }
     }

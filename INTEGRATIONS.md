@@ -20,8 +20,9 @@ path + the `/remind` NLP parser this routes) and **[`REMINDER_NLP.md`](REMINDER_
 - **Create reminders in** — a picker: **SnipKey** (default) or **Reminders App**. "Reminders App"
   is selectable only once permission is granted.
 
-Both keyboard reminder paths honor the destination: the typed `/remind … <time>` **Create reminder**
-pill *and* the 🔔 quick button.
+Reminder creation honors the destination when the `/remind … <time>` **Create reminder** pill is
+accepted. The empty-field bell beside Paste and the code button's long-press **Reminder** action
+only insert `/remind `; neither schedules a notification by itself.
 
 ---
 
@@ -46,8 +47,8 @@ like every other keyboard setting, so the keyboard can read them synchronously a
 
 ```
 Keyboard (reads destination ONCE per session in viewDidLoad — never on the keystroke path)
-  /remind "Create reminder" pill ┐
-  🔔 quick button                ┘──► KeyboardViewController.routeReminder(title, body, fireDate)
+  Empty-field bell / code-button Reminder action → inserts "/remind "
+  /remind "Create reminder" pill ───► KeyboardViewController.routeReminder(title, body, fireDate)
         │
         ├─ effectiveReminderDestination == .snipKey
         │     → LocalNotificationScheduler.schedule(...)            (existing behavior, unchanged)
@@ -116,6 +117,12 @@ The second integration. `Settings → Integrations → Timers` enables a `/timer
 `/timer 1h 30m` (or `15s`, `90`, `1h 5m 10s` — any mix of h/m/s units, plurals, or a bare number that
 defaults to seconds) shows a **Create timer · 01:30:00** pill. Tapping it schedules a **SnipKey local
 notification** that fires when the countdown ends — the user stays in their current app.
+
+Hold the keyboard's top-left code button and choose **Timer** to insert `/timer `; this never
+schedules by itself. The same menu offers **Reminder**. Timer phrases also support
+`/timer one hour and five minutes`, `/timer for twenty-five minutes`, and `/timer an hour`.
+Duration grammar validates the entire expression; negative/decimal values and trailing junk do
+not become partial timers. Standalone command boundaries prevent activation inside URL paths.
 
 > AlarmKit (a system-managed countdown with a Lock Screen / Dynamic Island Live Activity) was
 > evaluated and **removed**: only the *foreground app* can create an AlarmKit timer / host its Live

@@ -23,6 +23,11 @@ enum PredictiveCandidateSource: String, Equatable, Sendable {
     case textCheckerCompletion
     case textCheckerGuess
     case lexicon
+    case englishFrequency
+    case englishContext
+    /// Runner-up of a swipe decode; accepting replaces the committed word + its space.
+    case swipe
+    case emoji
 }
 
 struct PredictiveCandidate: Identifiable, Equatable, Sendable {
@@ -31,71 +36,68 @@ struct PredictiveCandidate: Identifiable, Equatable, Sendable {
     let source: PredictiveCandidateSource
     let confidence: Float
     let replacementLength: Int
+    var displayName: String? = nil
 
     var id: String {
-        "\(role.rawValue):\(text.lowercased())"
+        source == .emoji ? text : "\(role.rawValue):\(text.lowercased())"
     }
 }
 
 // MARK: - Predictive Text Tracker (NOT @Observable — no view re-renders)
 
-/// Extracts the current partial word from text context and generates
-/// word completions using UITextChecker + UILexicon.
-/// Runs on every relevant keystroke but mutates only plain properties —
-/// zero SwiftUI re-renders. Only promotes to @Observable state when
-/// the candidates actually change.
+/// Preserves the literal typed word and ranks manual English choices from the
+/// shared swipe vocabulary, bounded corpus bigrams, and system spelling/shortcuts.
+/// Other languages retain the system-checker path. No text is ever inserted here.
 // Access is serialized by `PredictiveTextEngineAsync`'s private queue.
 final class PredictiveTextTracker: @unchecked Sendable {
-    private let textChecker = UITextChecker()
+    private lazy var textChecker = UITextChecker()
+    private lazy var language = preferredLanguage()
+    private lazy var englishModel = EnglishSuggestionModel.loadBundled()
+    private lazy var emojiCatalog = try? EmojiCatalog.loadBundled()
+    private var supplementaryEntries: [(input: String, text: String)] = []
 
     /// Cached supplementary lexicon from UIInputViewController.
     /// Contains user contacts, shortcuts (e.g., "omw" → "On my way!").
-    /// Set once from viewDidLoad via requestSupplementaryLexicon.
-    var lexicon: UILexicon?
+    /// Set once from `performDeferredSetup` (first viewDidAppear) via requestSupplementaryLexicon.
+    var lexicon: UILexicon? {
+        didSet {
+            supplementaryEntries = lexicon?.entries.map {
+                (EnglishSuggestionContext.normalized($0.userInput), $0.documentText)
+            } ?? []
+        }
+    }
 
-    /// Last known candidates — used to avoid redundant @Observable mutations
-    private var lastCandidates: [PredictiveCandidate] = []
-    /// Last known partial word
-    private var lastPartialWord: String = ""
-
-    /// Evaluate the current text context and generate candidates.
-    /// Returns (changed, candidates, partialWord) — only signals change
-    /// when candidates actually differ from last evaluation.
-    func evaluate(context: String?) -> (changed: Bool, candidates: [PredictiveCandidate], partialWord: String) {
+    /// Evaluate off-main. The view-facing state owns equality guards; suppressing an
+    /// unchanged worker result could lose the newest validated document snapshot.
+    func evaluate(context: String?) -> (candidates: [PredictiveCandidate], partialWord: String) {
         guard let context = context, !context.isEmpty else {
-            let changed = !lastCandidates.isEmpty || !lastPartialWord.isEmpty
-            lastCandidates = []
-            lastPartialWord = ""
-            return (changed, [], "")
+            return ([], "")
         }
 
-        // Extract current partial word by walking backwards from cursor
-        let partialWord = extractPartialWord(from: context)
-
-        // Need at least 2 characters to generate useful suggestions
-        guard partialWord.count >= 2 else {
-            let changed = !lastCandidates.isEmpty || lastPartialWord != partialWord
-            lastCandidates = []
-            lastPartialWord = partialWord
-            return (changed, [], partialWord)
+        if let shortcode = EmojiShortcodeQuery.parse(context) {
+            guard let emojiCatalog else { return ([], shortcode.triggerText) }
+            let replacementLength = shortcode.triggerText.count
+            let candidates = emojiCatalog.searchShortcodes(shortcode.query).map { index in
+                let entry = emojiCatalog.entries[index]
+                return PredictiveCandidate(text: entry.text, role: .completion, source: .emoji,
+                    confidence: 1, replacementLength: replacementLength, displayName: entry.name)
+            }
+            return (candidates, shortcode.triggerText)
         }
 
-        // Generate candidates
-        let candidates = generateCandidates(for: partialWord, in: context)
+        let english = language == "en" || language.hasPrefix("en_")
+        let parsed = EnglishSuggestionContext(context)
+        let partialWord = english ? parsed.partialWord : extractPartialWord(from: context)
+        let candidates: [PredictiveCandidate]
+        if english {
+            candidates = generateEnglishCandidates(parsed, in: context)
+        } else {
+            candidates = partialWord.count >= 2 ? generateCandidates(for: partialWord, in: context) : []
+        }
 
-        // Check if anything changed
-        let changed = candidates != lastCandidates || partialWord != lastPartialWord
-        lastCandidates = candidates
-        lastPartialWord = partialWord
-
-        return (changed, candidates, partialWord)
+        return (candidates, partialWord)
     }
 
-    /// Reset all cached state (e.g., after suggestion insertion)
-    func reset() {
-        lastCandidates = []
-        lastPartialWord = ""
-    }
 
     // MARK: - Word Extraction
 
@@ -115,6 +117,96 @@ final class PredictiveTextTracker: @unchecked Sendable {
     }
 
     // MARK: - Suggestion Generation
+
+    /// Slot 0 always preserves a nonempty partial verbatim; slots 1 and 2 are the
+    /// best distinct manual choices. At a whitespace boundary all three are next words.
+    private func generateEnglishCandidates(
+        _ parsed: EnglishSuggestionContext,
+        in context: String
+    ) -> [PredictiveCandidate] {
+        let partial = parsed.partialWord
+        guard !partial.isEmpty || parsed.allowsNextWord else { return [] }
+        let replacementLength = partial.count
+        let normalizedTyped = EnglishSuggestionContext.normalized(partial)
+        var ranked: [(candidate: PredictiveCandidate, score: Float)] = []
+        ranked.reserveCapacity(20)
+
+        func offer(_ text: String, role: PredictiveCandidateRole, source: PredictiveCandidateSource,
+                   score: Float, confidence: Float) {
+            let cased = parsed.matchCasing(text)
+            let key = EnglishSuggestionContext.normalized(cased)
+            guard !key.isEmpty, key != normalizedTyped else { return }
+            let candidate = PredictiveCandidate(text: cased, role: role, source: source,
+                                                confidence: confidence, replacementLength: replacementLength)
+            if let index = ranked.firstIndex(where: {
+                EnglishSuggestionContext.normalized($0.candidate.text) == key
+            }) {
+                if score > ranked[index].score { ranked[index] = (candidate, score) }
+            } else {
+                ranked.append((candidate, score))
+            }
+        }
+
+        if let englishModel {
+            for suggestion in englishModel.suggestions(for: parsed) {
+                offer(suggestion.text, role: suggestion.isCorrection ? .correction : .completion,
+                      source: suggestion.usesContext ? .englishContext : .englishFrequency,
+                      score: suggestion.score, confidence: 0.8)
+            }
+        }
+        if !partial.isEmpty {
+            // The system is a fallback/supplement, not the first source of English prefixes.
+            if ranked.count < 2 {
+                let range = NSRange(location: (context as NSString).length - (partial as NSString).length,
+                                    length: (partial as NSString).length)
+                let completions = textChecker.completions(forPartialWordRange: range, in: context,
+                                                          language: language) ?? []
+                for (index, completion) in completions.prefix(6).enumerated() {
+                    let prior = englishModel?.languageScore(completion, previousWord: parsed.previousWord) ?? -8
+                    offer(completion, role: .completion, source: .textCheckerCompletion,
+                          score: prior + 1.5 - Float(index) * 0.15, confidence: 0.7)
+                }
+            }
+            if partial.count >= 3 && englishModel?.contains(partial) != true {
+                let misspelling = textChecker.rangeOfMisspelledWord(
+                    in: partial, range: NSRange(location: 0, length: (partial as NSString).length),
+                    startingAt: 0, wrap: false, language: language)
+                if misspelling.location != NSNotFound {
+                    let guesses = textChecker.guesses(forWordRange: misspelling, in: partial,
+                                                      language: language) ?? []
+                    for (index, guess) in guesses.prefix(6).enumerated() {
+                        let distance = Self.editDistance(normalizedTyped,
+                            EnglishSuggestionContext.normalized(guess), maxDistance: 2)
+                        guard distance <= 2 else { continue }
+                        let prior = englishModel?.languageScore(guess, previousWord: parsed.previousWord) ?? -8
+                        offer(guess, role: .correction, source: .textCheckerGuess,
+                              score: prior - Float(distance) * 2.3 - Float(index) * 0.15,
+                              confidence: correctionConfidence(distance: distance, rank: index, partialWord: partial))
+                    }
+                }
+            }
+            for entry in supplementaryEntries {
+                if entry.input == normalizedTyped {
+                    offer(entry.text, role: .textReplacement, source: .lexicon, score: 100, confidence: 0.98)
+                } else if entry.input.hasPrefix(normalizedTyped) {
+                    offer(entry.text, role: .completion, source: .lexicon,
+                          score: -5.5 - Float(min(8, entry.input.count - partial.count)) * 0.2, confidence: 0.76)
+                }
+            }
+        }
+        ranked.sort {
+            if $0.score != $1.score { return $0.score > $1.score }
+            return $0.candidate.text < $1.candidate.text
+        }
+        var result: [PredictiveCandidate] = []
+        result.reserveCapacity(3)
+        if !partial.isEmpty {
+            result.append(PredictiveCandidate(text: partial, role: .typed, source: .typed,
+                                              confidence: 1, replacementLength: replacementLength))
+        }
+        for entry in ranked.prefix(3 - result.count) { result.append(entry.candidate) }
+        return result
+    }
 
     /// Generate up to 3 candidates combining UITextChecker completions,
     /// spell corrections, and UILexicon entries.
@@ -356,18 +448,22 @@ final class PredictiveTextTracker: @unchecked Sendable {
 @MainActor
 @Observable
 class PredictiveTextState {
-    /// Current word candidates to display in the toolbar (max 3)
+    /// Up to three word choices, or all matching base emoji for an explicit shortcode.
     var candidates: [PredictiveCandidate] = []
 
-    /// The partial word being completed (used to know how many chars to delete on selection)
+    /// Exact suffix validated before replacement: a typed partial word, colon token,
+    /// or committed swipe word plus its trailing space. Candidates carry deletion length.
     var partialWord: String = ""
 
-    /// User-dismissed for the rest of this keyboard session via long-press on the middle
-    /// pill. Resets next time the keyboard mounts. While `true`, `updateSuggestions` is a no-op.
+    /// User-dismissed ordinary predictions for this keyboard session. Explicit colon
+    /// queries remain available. Resets next time the keyboard mounts.
     var dismissedForSession: Bool = false
 
     /// Whether suggestions are available and should be shown
     var isActive: Bool { !candidates.isEmpty }
+
+    /// Reserves the emoji row while its serial background evaluation is pending.
+    var isEmojiQueryActive = false
 
     var suggestions: [String] { candidates.map(\.text) }
 
@@ -375,10 +471,29 @@ class PredictiveTextState {
     /// All stored properties use literal defaults that don't touch main-actor state.
     nonisolated init() {}
 
+    /// Called synchronously before scheduling predictions. Preserve an identical query
+    /// (and its scroll position), but never display results for an older colon token.
+    func prepareForEmojiQuery(_ triggerText: String?) {
+        if let triggerText {
+            if !isEmojiQueryActive { isEmojiQueryActive = true }
+            if partialWord != triggerText {
+                if !candidates.isEmpty { candidates = [] }
+                partialWord = triggerText
+            }
+        } else if isEmojiQueryActive {
+            dismiss()
+        }
+    }
+
     /// Update suggestions from tracker evaluation.
     /// All setters use equality guards to prevent unnecessary re-renders.
     func updateCandidates(_ candidates: [PredictiveCandidate], partialWord: String) {
-        guard !dismissedForSession else { return }
+        let isEmojiQuery = EmojiShortcodeQuery.parse(partialWord) != nil
+        guard !dismissedForSession || isEmojiQuery else {
+            if isEmojiQueryActive { dismiss() }
+            return
+        }
+        if isEmojiQueryActive != isEmojiQuery { isEmojiQueryActive = isEmojiQuery }
         if self.candidates != candidates {
             self.candidates = candidates
         }
@@ -409,6 +524,7 @@ class PredictiveTextState {
 
     /// Clear all suggestions
     func dismiss() {
+        if isEmojiQueryActive { isEmojiQueryActive = false }
         if !candidates.isEmpty {
             candidates = []
         }

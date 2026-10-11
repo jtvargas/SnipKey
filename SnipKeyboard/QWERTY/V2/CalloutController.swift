@@ -106,12 +106,12 @@ final class CalloutController {
     /// Hide the callout and reset state. Fades out for a deliberate single press; snaps
     /// during a fast-typing burst (another dismiss within the burst window) so the shared
     /// callout layer doesn't read as the next character dimming.
-    func dismiss() {
+    func dismiss(immediately: Bool = false) {
         let now = CACurrentMediaTime()
         let isBurst = (now - lastDismissTime) < Self.burstWindow
         lastDismissTime = now
         guard let view = calloutView else { mode = .none; return }
-        view.hide(fade: !isBurst)
+        view.hide(fade: !immediately && !isBurst)
         mode = .none
     }
 }

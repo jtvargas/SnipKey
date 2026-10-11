@@ -496,7 +496,7 @@ struct KeyboardView: View {
             if let qState = qwertyStateFromEnvironment {
                 Button {
                     if currentKeyboardSettings.isQWERTYKeyboardEnabled {
-                        qState.showingSnippets = false
+                        qState.surface = .typing
                     } else {
                         keyboardActions.advanceToNextInputMode()
                     }
@@ -830,7 +830,7 @@ struct KeyboardView: View {
     /// next system keyboard.
     private func switchKeyboardAfterPaste() {
         if currentKeyboardSettings.isQWERTYKeyboardEnabled, let qState = qwertyStateFromEnvironment {
-            qState.showingSnippets = false
+            qState.surface = .typing
         } else {
             NotificationCenter.default.post(
                 name: NSNotification.Name(rawValue: "switchKey"), object: nil)
@@ -925,10 +925,10 @@ struct KeyboardViewExt: View {
         Group {
             if let container = container, let settingsViewModel = settingsViewModel {
                 Group {
-                    if qwertyState.showingSnippets {
+                    if qwertyState.surface == .snippets {
                         KeyboardView()
-                    } else {
-                        // Native V2 — single-root gesture, finger-slide, accents, space cursor.
+                    } else if qwertyState.surface == .typing {
+                        // Native V2 — UIKit keys beneath the SwiftUI toolbar.
                         NativeKeyboardV2View_SwiftUI(adjustCaret: keyboardActions.adjustCaret)
                     }
                 }
@@ -962,7 +962,7 @@ struct KeyboardViewExt: View {
 
         // Read the experimental QWERTY keyboard setting to determine initial view.
         let isQWERTYEnabled = fetchQWERTYKeyboardSetting(from: modelContext)
-        qwertyState.showingSnippets = !isQWERTYEnabled
+        qwertyState.surface = isQWERTYEnabled ? .typing : .snippets
 
         container = loaded
         settingsViewModel = viewModel
