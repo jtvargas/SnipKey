@@ -720,8 +720,7 @@ class KeyboardViewController: UIInputViewController {
         guard !ownMutationInFlight else { return }
         selectionContextValidationNeeded = true
         if !textDidChangeIsOwnEcho {
-            nativeV2KeysView?.cancelActiveInteraction(commitPending: true)
-            qwertyState.inputTracking.pendingSmartSpace = false
+            commitPendingInteractionAfterExternalChange()
             resetPredictivePipeline()
         }
         scheduleTypingContextResync()
@@ -740,7 +739,7 @@ class KeyboardViewController: UIInputViewController {
         } else {
             // External change, or an own echo arriving after the echo window. Preserve
             // pending taps before ending the interaction; then read the resulting context.
-            nativeV2KeysView?.cancelActiveInteraction(commitPending: true)
+            commitPendingInteractionAfterExternalChange()
             resetPredictivePipeline()
             refreshHostInputTraits()
             resyncTypingContextFromHost()
@@ -763,6 +762,30 @@ class KeyboardViewController: UIInputViewController {
                     name: NSNotification.Name(rawValue: "selectTextEmpty"), object: nil)
             }
         }
+    }
+
+    /// Preserve pending taps without applying delete-dependent transforms from the old
+    /// host context. Tracking resets cover smart-space/auto-period; temporary trait
+    /// overrides also disable punctuation and lone-"i" rewrites driven by the stale mirror.
+    private func commitPendingInteractionAfterExternalChange() {
+        qwertyState.inputTracking.pendingSmartSpace = false
+        qwertyState.inputTracking.resetAutoPeriodTracking()
+        let traits = cachedHostInputTraits
+        cachedHostInputTraits = HostInputTraits(
+            keyboardType: traits.keyboardType,
+            keyboardAppearance: traits.keyboardAppearance,
+            returnKeyType: traits.returnKeyType,
+            autocapitalizationType: traits.autocapitalizationType,
+            autocorrectionType: traits.autocorrectionType,
+            spellCheckingType: traits.spellCheckingType,
+            smartQuotesEnabled: false,
+            smartDashesEnabled: false,
+            autoCapitalizationEnabled: false,
+            needsInputModeSwitchKey: traits.needsInputModeSwitchKey,
+            localeCodes: traits.localeCodes
+        )
+        defer { cachedHostInputTraits = traits }
+        nativeV2KeysView?.cancelActiveInteraction(commitPending: true)
     }
     
     // MARK: - Coalesced Side-Effects (V2)
