@@ -85,8 +85,8 @@ final class NativeKeyboardV2View: UIView {
         coordinator.refreshSwipeSettings()
     }
 
-    func cancelActiveInteraction() {
-        coordinator.cancelActiveInteraction()
+    func cancelActiveInteraction(commitPending: Bool = false) {
+        coordinator.cancelActiveInteraction(commitPending: commitPending)
     }
 
     // MARK: - Observation

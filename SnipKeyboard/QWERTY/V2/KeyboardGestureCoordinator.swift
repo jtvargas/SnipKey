@@ -335,7 +335,20 @@ final class KeyboardGestureCoordinator: UIView {
         }
     }
 
-    func cancelActiveInteraction() {
+    /// External host changes preserve pending taps; teardown still discards them.
+    func cancelActiveInteraction(commitPending: Bool = false) {
+        if commitPending {
+            for (id, press) in activePresses.sorted(by: { $0.value.sequence < $1.value.sequence }) {
+                switch press.phase {
+                case .pendingCharacter, .pendingOnLift:
+                    // Remove before calling the proxy so reentrant echoes and later lifts
+                    // cannot commit this press twice. Engaged cursor drags insert no space.
+                    endPress(touchID: id, committed: true)
+                default:
+                    break
+                }
+            }
+        }
         cancelAllActivePresses()
     }
 

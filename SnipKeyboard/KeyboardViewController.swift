@@ -124,10 +124,9 @@ class KeyboardViewController: UIInputViewController {
 
     // MARK: - Hot-path coalescing (V2)
 
-    /// True while one of our own proxy mutations (`insertText` / `deleteBackward`) is
-    /// executing. The host re-enters `textDidChange` synchronously from inside that call;
-    /// the flag lets it recognise the change as ours and recompute auto-cap from the context
-    /// mirror alone — zero host reads — instead of treating it as an external edit.
+    /// True while one of our own proxy mutations (insert, delete, or caret adjustment) is
+    /// executing. Synchronous text/selection callbacks are echoes, not external edits;
+    /// they must not cancel an active press or space-bar cursor drag.
     private var ownMutationInFlight = false
 
     /// Uptime of the last own mutation. Some hosts deliver `textDidChange` for our own write
@@ -261,7 +260,10 @@ class KeyboardViewController: UIInputViewController {
                 // The context mirror tracks text BEFORE the caret: re-sync it (coalesced,
                 // next turn) even for hosts that don't echo programmatic moves back through
                 // `selectionDidChange`.
+                self.ownMutationInFlight = true
                 self.textDocumentProxy.adjustTextPosition(byCharacterOffset: delta)
+                self.ownMutationInFlight = false
+                self.lastOwnMutationUptime = ProcessInfo.processInfo.systemUptime
                 self.scheduleTypingContextResync()
             },
             inputTraits: { [weak self] in
@@ -531,7 +533,8 @@ class KeyboardViewController: UIInputViewController {
             && textDocumentProxy.selectedText?.isEmpty == false
         selectionContextValidationNeeded = false
         if !matchesMirror || hasSelection {
-            nativeV2KeysView?.cancelActiveInteraction()
+            // Own caret moves also change this prefix. Interaction cancellation belongs
+            // to the external callback branches, not this shared echo reconciliation.
             qwertyState.inputTracking.pendingSmartSpace = false
             resetPredictivePipeline()
         }
@@ -717,7 +720,7 @@ class KeyboardViewController: UIInputViewController {
         guard !ownMutationInFlight else { return }
         selectionContextValidationNeeded = true
         if !textDidChangeIsOwnEcho {
-            nativeV2KeysView?.cancelActiveInteraction()
+            nativeV2KeysView?.cancelActiveInteraction(commitPending: true)
             qwertyState.inputTracking.pendingSmartSpace = false
             resetPredictivePipeline()
         }
@@ -728,17 +731,16 @@ class KeyboardViewController: UIInputViewController {
         KeyboardResponsivenessTelemetry.shared.markTextDidChange()
 
         if textDidChangeIsOwnEcho {
-            // Our own insert/delete (synchronous re-entrancy or a late echo). The mirror was
-            // advanced before the proxy call and the field's traits can't have changed, so
-            // the only thing to recompute is auto-cap — from local state, zero host reads.
+            // Our own insert/delete/caret adjustment (synchronous or within the echo window).
+            // Use local state here; caret adjustments schedule their mirror resync explicitly.
             updateAutoCapitalization()
             if !ownMutationInFlight {
                 scheduleTypingContextResync()
             }
         } else {
-            // External change (host edit, autocorrect in another field, field switch,
-            // selection-driven edit): pay the traits + context reads once, here.
-            nativeV2KeysView?.cancelActiveInteraction()
+            // External change, or an own echo arriving after the echo window. Preserve
+            // pending taps before ending the interaction; then read the resulting context.
+            nativeV2KeysView?.cancelActiveInteraction(commitPending: true)
             resetPredictivePipeline()
             refreshHostInputTraits()
             resyncTypingContextFromHost()
