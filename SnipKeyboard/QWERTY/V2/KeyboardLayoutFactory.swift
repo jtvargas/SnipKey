@@ -24,9 +24,7 @@ enum KeyboardLayoutFactory {
     /// keyboard's usable row width. Used by rows that have fewer than 10 letters but
     /// need to keep each letter the same visual width as row 0.
     private static func centeredLetterRowInset(letterCount: Int, dims: KeyboardDimensions) -> CGFloat {
-        let usableRowWidth = max(dims.screenWidth - dims.sideEdge * 2, 0)
-        let lettersWidth = dims.letterKeyWidth * CGFloat(letterCount) + dims.keyGap * CGFloat(max(letterCount - 1, 0))
-        return max((usableRowWidth - lettersWidth) / 2, 0)
+        max((dims.usableRowWidth - dims.letterBlockWidth(count: letterCount)) / 2, 0)
     }
 
     private static func letterItem(_ s: String, width: CGFloat) -> KeyboardLayoutItem {
@@ -37,31 +35,23 @@ enum KeyboardLayoutFactory {
         KeyboardLayoutItem(action: .insertText(label: label, output: output ?? label), width: .points(width))
     }
 
-    private static func thirdRowSideControlWidth(dims: KeyboardDimensions) -> CGFloat {
-        round(dims.screenWidth * 0.115)
-    }
-
+    /// Third row on every page: a `sideControlKeyWidth` control on each edge (aligned
+    /// with Q/P), `dims.sideControlGap` on both sides of a centered block whose keys are
+    /// `keyGap` apart. `center` must span `dims.letterBlockWidth(count: 7)` — true for
+    /// the 7 letters and, by construction of `punctuationKeyWidth`, for the 5 punctuation keys.
     private static func sideControlRow(
-        leading: KeyboardLayoutItem,
+        leading: KeyAction,
         center: [KeyboardLayoutItem],
-        trailing: KeyboardLayoutItem,
+        trailing: KeyAction,
         dims: KeyboardDimensions
     ) -> KeyboardRow {
-        let items = [leading] + center + [trailing]
-        let usableRowWidth = max(dims.screenWidth - dims.sideEdge * 2, 0)
-        let fixedWidth = items.reduce(CGFloat(0)) { total, item in
-            switch item.width {
-            case .points(let width):
-                return total + width
-            case .percentage(let fraction):
-                return total + usableRowWidth * fraction
-            case .input, .available:
-                return total
-            }
-        }
-        let centerGapsWidth = dims.keyGap * CGFloat(max(center.count - 1, 0))
-        let sideGap = max((usableRowWidth - fixedWidth - centerGapsWidth) / 2, dims.keyGap)
-        let gaps = [sideGap] + Array(repeating: dims.keyGap, count: max(center.count - 1, 0)) + [sideGap]
+        let controlWidth = dims.sideControlKeyWidth
+        let items = [KeyboardLayoutItem(action: leading, width: .points(controlWidth))]
+            + center
+            + [KeyboardLayoutItem(action: trailing, width: .points(controlWidth))]
+        let gaps = [dims.sideControlGap]
+            + Array(repeating: dims.keyGap, count: max(center.count - 1, 0))
+            + [dims.sideControlGap]
         return KeyboardRow(items: items, gapsAfter: gaps)
     }
 
@@ -83,11 +73,10 @@ enum KeyboardLayoutFactory {
 
         // Row 2: native side controls are edge-aligned with Q/P, with a larger gap before
         // the centered letter block.
-        let row2ControlWidth = thirdRowSideControlWidth(dims: dims)
         let row2 = sideControlRow(
-            leading: KeyboardLayoutItem(action: .shift, width: .points(row2ControlWidth)),
+            leading: .shift,
             center: "ZXCVBNM".map { letterItem(String($0), width: lw) },
-            trailing: KeyboardLayoutItem(action: .backspace, width: .points(row2ControlWidth)),
+            trailing: .backspace,
             dims: dims
         )
 
@@ -104,17 +93,15 @@ enum KeyboardLayoutFactory {
         // Row 1 has 10 chars on numbers page → use `.input` (matches row 0).
         let middleRow = KeyboardRow(items: "-/:;()$&@\"".map { letterItem(String($0), width: lw) })
 
-        // Row 2: native punctuation row with fixed mode/delete controls and wider punctuation keys.
-        let row2ControlWidth = thirdRowSideControlWidth(dims: dims)
-        let punctuationWidth = round(dims.screenWidth * 0.122)
+        // Row 2: native punctuation row — 5 wider keys spanning the letters page's 7-key block.
         let row2 = sideControlRow(
-            leading: KeyboardLayoutItem(action: .modeChange(.symbols), width: .points(row2ControlWidth)),
-            center: ".,?!'".map { letterItem(String($0), width: punctuationWidth) },
-            trailing: KeyboardLayoutItem(action: .backspace, width: .points(row2ControlWidth)),
+            leading: .modeChange(.symbols),
+            center: ".,?!'".map { letterItem(String($0), width: dims.punctuationKeyWidth) },
+            trailing: .backspace,
             dims: dims
         )
 
-        let bottomRow = bottomRow(profile: .standard, modeTarget: .letters, dims: dims)
+        let bottomRow = bottomRow(profile: profile == .emojiSearch ? .emojiSearch : .standard, modeTarget: .letters, dims: dims)
         return KeyboardLayout(rows: [topRow, middleRow, row2, bottomRow])
     }
 
@@ -124,41 +111,47 @@ enum KeyboardLayoutFactory {
         let lw = dims.letterKeyWidth
 
         let topRow = KeyboardRow(items: "[]{}#%^*+=".map { letterItem(String($0), width: lw) })
-        let middleChars: [String] = profile == .asciiCapable
+        let middleChars: [String] = profile == .asciiCapable || profile == .emojiSearch
             ? ["_", "\\", "|", "~", "<", ">", "`", "^", "{", "}"]
             : ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"]
         let middleRow = KeyboardRow(items: middleChars.map { letterItem($0, width: lw) })
 
-        // Row 2: native punctuation row with fixed mode/delete controls and wider punctuation keys.
-        let row2ControlWidth = thirdRowSideControlWidth(dims: dims)
-        let punctuationWidth = round(dims.screenWidth * 0.122)
+        // Row 2: native punctuation row — 5 wider keys spanning the letters page's 7-key block.
         let row2 = sideControlRow(
-            leading: KeyboardLayoutItem(action: .modeChange(.numbers), width: .points(row2ControlWidth)),
-            center: ".,?!'".map { letterItem(String($0), width: punctuationWidth) },
-            trailing: KeyboardLayoutItem(action: .backspace, width: .points(row2ControlWidth)),
+            leading: .modeChange(.numbers),
+            center: ".,?!'".map { letterItem(String($0), width: dims.punctuationKeyWidth) },
+            trailing: .backspace,
             dims: dims
         )
 
-        let bottomRow = bottomRow(profile: .standard, modeTarget: .letters, dims: dims)
+        let bottomRow = bottomRow(profile: profile == .emojiSearch ? .emojiSearch : .standard, modeTarget: .letters, dims: dims)
         return KeyboardLayout(rows: [topRow, middleRow, row2, bottomRow])
     }
 
     // MARK: - Bottom Row
 
-    /// Bottom row used on every page: [modeChange] [snippetToggle] [space] [returnKey].
-    /// Fixed-width special keys + greedy space.
+    /// Bottom row used on every page: [modeChange] [emojiToggle] [space] [returnKey].
+    /// 123 and Emoji are `sideControlKeyWidth`, return is `returnKeyWidth`,
+    /// space is greedy. Profile rows add shortcut keys at the side-control width; the URL
+    /// profile has no space bar, so its `.com` key takes the greedy slot instead (as native).
     private static func bottomRow(profile: KeyboardLayoutProfile, modeTarget: KeyboardPage, dims: KeyboardDimensions) -> KeyboardRow {
-        let specialWidth: CGFloat = dims.bottomSpecialKeyWidth
+        let specialWidth: CGFloat = dims.sideControlKeyWidth
         let returnWidth: CGFloat = dims.returnKeyWidth
-        let shortcutWidth: CGFloat = round(dims.screenWidth * 0.11)
-        let domainWidth: CGFloat = round(dims.screenWidth * 0.18)
+        let shortcutWidth: CGFloat = dims.sideControlKeyWidth
 
         let items: [KeyboardLayoutItem]
         switch profile {
+        case .emojiSearch:
+            let edgeWidth = (dims.usableRowWidth - 2 * dims.keyGap) * 0.24
+            items = [
+                KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(edgeWidth)),
+                KeyboardLayoutItem(action: .space, width: .available),
+                KeyboardLayoutItem(action: .returnKey, width: .points(edgeWidth)),
+            ]
         case .emailAddress:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 shortcutItem("@", width: shortcutWidth),
                 KeyboardLayoutItem(action: .space, width: .available),
                 shortcutItem(".", width: shortcutWidth),
@@ -167,16 +160,16 @@ enum KeyboardLayoutFactory {
         case .url:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 shortcutItem("/", width: shortcutWidth),
                 shortcutItem(".", width: shortcutWidth),
-                shortcutItem(".com", width: domainWidth),
+                KeyboardLayoutItem(action: .insertText(label: ".com", output: ".com"), width: .available),
                 KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
             ]
         case .webSearch:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 KeyboardLayoutItem(action: .space, width: .available),
                 shortcutItem(".", width: shortcutWidth),
                 KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
@@ -184,7 +177,7 @@ enum KeyboardLayoutFactory {
         case .twitter:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 shortcutItem("@", width: shortcutWidth),
                 KeyboardLayoutItem(action: .space, width: .available),
                 shortcutItem("#", width: shortcutWidth),
@@ -193,22 +186,11 @@ enum KeyboardLayoutFactory {
         case .standard, .asciiCapable:
             items = [
                 KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-                KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
+                KeyboardLayoutItem(action: .emojiToggle, width: .points(specialWidth)),
                 KeyboardLayoutItem(action: .space, width: .available),
                 KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
             ]
         }
         return KeyboardRow(items: items)
-    }
-
-    private static func standardBottomRow(modeTarget: KeyboardPage, dims: KeyboardDimensions) -> KeyboardRow {
-        let specialWidth: CGFloat = dims.bottomSpecialKeyWidth
-        let returnWidth: CGFloat = dims.returnKeyWidth
-        return KeyboardRow(items: [
-            KeyboardLayoutItem(action: .modeChange(modeTarget), width: .points(specialWidth)),
-            KeyboardLayoutItem(action: .snippetToggle, width: .points(specialWidth)),
-            KeyboardLayoutItem(action: .space, width: .available),
-            KeyboardLayoutItem(action: .returnKey, width: .points(returnWidth)),
-        ])
     }
 }

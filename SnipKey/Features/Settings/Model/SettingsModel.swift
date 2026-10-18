@@ -71,6 +71,10 @@ final class SettingsModel {
     /// to capitalize. Default ON to match iOS defaults.
     var autoCapitalizationEnabled: Bool = true
 
+    /// Swipe to Type: glide across letters to enter a whole English word.
+    /// Enabled by default; the user can disable it without affecting tap typing.
+    var swipeTypingEnabled: Bool = true
+
     /// Legacy inert field retained for SwiftData compatibility. Space no longer accepts
     /// predictive suggestions; toolbar suggestions are manual-only.
     var autoSuggestionSpaceEnabled: Bool = false
@@ -111,6 +115,7 @@ final class SettingsModel {
         afterPasteAction: KeyboardAfterPasteAction = .space,
         isQWERTYKeyboardEnabled: Bool = false,
         autoCapitalizationEnabled: Bool = true,
+        swipeTypingEnabled: Bool = true,
         autoSuggestionSpaceEnabled: Bool = false,
         debugHitOverlayEnabled: Bool = false,
         useProbabilisticHitResolver: Bool = true,
@@ -123,6 +128,7 @@ final class SettingsModel {
         self.afterPasteAction = afterPasteAction
         self.isQWERTYKeyboardEnabled = isQWERTYKeyboardEnabled
         self.autoCapitalizationEnabled = autoCapitalizationEnabled
+        self.swipeTypingEnabled = swipeTypingEnabled
         self.autoSuggestionSpaceEnabled = autoSuggestionSpaceEnabled
         self.debugHitOverlayEnabled = debugHitOverlayEnabled
         self.useProbabilisticHitResolver = useProbabilisticHitResolver
@@ -143,6 +149,8 @@ enum AppGroupSettings {
 
     enum Key {
         static let autoCapitalizationEnabled = "autoCapitalizationEnabled"
+        /// Glide typing on the letters page; English lexicon. Refreshed on keyboard appearance. Bool.
+        static let swipeTypingEnabled = "swipeTypingEnabled"
         /// Legacy unused key retained so old App Group values do not need migration.
         static let autoSuggestionSpaceEnabled = "autoSuggestionSpaceEnabled"
         static let debugHitOverlayEnabled = "debugHitOverlayEnabled"
@@ -205,6 +213,8 @@ enum AppGroupSettings {
 /// The corresponding Settings toggles are hidden in RELEASE (see SettingsView, `#if DEBUG`).
 /// The V2 keyboard and Smart Touch Targeting are no longer flags — they are the only
 /// implementation (always on in every configuration).
+/// Exception: `swipeTypingEnabled` is a shipping product setting, not a debug flag, and is
+/// never locked (see its doc comment).
 enum KeyboardFeatureFlags {
 
     static var useProbabilisticHitResolver: Bool {
@@ -213,6 +223,14 @@ enum KeyboardFeatureFlags {
         #else
         true
         #endif
+    }
+
+    /// Swipe to Type (glide typing). Unlike the flags above this is a user-facing product
+    /// setting — the Settings toggle ships in every configuration — so it is intentionally
+    /// *not* `#if DEBUG`-locked: Release must honor the user's choice.
+    /// Defaults to enabled, matching the persisted model's product setting.
+    static var swipeTypingEnabled: Bool {
+        AppGroupSettings.bool(forKey: AppGroupSettings.Key.swipeTypingEnabled, default: true)
     }
 
 

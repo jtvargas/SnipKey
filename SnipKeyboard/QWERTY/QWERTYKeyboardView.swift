@@ -35,9 +35,7 @@ enum KeyboardHaptics {
 
 // MARK: - Keyboard Toolbar
 
-/// Top toolbar with slash command suggestions (left) and settings button (right).
-/// When no slash command is active, the suggestions area is empty (Spacer).
-/// When a slash command IS active, horizontally scrollable snippet pills appear.
+/// Shared toolbar for command flows, inline emoji/word suggestions, and idle shortcuts.
 struct KeyboardToolbarView: View {
     let dimensions: KeyboardDimensions
     @Environment(\.keyboardActions) private var actions
@@ -56,6 +54,11 @@ struct KeyboardToolbarView: View {
     let deviceBiometrics = DeviceBiometrics()
 
     @Environment(QWERTYKeyboardState.self) private var state
+
+    private var showsIdleActions: Bool {
+        !slashState.isActive && !reminderState.isActive && !timerState.isActive
+            && !predictiveState.isEmojiQueryActive
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -85,12 +88,23 @@ struct KeyboardToolbarView: View {
                     // Active but no matches yet (still typing query)
                     Spacer()
                 }
+            } else if predictiveState.isEmojiQueryActive {
+                EmojiSuggestionsView(
+                    candidates: predictiveState.candidates,
+                    triggerText: predictiveState.partialWord,
+                    onSelect: handlePredictiveSelection
+                )
             } else {
                 // Slash trigger button (top-left) + predictive suggestions
-                SlashTriggerButton(isDarkMode: state.appearanceMode == .dark) {
-                    actions.insertText("/")
-                    actions.evaluateSlashCommand()
-                }
+                SlashTriggerButton(
+                    isDarkMode: state.appearanceMode == .dark,
+                    onTap: {
+                        actions.insertText("/")
+                        actions.scheduleSideEffects()
+                    },
+                    onTimer: { actions.insertQuickCommand("/timer ") },
+                    onReminder: { actions.insertQuickCommand("/remind ") }
+                )
                 if predictiveState.isActive {
                     PredictiveSuggestionsView(
                         candidates: predictiveState.candidates,
@@ -106,11 +120,26 @@ struct KeyboardToolbarView: View {
                 }
             }
 
-            // Paste button — inserts the clipboard's text at the cursor. Only rendered when the
-            // clipboard has text AND no full-width flow (slash suggestions, reminder/timer pill)
-            // owns the toolbar. Idle ↔ predictive transitions keep it stable (same trailing slot).
-            if clipboardState.hasContent,
-               !slashState.isActive, !reminderState.isActive, !timerState.isActive {
+            // Keep the reminder reachable even when the clipboard is empty.
+            if showsIdleActions && state.isDocumentEmpty {
+                Button {
+                    actions.insertQuickCommand("/remind ")
+                } label: {
+                    Image(systemName: "bell")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color(.secondaryLabel))
+                        .frame(minWidth: 44, maxHeight: .infinity)
+                        .background(Color(white: 0).opacity(0.02))
+                        .contentShape(Rectangle())
+                        .debugHitOverlay()
+                }
+                .buttonStyle(SuggestionPillButtonStyle())
+                .accessibilityLabel("Insert reminder command")
+                .accessibilityHint("Inserts slash remind to start a reminder.")
+            }
+
+            // Full-width command and emoji flows own the toolbar; otherwise Paste stays trailing.
+            if clipboardState.hasContent && showsIdleActions {
                 Button {
                     KeyboardHaptics.specialKey()
                     actions.pasteFromClipboard()
@@ -127,21 +156,6 @@ struct KeyboardToolbarView: View {
                 .accessibilityLabel("Paste from clipboard")
             }
 
-//            // Reminder button — schedules a local notification (fires in 2 min; 10s DEBUG).
-//            // Matches the suggestion pills' hit area + press feedback. See LOCAL_NOTIFICATIONS.md.
-//            Button {
-//                actions.requestReminder()
-//            } label: {
-//                Image(systemName: "bell.badge")
-//                    .font(.custom("IBMPlexMono-Medium", size: 16))
-//                    .foregroundStyle(Color(.secondaryLabel))
-//                    .frame(minWidth: 44, maxHeight: .infinity)   // 44pt-wide, fills toolbar height
-//                    .background(Color(white: 0).opacity(0.02))   // keeps the cell hittable
-//                    .contentShape(Rectangle())                    // whole frame is the tap target
-//                    .debugHitOverlay()
-//            }
-//            .buttonStyle(SuggestionPillButtonStyle())             // instant pressed highlight, like pills
-//            .accessibilityLabel("Remind me in 2 minutes")
         }
         .frame(height: dimensions.toolbarHeight - dimensions.toolbarItemBottomGap)
         .frame(height: dimensions.toolbarHeight, alignment: .top)
@@ -206,31 +220,7 @@ struct KeyboardToolbarView: View {
     // MARK: - Predictive Text Selection
 
     private func handlePredictiveSelection(_ candidate: PredictiveCandidate) {
-        if candidate.role == .typed {
-            predictiveState.dismiss()
-            return
-        }
-        guard (actions.documentContextBeforeInput() ?? "").hasSuffix(predictiveState.partialWord) else {
-            predictiveState.dismiss()
-            actions.evaluatePredictiveText()
-            return
-        }
-
-        // Delete the partial word characters
-        let charsToDelete = candidate.replacementLength
-        for _ in 0..<charsToDelete {
-            actions.deleteBackward()
-        }
-
-        // Insert the full suggestion + trailing space
-        actions.insertText(candidate.text + " ")
-        // Mark the trailing space as a "smart space" so the next punctuation attaches to
-        // the word (native iOS behavior). Consumed/cleared in the commit pipeline.
-        state.inputTracking.pendingSmartSpace = true
-
-        // Reset and re-evaluate
-        predictiveState.dismiss()
-        actions.evaluatePredictiveText()
+        actions.acceptPredictiveCandidate(candidate)
     }
 
     // MARK: - Reminder Creation
@@ -284,6 +274,8 @@ struct KeyboardToolbarView: View {
 struct SlashTriggerButton: View {
     let isDarkMode: Bool
     let onTap: () -> Void
+    let onTimer: () -> Void
+    let onReminder: () -> Void
 
     var body: some View {
         Button(action: onTap) {
@@ -302,6 +294,14 @@ struct SlashTriggerButton: View {
                 .debugHitOverlay()
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("Timer", systemImage: "timer", action: onTimer)
+            Button("Reminder", systemImage: "bell", action: onReminder)
+        }
+        .accessibilityLabel("Slash commands")
+        .accessibilityHint("Tap to insert slash. Touch and hold for Timer and Reminder.")
+        .accessibilityAction(named: Text("Insert timer command")) { onTimer() }
+        .accessibilityAction(named: Text("Insert reminder command")) { onReminder() }
     }
 }
 
@@ -530,6 +530,51 @@ extension View {
                 .overlay(Rectangle().stroke(Color(.systemRed).opacity(0.9), lineWidth: 1))
         } else {
             self
+        }
+    }
+}
+
+/// Explicit colon queries use all available matches without squeezing the word-suggestion cells.
+struct EmojiSuggestionsView: View {
+    let candidates: [PredictiveCandidate]
+    let triggerText: String
+    let onSelect: (PredictiveCandidate) -> Void
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            // Automatic edge effects can blur the entire short suggestion row.
+            scrollingContent.scrollEdgeEffectHidden()
+        } else {
+            scrollingContent
+        }
+    }
+
+    private var scrollingContent: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 0) {
+                ForEach(candidates) { candidate in
+                    Button {
+                        onSelect(candidate)
+                    } label: {
+                        Text(verbatim: candidate.text)
+                            .font(.system(size: 28))
+                            .fixedSize()
+                            .frame(minWidth: 44, maxHeight: .infinity)
+                            .background(Color(white: 0).opacity(0.02))
+                            .contentShape(Rectangle())
+                            .debugHitOverlay()
+                    }
+                    .buttonStyle(SuggestionPillButtonStyle())
+                    .accessibilityLabel(candidate.displayName ?? candidate.text)
+                    .accessibilityHint("Replaces the typed shortcode with this emoji.")
+                }
+            }
+        }
+        // Only a new token resets the scroll position; repeated publications keep it intact.
+        .id(triggerText)
+        .transaction { transaction in
+            transaction.animation = nil
+            transaction.disablesAnimations = true
         }
     }
 }

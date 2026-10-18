@@ -1,8 +1,8 @@
 # Keyboard-Triggered Local Notifications
 
-How the **keyboard extension** (`SnipKeyboard`) gets a local notification scheduled when the user
-taps the 🔔 button — and why it fires even while the main app (`SnipKey`) stays suspended in the
-background.
+How the **keyboard extension** (`SnipKeyboard`) schedules a local notification when the user
+accepts a **Create reminder** pill — and why it fires even while the main app (`SnipKey`) stays
+suspended in the background. The empty-field bell beside Paste only inserts `/remind `.
 
 ---
 
@@ -25,31 +25,26 @@ state (foreground, backgrounded, suspended, or closed). The main app never has t
 
 ## Flow
 
-```
-┌──────────────────────────────┐         ┌─────────────────────────────┐
-│       SnipKeyboard (ext)      │         │       SnipKey (main app)     │
-│                               │         │                             │
-│  🔔 toolbar button            │         │  NotificationPresenter       │
-│      │ tap                    │         │   • sets UN delegate (init)  │
-│      ▼                        │         │   • requests auth once       │
-│  KeyboardActions.requestRemin │         │     (LocalNotificationSched- │
-│      │  (Full Access?)        │         │      uler.requestAuth…)      │
-│      ▼                        │         │   • presents banner if the   │
-│  LocalNotificationScheduler   │         │     app is FOREGROUND at fire│
-│   .schedule(ReminderRequest)  │         └─────────────────────────────┘
-│      │                        │
-│      ▼  UNUserNotificationCenter.add(+delay trigger)
-│   ───────────────────────────────────────────►  system delivers later,
-│                                                   app state irrelevant
-└──────────────────────────────┘
+```text
+Main app (once): NotificationPresenter.bootstrap()
+                LocalNotificationScheduler.requestAuthorizationIfNeeded()
+
+Keyboard: empty-field bell / code-button Reminder action
+          → inserts "/remind " without scheduling
+          → user enters task/time and accepts Create reminder
+          → KeyboardActions.createReminder (Full Access required)
+          → KeyboardViewController.routeReminder
+          → LocalNotificationScheduler.schedule(ReminderRequest)
+          → UNUserNotificationCenter.add(calendar trigger)
+          → system delivers at the requested time, app state irrelevant
 ```
 
 1. App is launched once → `NotificationPresenter.bootstrap()` sets the delegate, and
    `LocalNotificationScheduler.requestAuthorizationIfNeeded()` prompts for permission.
-2. User backgrounds SnipKey (don't force-kill), switches to any app, taps 🔔 in the keyboard.
-3. The keyboard (Full Access) calls `LocalNotificationScheduler.schedule(...)` → the system holds
-   the timer.
-4. After the delay (10s DEBUG / 120s release) the banner appears — no reopening required.
+2. User backgrounds SnipKey, switches to another app, and taps the empty-field bell.
+3. The keyboard inserts `/remind `; the user enters a task/time and accepts **Create reminder**.
+4. With Full Access and the SnipKey destination, the keyboard schedules the request.
+5. At the parsed fire date the banner appears — no reopening required.
 
 ---
 
@@ -64,17 +59,19 @@ state (foreground, backgrounded, suspended, or closed). The main app never has t
 Wiring:
 - `SnipKeyApp.init()` → `NotificationPresenter.shared.bootstrap()` (delegate set before launch finishes).
 - Root view `.onAppear` → `LocalNotificationScheduler.requestAuthorizationIfNeeded()`.
-- Keyboard: 🔔 button (`KeyboardToolbarView`) → `KeyboardActions.requestReminder`, wired in
-  `KeyboardViewController` where `hasFullAccess` is known → `LocalNotificationScheduler.schedule`.
+- Keyboard bell (`KeyboardToolbarView`) → `KeyboardActions.insertQuickCommand("/remind ")`.
+  Accepting the resulting pill invokes `createReminder`, whose controller checks Full Access and
+  routes the parsed date to the configured destination.
 - App: 🔔 toolbar button on the Snippets screen (`HomeView2`) presents `RemindersView` as a sheet.
 
 ## Button UX & multiple reminders
 
 - The keyboard 🔔 uses `SuggestionPillButtonStyle` (instant pressed highlight) and a 44pt-wide,
   full-toolbar-height hit cell (`.contentShape(Rectangle())`) — matching the suggestion pills, so
-  taps register reliably and give feedback.
-- Each tap schedules an **independent** notification: a unique `identifierPrefix + UUID` identifier
-  plus a distinct `subtitle` ("Fires at <time>") so two reminders never look identical or coalesce.
+  taps register reliably and give feedback. It appears only for an empty field and inserts the
+  command prefix; it does not schedule a fixed-delay reminder.
+- Each accepted Create reminder pill schedules an **independent** notification: a unique
+  `identifierPrefix + UUID` identifier and a distinct subtitle ("Fires at <time>").
 - `RemindersView` filters by `LocalNotificationScheduler.identifierPrefix`, lists **Upcoming**
   (pending, by fire time) and **Delivered**, and is the diagnostic for "did it actually schedule?".
 
@@ -111,10 +108,10 @@ pill — no need to background the app or press the 🔔. Type, for example:
   `RemindersView` and feeds the in-app bell badge automatically.
 
 Wiring: the controller updates `ReminderSuggestionState` from the coalesced side-effect flush
-(`runReminderEvaluation`); the toolbar renders the pill (`CreateReminderPill`) and calls a new
-`KeyboardActions.createReminder(body:fireDate:)` closure, which schedules under the same Full Access
-check as the 🔔 button. The confirmation banner is a shared `.reminderToast()` modifier on both the
-V1 and V2 keyboard roots. The 🔔 quick button stays as a complementary fixed-delay path.
+(`runReminderEvaluation`); the toolbar renders `CreateReminderPill` and calls
+`KeyboardActions.createReminder(body:fireDate:)`, which checks Full Access before scheduling.
+The confirmation banner uses the shared `.reminderToast()` modifier. The bell and code-button
+menu are command-entry shortcuts, not separate scheduling paths.
 
 ## Upcoming badge
 
@@ -141,9 +138,9 @@ cannot present the system permission prompt. So:
 
 ## Requirements
 
-- **Full Access** must be enabled for the keyboard. Without it the keyboard sandbox blocks the
-  scheduling call. SnipKey already requires Full Access for its core snippet/clipboard features, so
-  this adds nothing new. `requestReminder` checks `hasFullAccess` and no-ops with a log otherwise.
+- **Full Access** must be enabled to schedule from the keyboard; without it, the sandbox blocks
+  scheduling. The `createReminder` action checks access and logs refusal. Inserting `/remind `
+  through the bell or code-button menu does not itself require Full Access.
 - **Notification permission** must have been granted (the app prompts on first launch).
 
 ---
@@ -156,14 +153,12 @@ new parameters to `ReminderRequest`. Call sites (keyboard/app) build a `Reminder
 
 ---
 
-## Testing (simulator + argent MCP)
+## Manual verification (physical device)
 
-1. **Build** `SnipKey` (`xcodebuild -project SnipKey.xcodeproj -scheme SnipKey -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' build`). A membership mistake on the shared file surfaces as an "unresolved identifier" error in the **SnipKeyboard** build.
-2. **Run** the app once, accept the notification prompt.
-3. **Settings → General → Keyboard → Keyboards → Add → SnipKey**, then **Allow Full Access**.
-4. Background SnipKey (Home, don't swipe-kill). Open Notes, switch to the SnipKey keyboard, tap 🔔.
-5. Keep using Notes; after ~10s (DEBUG) the banner fires **without reopening SnipKey**. Release builds use 120s.
-
-> Drive with argent: `launch-app` SnipKey, then `launch-app` Notes, discover the 🔔 via
-> `describe` / `debugger-component-tree`, `gesture-tap` it, wait, observe the banner. Call
-> `stop-all-simulator-servers` when done.
+1. Build/install SnipKey on the connected iPhone and open it once; accept notification permission.
+2. Enable the Reminders integration, choose the SnipKey destination, and enable keyboard Full Access.
+3. Background SnipKey and open an empty Notes field with its keyboard.
+4. Tap the bell beside Paste: confirm exactly `/remind ` is inserted and nothing is scheduled yet.
+5. Enter `check the oven in 10 seconds`, then accept **Create reminder**.
+6. Keep using Notes; confirm the banner arrives without reopening SnipKey.
+7. Confirm the bell disappears in a populated field, including with the caret at the beginning.

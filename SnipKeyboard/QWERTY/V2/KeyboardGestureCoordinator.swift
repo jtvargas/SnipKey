@@ -4,9 +4,10 @@
 //
 //  Single root-level gesture state machine for the V2 keyboard. Owns:
 //    • multi-touch press lifecycles (one ActivePress per UITouch)
-//    • finger-slide between keys
-//    • the highlight overlay (one CAShapeLayer that follows the most-recent finger)
+//    • finger-slide between keys (with horizontal + vertical seam hysteresis)
+//    • per-touch pressed highlights (owned by KeyLayerRenderer, one layer per finger)
 //    • the input callout (single character bubble — shows the most-recent press)
+//    • touch-down feedback: system key click (KeyboardClickPlayer); no per-press haptic
 //    • long-press accent menus (per-press timer)
 //    • space-bar cursor drag (one finger owns it)
 //    • backspace rapid-delete (per-press timer)
@@ -129,6 +130,9 @@ final class KeyboardGestureCoordinator: UIView {
         /// Slid onto a down-acting key or otherwise voided — nothing happens on lift.
         /// A further slide onto a character/space revives the press.
         case cancelled
+        /// The finger travelled far enough to become a swipe; the trace decodes to a word
+        /// on lift. Locked against retarget; no callout or highlight.
+        case swipe
     }
 
     /// Initial phase for a fresh press. Pure — self-testable.
@@ -138,7 +142,7 @@ final class KeyboardGestureCoordinator: UIView {
             return nativeCommitTiming ? .pendingCharacter : .committedOnDown
         case .backspace, .shift:
             return .actedOnDown
-        case .space, .returnKey, .snippetToggle:
+        case .space, .returnKey, .emojiToggle:
             return .pendingOnLift
         case .modeChange:
             // Native: the plane switches at finger-down (enables 123-slide-to-symbol).
@@ -155,7 +159,7 @@ final class KeyboardGestureCoordinator: UIView {
             return .pendingCharacter
         case .space, .returnKey:
             return .pendingOnLift
-        case .backspace, .shift, .modeChange, .snippetToggle:
+        case .backspace, .shift, .modeChange, .emojiToggle:
             return .cancelled
         }
     }
@@ -167,6 +171,34 @@ final class KeyboardGestureCoordinator: UIView {
     static func isPlausibleAimError(downPoint: CGPoint, downRow: Int, finalKey: KeyFrame) -> Bool {
         guard abs(finalKey.rowIndex - downRow) <= 1 else { return false }
         return abs(finalKey.rect.midX - downPoint.x) <= finalKey.rect.width * 1.5
+    }
+
+    /// Retarget hysteresis for finger slides. Pure — self-testable.
+    enum SlideHysteresis {
+        /// Distance past the horizontal seam (between side-by-side keys) before a same-row
+        /// retarget. ≈ a third of a letter key.
+        static let horizontal: CGFloat = 12
+        /// Distance past the vertical seam (into the new row's visual rect) before a row
+        /// change. Slightly smaller than horizontal: rows are taller than keys are wide, and a
+        /// deliberate vertical slide covers more distance per intended key than a lateral one.
+        static let vertical: CGFloat = 10
+    }
+
+    /// True when `point` has moved far enough past the seam between `old` and `new` for the
+    /// press to retarget. Row changes use the vertical rule; same-row changes the horizontal.
+    static func slideClearsHysteresis(from old: KeyFrame, to new: KeyFrame, at point: CGPoint) -> Bool {
+        let oldRect = old.rect
+        let newRect = new.rect
+        if new.rowIndex != old.rowIndex {
+            let past: CGFloat = newRect.midY > oldRect.midY
+                ? point.y - max(oldRect.maxY, newRect.minY)      // sliding down
+                : min(oldRect.minY, newRect.maxY) - point.y      // sliding up
+            return past >= SlideHysteresis.vertical
+        }
+        let past: CGFloat = newRect.midX > oldRect.midX
+            ? point.x - max(oldRect.maxX, newRect.minX)          // sliding right
+            : min(oldRect.minX, newRect.maxX) - point.x          // sliding left
+        return past >= SlideHysteresis.horizontal
     }
 
     /// Per-touch press state. Keyed by `ObjectIdentifier(touch)` so concurrent touches
@@ -203,6 +235,15 @@ final class KeyboardGestureCoordinator: UIView {
 
     private let lightImpactHaptic = UIImpactFeedbackGenerator(style: .light)
 
+    // MARK: - Swipe typing
+
+    /// Product setting, refreshed on keyboard appearance rather than per touch.
+    private var swipeTypingEnabled = KeyboardFeatureFlags.swipeTypingEnabled
+    private let swipe = SwipeGestureController()
+    private let swipeTrail = SwipeTrailLayer()
+    /// Letters-page key centers the decoder scores against; nil on other pages.
+    private var swipeLayout: SwipeKeyLayout?
+
     // MARK: - Init
 
     init(state: QWERTYKeyboardState, calloutView: KeyboardCalloutView) {
@@ -220,6 +261,7 @@ final class KeyboardGestureCoordinator: UIView {
         voronoiDebugLayer.magnificationFilter = .nearest
         voronoiDebugLayer.zPosition = 50
         layer.addSublayer(voronoiDebugLayer)
+        layer.addSublayer(swipeTrail)
 
         // Coord conversions: callout lives on the keyboard's root view, so its
         // `keyFrame:` rect must be in root-view coords (callout's superview).
@@ -245,6 +287,9 @@ final class KeyboardGestureCoordinator: UIView {
             press.rapidDeleteTask?.cancel()
         }
         rendererRef.clearAllPressedKeys()
+        if let voiceOverObserver {
+            NotificationCenter.default.removeObserver(voiceOverObserver)
+        }
     }
 
     // MARK: - External Configuration
@@ -256,6 +301,7 @@ final class KeyboardGestureCoordinator: UIView {
         useProbabilisticHitResolver = KeyboardFeatureFlags.useProbabilisticHitResolver
         shadowLoggingEnabled = KeyboardFeatureFlags.shadowLoggingEnabled
         nativeCommitTiming = KeyboardFeatureFlags.nativeCommitTiming
+        refreshSwipeSettings()
         TypingTelemetry.shared.enabled = shadowLoggingEnabled
         KeyboardResponsivenessTelemetry.shared.enabled = shadowLoggingEnabled
         #if DEBUG
@@ -280,6 +326,32 @@ final class KeyboardGestureCoordinator: UIView {
         #endif
     }
 
+    func refreshSwipeSettings() {
+        swipeTypingEnabled = KeyboardFeatureFlags.swipeTypingEnabled
+        if swipeTypingEnabled {
+            SwipeTypingEngine.shared.prepare()
+        } else if swipe.ownerTouchID != nil {
+            cancelAllActivePresses()
+        }
+    }
+
+    /// External host changes preserve pending taps; teardown still discards them.
+    func cancelActiveInteraction(commitPending: Bool = false) {
+        if commitPending {
+            for (id, press) in activePresses.sorted(by: { $0.value.sequence < $1.value.sequence }) {
+                switch press.phase {
+                case .pendingCharacter, .pendingOnLift:
+                    // Remove before calling the proxy so reentrant echoes and later lifts
+                    // cannot commit this press twice. Engaged cursor drags insert no space.
+                    endPress(touchID: id, committed: true)
+                default:
+                    break
+                }
+            }
+        }
+        cancelAllActivePresses()
+    }
+
     /// Provide the layout for the current page and rerender.
     func setPage(_ page: KeyboardPage) {
         currentPage = page
@@ -289,6 +361,7 @@ final class KeyboardGestureCoordinator: UIView {
     /// Notify of an appearance change. Re-renders all key backgrounds and updates callout dark mode.
     func setAppearance(isDark: Bool) {
         calloutController.updateAppearance(isDark: isDark)
+        swipeTrail.updateAppearance(isDark: isDark)
         rebuildLayout()
     }
 
@@ -302,6 +375,18 @@ final class KeyboardGestureCoordinator: UIView {
     func setReturnKey(label: String, prominent: Bool) {
         let isDark = state?.appearanceMode == .dark
         rendererRef.updateReturnKeyLabel(label, prominent: prominent, isDark: isDark)
+    }
+
+    /// Memory-warning response (iOS reclaims keyboard extensions aggressively — a killed
+    /// extension is the least smooth keyboard there is). Drops every cache that can be rebuilt
+    /// lazily: inactive page surfaces + rasterized glyphs in the renderer, the VoiceOver element
+    /// tree, and the debug overlay bitmap. In-flight presses and the visible page are untouched.
+    func handleMemoryPressure() {
+        rendererRef.handleMemoryPressure()
+        if !UIAccessibility.isVoiceOverRunning {
+            accessibilityElements = nil
+        }
+        voronoiDebugLayer.contents = nil
     }
 
     // MARK: - Layout
@@ -337,8 +422,8 @@ final class KeyboardGestureCoordinator: UIView {
         let isDark = state?.appearanceMode == .dark
         let shiftState = state?.shiftState ?? .disabled
         // Show the "EN ES" locale subtitle only when the user has multiple input modes
-        // enabled; otherwise the space bar stays clean. Computed fresh from the host's
-        // `UITextInputMode.activeInputModes` each layout pass.
+        // enabled; otherwise the space bar stays clean. `activeInputLocaleCodes()` is the
+        // controller's per-field cache (refreshed off the hot path), so this is O(1).
         let codes = actions?.activeInputLocaleCodes() ?? []
         let subtitle: String? = codes.count >= 2 ? codes.joined(separator: " ") : nil
 
@@ -357,6 +442,9 @@ final class KeyboardGestureCoordinator: UIView {
             return
         }
         let sizeChanged = lastRenderSignature.map { $0.size != signature.size } ?? false
+        let swipeGeometryChanged = lastRenderSignature.map {
+            $0.page != signature.page || $0.profile != signature.profile || $0.dims != signature.dims
+        } ?? false
         lastRenderSignature = signature
 
         let layout = KeyboardLayoutFactory.layout(
@@ -372,9 +460,11 @@ final class KeyboardGestureCoordinator: UIView {
         // Rebuild the hit grid in lockstep with the frames so the two never diverge.
         currentRowCount = layout.rows.count
         hitGrid = Self.buildHitGrid(from: resolvedFrames, rowCount: currentRowCount)
+        swipeLayout = currentPage == .letters ? Self.makeSwipeLayout(from: resolvedFrames, dims: dims, hash: currentLayoutHash) : nil
 
         rendererRef.render(
             frames: resolvedFrames,
+            page: currentPage,
             dims: dims,
             isDark: isDark,
             shiftState: shiftState,
@@ -387,7 +477,7 @@ final class KeyboardGestureCoordinator: UIView {
         }
 
         TouchOffsetModel.shared.currentLayout = currentLayoutHash
-        rebuildAccessibilityElements()
+        rebuildAccessibilityElementsIfNeeded()
         rebuildHitViews()
         updateVoronoiDebugOverlay()
 
@@ -396,7 +486,7 @@ final class KeyboardGestureCoordinator: UIView {
         // rotation. A same-size change (page swap, appearance) keeps presses alive: remap
         // their key frames into the new layout and re-apply the per-touch highlights that
         // `render()` just destroyed.
-        if sizeChanged {
+        if sizeChanged || (swipeGeometryChanged && swipe.ownerTouchID != nil) {
             cancelAllActivePresses()
         } else {
             remapActivePressesAfterLayoutChange()
@@ -409,6 +499,7 @@ final class KeyboardGestureCoordinator: UIView {
     private func remapActivePressesAfterLayoutChange() {
         guard !activePresses.isEmpty else { return }
         for (id, press) in activePresses {
+            if press.phase == .swipe { continue }
             var p = press
             if let match = resolvedFrames.first(where: { $0.action == p.key.action }) {
                 p.key = match
@@ -423,7 +514,6 @@ final class KeyboardGestureCoordinator: UIView {
 
     /// Cancel every in-flight press without committing anything (rotation / teardown).
     private func cancelAllActivePresses() {
-        guard !activePresses.isEmpty else { return }
         for (id, press) in activePresses {
             press.longPressTask?.cancel()
             press.rapidDeleteTask?.cancel()
@@ -431,9 +521,39 @@ final class KeyboardGestureCoordinator: UIView {
             rendererRef.clearPressedKey(for: id)
             KeyboardResponsivenessTelemetry.shared.markTouchEnded(id)
         }
+        swipe.cancelAll()
+        swipeTrail.cancel()
         activePresses.removeAll()
-        calloutController.dismiss()
+        calloutController.dismiss(immediately: true)
         mostRecentTouchID = nil
+    }
+
+    // MARK: - Swipe typing
+
+    /// Letters-page decoder geometry: one center per lowercase a–z character key.
+    private static func makeSwipeLayout(from frames: [KeyFrame], dims: KeyboardDimensions, hash: Int) -> SwipeKeyLayout? {
+        var centers: [Character: CGPoint] = [:]
+        centers.reserveCapacity(26)
+        var keyHeight: CGFloat = dims.keyHeight
+        for frame in frames {
+            guard case .character(let c) = frame.action, c.count == 1,
+                  let ch = c.lowercased().first, ch.isLetter, ch.isASCII else { continue }
+            centers[ch] = CGPoint(x: frame.rect.midX, y: frame.rect.midY)
+            keyHeight = frame.rect.height
+        }
+        guard centers.count == 26 else { return nil }
+        return SwipeKeyLayout(centers: centers, keyWidth: dims.letterKeyWidth, keyHeight: keyHeight, hash: hash)
+    }
+
+    /// Decode on lift to preserve ordering with the next tap; runner-ups go to the toolbar.
+    private func decodeAndCommitSwipe(touchID id: ObjectIdentifier) {
+        guard let trace = swipe.end(touchID: id), let layout = swipeLayout,
+              let state, let actions else { return }
+        let candidates = KeyboardSignposts.interval("swipeDecode") {
+            SwipeTypingEngine.shared.decode(trace, layout: layout)
+        }
+        guard !candidates.isEmpty else { return }
+        KeyboardCommitPipeline.commitSwipeWord(candidates, state: state, actions: actions)
     }
 
     /// Paint the next-gen engine's decision cells when both the debug hit-overlay setting and
@@ -497,6 +617,38 @@ final class KeyboardGestureCoordinator: UIView {
 
     /// Rebuild VoiceOver elements so each key is its own focusable, labelled element.
     /// Without this, the entire coordinator reads as one anonymous rectangle.
+    ///
+    /// Built only while VoiceOver is running: a page switch happens at touch-DOWN of the 123
+    /// key, and ~35 `UIAccessibilityElement` allocations there are pure cost for everyone
+    /// else. `voiceOverStatusDidChangeNotification` (observed in `didMoveToWindow`) builds
+    /// the tree the moment VoiceOver turns on.
+    private func rebuildAccessibilityElementsIfNeeded() {
+        guard UIAccessibility.isVoiceOverRunning else {
+            accessibilityElements = nil
+            return
+        }
+        rebuildAccessibilityElements()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            cancelAllActivePresses()
+        } else {
+            refreshSwipeSettings()
+        }
+        guard window != nil, voiceOverObserver == nil else { return }
+        voiceOverObserver = NotificationCenter.default.addObserver(
+            forName: UIAccessibility.voiceOverStatusDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.rebuildAccessibilityElementsIfNeeded()
+        }
+    }
+
+    private var voiceOverObserver: NSObjectProtocol?
+
     private func rebuildAccessibilityElements() {
         let elements: [UIAccessibilityElement] = resolvedFrames.map { frame in
             let element = KeyboardKeyAccessibilityElement(
@@ -508,6 +660,18 @@ final class KeyboardGestureCoordinator: UIView {
             element.accessibilityLabel = accessibilityLabel(for: frame.action)
             element.accessibilityHint = accessibilityHint(for: frame.action)
             element.accessibilityTraits = [.keyboardKey]
+            if frame.action == .emojiToggle {
+                element.accessibilityCustomActions = [
+                    UIAccessibilityCustomAction(name: "Emoji") { [weak self] _ in
+                        self?.state?.surface = .emoji
+                        return true
+                    },
+                    UIAccessibilityCustomAction(name: "Snippets") { [weak self] _ in
+                        self?.state?.surface = .snippets
+                        return true
+                    }
+                ]
+            }
             return element
         }
         accessibilityElements = elements
@@ -536,7 +700,7 @@ final class KeyboardGestureCoordinator: UIView {
             case .numbers: return "numbers"
             case .symbols: return "symbols"
             }
-        case .snippetToggle:    return "snippets"
+        case .emojiToggle:     return "Emoji"
         }
     }
 
@@ -544,7 +708,7 @@ final class KeyboardGestureCoordinator: UIView {
         switch action {
         case .shift:        "Double tap for caps lock"
         case .space:        "Hold and drag to move the cursor"
-        case .snippetToggle: "Switch to snippet list"
+        case .emojiToggle: "Open emoji. Hold for Emoji and Snippets."
         default:            nil
         }
     }
@@ -566,10 +730,10 @@ final class KeyboardGestureCoordinator: UIView {
             KeyboardCommitPipeline.commitReturn(state: state, actions: actions)
         case .modeChange(let page):
             KeyboardCommitPipeline.commitModeChange(to: page, state: state, actions: actions)
-        case .snippetToggle:
-            state.showingSnippets = true
+        case .emojiToggle:
+            state.surface = .emoji
         case .shift:
-            state.toggleShift()
+            state.toggleShift(at: ProcessInfo.processInfo.systemUptime)
             rendererRef.updateShiftState(state.shiftState)
         }
     }
@@ -593,6 +757,9 @@ final class KeyboardGestureCoordinator: UIView {
         // and the bigram/trigram context is exactly as fresh as under commit-on-down
         // when the new touch resolves below.
         flushPendingCharacterPresses()
+        // A second finger during a swipe is ignored (native QuickPath): its tap would land
+        // in the document before the swiped word.
+        guard !swipe.isActive else { return }
         let point = touch.location(in: self)
         guard ensureLayoutReadyForTouch(), let rawKey = findKey(at: point) else {
             TypingTelemetry.shared.recordUnresolvedTouchDown(layout: currentLayoutHash)
@@ -663,7 +830,7 @@ final class KeyboardGestureCoordinator: UIView {
         case .returnKey: action = "return"
         case .shift: action = "shift"
         case .modeChange: action = "mode"
-        case .snippetToggle: action = "other"
+        case .emojiToggle: action = "other"
         }
 
         var priorDict: [String: Float]?
@@ -703,7 +870,7 @@ final class KeyboardGestureCoordinator: UIView {
                 wantsCoalesced = true
             } else {
                 switch press.phase {
-                case .pendingCharacter, .pendingOnLift, .cancelled:
+                case .pendingCharacter, .pendingOnLift, .cancelled, .swipe:
                     wantsCoalesced = true
                 case .actedOnDown:
                     if case .backspace = press.originAction { wantsCoalesced = false } else { wantsCoalesced = true }
@@ -713,17 +880,21 @@ final class KeyboardGestureCoordinator: UIView {
             }
             if wantsCoalesced, let coalesced = event?.coalescedTouches(for: touch), !coalesced.isEmpty {
                 for sample in coalesced {
-                    handleMovedPress(touchID: id, point: sample.location(in: self))
+                    handleMovedPress(touchID: id, point: sample.location(in: self), timestamp: sample.timestamp)
                 }
             } else {
-                handleMovedPress(touchID: id, point: touch.location(in: self))
+                handleMovedPress(touchID: id, point: touch.location(in: self), timestamp: touch.timestamp)
             }
         }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
-            endPress(touchID: ObjectIdentifier(touch), committed: true)
+            let id = ObjectIdentifier(touch)
+            if swipe.ownerTouchID == id {
+                handleMovedPress(touchID: id, point: touch.location(in: self), timestamp: touch.timestamp)
+            }
+            endPress(touchID: id, committed: true)
         }
     }
 
@@ -751,8 +922,10 @@ final class KeyboardGestureCoordinator: UIView {
 
         rendererRef.setPressedKey(key, for: id)
         KeyboardResponsivenessTelemetry.shared.markHighlightApplied(id)
-        // No per-press haptic (Phase F). Discrete event haptics (accent-menu, space-cursor)
-        // are preserved further below.
+        // Perceived feedback is complete at touch-DOWN: highlight (above), callout (below) and
+        // the system key click — every key, exactly like the native keyboard. No per-press
+        // haptic; the discrete event haptics (accent-menu, space-cursor) stay further below.
+        KeyboardClickPlayer.play()
 
         switch key.action {
         case .character(let c):
@@ -779,6 +952,11 @@ final class KeyboardGestureCoordinator: UIView {
                 }
             }
             press.longPressTask = scheduleLongPress(touchID: id, key: key)
+            if nativeCommitTiming, swipeTypingEnabled, SwipeTypingEngine.shared.isReady,
+               currentPage == .letters, swipeLayout != nil,
+               actions?.inputTraits().allowsSmartTransforms == true {
+                swipe.arm(touchID: id, point: point, timestamp: touch.timestamp, keyWidth: dims.letterKeyWidth)
+            }
         case .insertText(_, let output):
             calloutController.dismiss()
             if press.phase == .committedOnDown, let state, let actions {
@@ -801,8 +979,9 @@ final class KeyboardGestureCoordinator: UIView {
                 })
             }
         case .shift:
-            // Shift triggers on press for snappier feel; double-tap detection happens in state.
-            state?.toggleShift()
+            // Shift triggers on press for snappier feel; double-tap detection happens in state
+            // on the touch's own timestamp (event-stream time, not wall-clock).
+            state?.toggleShift(at: touch.timestamp)
             rendererRef.updateShiftState(state?.shiftState ?? .disabled)
         case .modeChange(let page):
             if press.phase == .actedOnDown, let state {
@@ -820,8 +999,10 @@ final class KeyboardGestureCoordinator: UIView {
                     rendererRef.setPressedKey(under, for: id)
                 }
             }
-        case .returnKey, .snippetToggle:
-            break  // commit on release for these
+        case .emojiToggle:
+            press.longPressTask = scheduleLongPress(touchID: id, key: key)
+        case .returnKey:
+            break  // commit on release
         }
 
         activePresses[id] = press
@@ -846,6 +1027,7 @@ final class KeyboardGestureCoordinator: UIView {
     /// The single deferred-commit block, shared by the rollover flush and `endPress`.
     private func commitPendingPress(_ press: inout ActivePress, touchID id: ObjectIdentifier) {
         guard let state, let actions else { return }
+        swipe.cancel(touchID: id)
         // Timing capture is DEBUG-only end to end — RELEASE pays not even the clock read.
         #if DEBUG
         let commitStart = CACurrentMediaTime()
@@ -899,13 +1081,14 @@ final class KeyboardGestureCoordinator: UIView {
         }
     }
 
-    private func handleMovedPress(touchID id: ObjectIdentifier, point: CGPoint) {
+    private func handleMovedPress(touchID id: ObjectIdentifier, point: CGPoint, timestamp: TimeInterval) {
         guard var press = activePresses[id] else { return }
 
         // Off-keyboard drag: dismiss this press's visual state if its finger left the keys
         // area entirely. Other concurrent presses keep working.
         let offKeyboardSlop: CGFloat = 8
-        if point.y > bounds.maxY + offKeyboardSlop {
+        if point.y > bounds.maxY + offKeyboardSlop ||
+            (swipe.ownerTouchID == id && !bounds.insetBy(dx: -offKeyboardSlop, dy: -offKeyboardSlop).contains(point)) {
             press.longPressTask?.cancel()
             press.rapidDeleteTask?.cancel()
             if id == mostRecentTouchID {
@@ -913,9 +1096,33 @@ final class KeyboardGestureCoordinator: UIView {
             }
             rendererRef.clearPressedKey(for: id)
             KeyboardResponsivenessTelemetry.shared.markTouchEnded(id)
+            if press.phase == .swipe { swipeTrail.cancel() }
+            swipe.cancel(touchID: id)
             activePresses.removeValue(forKey: id)
             promoteNewMostRecentIfNeeded(removedID: id)
             return
+        }
+
+        // Only an uncommitted letter press can turn into a swipe. A rollover commit or
+        // accent menu must never later insert a second word from the same finger.
+        if press.phase != .pendingCharacter && press.phase != .swipe {
+            swipe.cancel(touchID: id)
+        }
+        switch swipe.append(touchID: id, point: point, timestamp: timestamp) {
+        case .sampled(let sample):
+            swipeTrail.append(sample)
+            return
+        case .activated(let replay):
+            press.longPressTask?.cancel()
+            press.longPressTask = nil
+            press.phase = .swipe
+            activePresses[id] = press
+            rendererRef.clearPressedKey(for: id)
+            if id == mostRecentTouchID { calloutController.dismiss() }
+            swipeTrail.begin(with: replay)
+            return
+        case .buffered, .ignored:
+            break
         }
 
         // Space cursor mode? — purely directional caret adjustment for the owning touch.
@@ -951,7 +1158,7 @@ final class KeyboardGestureCoordinator: UIView {
         // (accent menu scheduling / rapid delete), nothing else.
         let locked: Bool
         switch press.phase {
-        case .committed, .committedOnDown, .accentMenu:
+        case .committed, .committedOnDown, .accentMenu, .swipe:
             locked = true
         case .actedOnDown:
             // Shift/mode-origin presses stay live so press-slide-release works
@@ -988,25 +1195,13 @@ final class KeyboardGestureCoordinator: UIView {
         } else {
             guard newKey != press.key else { return }
 
-            // Touch hysteresis: require the finger to move at least 12pt past the boundary
-            // into the new key's rect before swapping. Prevents callout flicker / wrong-key
-            // commits when a finger wobbles around a key boundary during a fast slide —
-            // matches native iOS "sticky" feel.
-            let hysteresisDistance: CGFloat = 12
-            let oldRect = press.key.rect
-            let newRect = newKey.rect
-            let pastBoundary: CGFloat
-            if newRect.midX > oldRect.midX {
-                // Sliding right: boundary is between oldRect.maxX and newRect.minX.
-                pastBoundary = point.x - max(oldRect.maxX, newRect.minX)
-            } else if newRect.midX < oldRect.midX {
-                // Sliding left.
-                pastBoundary = min(oldRect.minX, newRect.maxX) - point.x
-            } else {
-                // Vertical slide (different row) — don't apply horizontal hysteresis.
-                pastBoundary = hysteresisDistance
-            }
-            if pastBoundary < hysteresisDistance { return }
+            // Touch hysteresis: the finger must travel a minimum distance past the seam into
+            // the new key before the press retargets. Prevents callout flicker / wrong-key
+            // commits when a finger wobbles on a boundary during a fast slide — the native
+            // "sticky" feel. Row changes are judged on the vertical seam (a thumb rolling
+            // across the 12pt row gap must not flip rows on contact), same-row changes on the
+            // horizontal seam.
+            guard Self.slideClearsHysteresis(from: press.key, to: newKey, at: point) else { return }
         }
 
         press.longPressTask?.cancel()
@@ -1042,6 +1237,12 @@ final class KeyboardGestureCoordinator: UIView {
         press.longPressTask?.cancel()
         press.rapidDeleteTask?.cancel()
         rendererRef.clearPressedKey(for: id)
+        if press.phase == .swipe && committed {
+            swipeTrail.end()
+        } else {
+            if press.phase == .swipe { swipeTrail.cancel() }
+            swipe.cancel(touchID: id)
+        }
 
         // Space-cursor mode: if this press owned it, end cursor mode and suppress space.
         var spaceCursorWasEngaged = false
@@ -1050,19 +1251,19 @@ final class KeyboardGestureCoordinator: UIView {
         }
 
         // Accent-menu commit: only relevant when THIS touch was driving the most-recent
-        // accent menu (callout view is shared). Commit the selected accent on lift.
+        // accent menu (callout view is shared). Commit the selected accent on lift. The menu
+        // already cased the item, so this is a literal insert (`commitText`) plus the one-shot
+        // shift clear a character commit would perform.
         var accentInserted = false
-        if id == mostRecentTouchID, case .actions(_, _, _) = calloutController.mode {
+        if id == mostRecentTouchID, case .actions(let base, _, let selectedIndex) = calloutController.mode,
+           base == press.key, press.phase == .accentMenu {
             if committed, let selected = calloutController.commitActions(), let state = state, let actions = actions {
-                actions.insertCharacter(selected)
-                state.inputTracking.recordAction(.character)
-                if selected.count == 1, let scalar = selected.first, scalar.isLetter {
-                    state.inputTracking.touchContext.recordCharacter(scalar)
+                if case .emojiToggle = base.action {
+                    state.surface = selectedIndex == 0 ? .emoji : .snippets
                 } else {
-                    state.inputTracking.touchContext.recordNonCharacter()
+                    KeyboardCommitPipeline.commitText(selected, state: state, actions: actions)
+                    state.handleShiftAfterCharacter()
                 }
-                state.handleShiftAfterCharacter()
-                actions.scheduleSideEffects()
                 accentInserted = true
             }
         }
@@ -1092,11 +1293,13 @@ final class KeyboardGestureCoordinator: UIView {
                 case .modeChange(let page):
                     // Legacy timing only — native switches the plane at touch-down.
                     KeyboardCommitPipeline.commitModeChange(to: page, state: state, actions: actions)
-                case .snippetToggle:
-                    state.showingSnippets = true
+                case .emojiToggle:
+                    state.surface = .emoji
                 default:
                     break
                 }
+            case .swipe:
+                decodeAndCommitSwipe(touchID: id)
             case .actedOnDown, .committed, .committedOnDown, .accentMenu, .cancelled:
                 break
             }
@@ -1367,14 +1570,18 @@ final class KeyboardGestureCoordinator: UIView {
     /// Create a task that opens the accent menu after 400ms iff the press is still on `key`.
     /// Returns the task so it can be stored on the `ActivePress` and cancelled if needed.
     private func scheduleLongPress(touchID id: ObjectIdentifier, key: KeyFrame) -> Task<Void, Never>? {
-        guard case .character(let c) = key.action else { return nil }
-        // In URL / email fields, long-pressing "." offers domain TLDs (.com, .net, …),
-        // matching native iOS. Everywhere else, "." shows its normal accent menu (ellipsis).
         let menu: [String]?
-        if c == ".", let kt = actions?.inputTraits().keyboardType, kt == .URL || kt == .emailAddress {
-            menu = AccentMap.domainMenu()
-        } else {
-            menu = AccentMap.menu(for: c, uppercased: (state?.shiftState ?? .disabled) != .disabled)
+        switch key.action {
+        case .emojiToggle:
+            menu = ["Emoji", "Snippets"]
+        case .character(let c):
+            if c == ".", let kt = actions?.inputTraits().keyboardType, kt == .URL || kt == .emailAddress {
+                menu = AccentMap.domainMenu()
+            } else {
+                menu = AccentMap.menu(for: c, uppercased: (state?.shiftState ?? .disabled) != .disabled)
+            }
+        default:
+            return nil
         }
         guard let menu else { return nil }
         return Task { @MainActor [weak self] in
@@ -1384,7 +1591,8 @@ final class KeyboardGestureCoordinator: UIView {
             // own the menu. A rollover-flushed press (.committed) can't — its character is
             // final, exactly like native.
             guard var press = self.activePresses[id], press.key == key,
-                  press.phase == .pendingCharacter || press.phase == .committedOnDown else { return }
+                  press.phase == .pendingCharacter || press.phase == .committedOnDown
+                    || (key.action == .emojiToggle && press.phase == .pendingOnLift) else { return }
             if press.phase == .committedOnDown {
                 // Legacy timing only: the character was optimistically committed at
                 // touch-down — undo it so the accent insertion replaces it cleanly. Under
@@ -1399,7 +1607,9 @@ final class KeyboardGestureCoordinator: UIView {
             // Accent menu becomes the visual focus — promote this touch to most-recent.
             self.mostRecentTouchID = id
             self.calloutController.beginActions(for: key, items: menu)
-            self.lightImpactHaptic.impactOccurred(intensity: 0.8)
+            if key.action != .emojiToggle {
+                self.lightImpactHaptic.impactOccurred(intensity: 0.8)
+            }
         }
     }
 
@@ -1419,10 +1629,12 @@ final class KeyboardGestureCoordinator: UIView {
                 let count = press.rapidDeleteCount
                 if native {
                     if count <= 15 {
+                        KeyboardClickPlayer.play()
                         self.commitBackspace()
                         self.activePresses[id] = press
                         try? await Task.sleep(for: .milliseconds(100))
                     } else {
+                        KeyboardClickPlayer.play()
                         let deleted = self.commitWordBackspace()
                         self.activePresses[id] = press
                         // A single-char fallback tick (empty/unavailable context) keeps the
@@ -1500,7 +1712,7 @@ extension KeyboardGestureCoordinator {
             (.shift, .actedOnDown),
             (.space, .pendingOnLift),
             (.returnKey, .pendingOnLift),
-            (.snippetToggle, .pendingOnLift),
+            (.emojiToggle, .pendingOnLift),
             (.modeChange(.numbers), .actedOnDown),
         ]
         for (action, expected) in nativeExpectations
@@ -1516,7 +1728,7 @@ extension KeyboardGestureCoordinator {
             (.shift, .actedOnDown),
             (.space, .pendingOnLift),
             (.returnKey, .pendingOnLift),
-            (.snippetToggle, .pendingOnLift),
+            (.emojiToggle, .pendingOnLift),
             (.modeChange(.numbers), .pendingOnLift),
         ]
         for (action, expected) in legacyExpectations
@@ -1533,7 +1745,7 @@ extension KeyboardGestureCoordinator {
             (.backspace, .cancelled),
             (.shift, .cancelled),
             (.modeChange(.symbols), .cancelled),
-            (.snippetToggle, .cancelled),
+            (.emojiToggle, .cancelled),
         ]
         for (action, expected) in retargetExpectations
         where phaseAfterRetarget(to: action) != expected {
@@ -1541,7 +1753,7 @@ extension KeyboardGestureCoordinator {
         }
         // A retarget must never fabricate a down-acting or terminal phase.
         for action: KeyAction in [.character("z"), .space, .backspace, .shift,
-                                  .modeChange(.letters), .snippetToggle, .returnKey] {
+                                  .modeChange(.letters), .emojiToggle, .returnKey] {
             let p = phaseAfterRetarget(to: action)
             if p == .actedOnDown || p == .committed || p == .committedOnDown || p == .accentMenu {
                 failures.append("phaseAfterRetarget(\(action)) produced illegal phase \(p)")

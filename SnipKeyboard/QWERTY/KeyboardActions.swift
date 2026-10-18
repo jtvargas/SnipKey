@@ -8,27 +8,41 @@
 import SwiftUI
 import UIKit
 
-/// Host text-field traits the keyboard reads to drive smart-punctuation, auto-cap, etc.
-/// Snapshotted on demand from `textDocumentProxy` — these can change as the user moves
-/// between text fields, so we read fresh each time.
+/// Host text-field traits the keyboard reads to drive smart-punctuation, auto-cap, layout
+/// profile, return-key label and the space-bar locale subtitle. Each backing
+/// `textDocumentProxy` / `UITextInputMode` read crosses to the host process, so the
+/// controller snapshots them once per field (off the keystroke path) and the hot path
+/// only ever reads this cached value.
 struct HostInputTraits {
     let keyboardType: UIKeyboardType
+    let keyboardAppearance: UIKeyboardAppearance
+    let returnKeyType: UIReturnKeyType
     let autocapitalizationType: UITextAutocapitalizationType
     let autocorrectionType: UITextAutocorrectionType
     let spellCheckingType: UITextSpellCheckingType
     let smartQuotesEnabled: Bool
     let smartDashesEnabled: Bool
     let autoCapitalizationEnabled: Bool
+    /// `UIInputViewController.needsInputModeSwitchKey` — whether the globe key is required.
+    let needsInputModeSwitchKey: Bool
+    /// Uppercased language codes of the enabled input modes ("EN", "ES"…) when more than one
+    /// is enabled and the globe key is shown; empty otherwise. Rendered as the space-bar
+    /// subtitle. Derived from `UITextInputMode.activeInputModes` at refresh time only.
+    let localeCodes: [String]
 
     /// Sensible defaults used by the `.noop` actions (previews).
     static let defaults = HostInputTraits(
         keyboardType: .default,
+        keyboardAppearance: .default,
+        returnKeyType: .default,
         autocapitalizationType: .sentences,
         autocorrectionType: .default,
         spellCheckingType: .default,
         smartQuotesEnabled: true,
         smartDashesEnabled: true,
-        autoCapitalizationEnabled: true
+        autoCapitalizationEnabled: true,
+        needsInputModeSwitchKey: true,
+        localeCodes: []
     )
 
     /// True if smart-punctuation and auto-cap-I transforms should run for this field.
@@ -53,22 +67,18 @@ struct HostInputTraits {
 /// KeyboardViewController (UIKit) into the SwiftUI environment.
 /// This avoids NotificationCenter overhead for high-frequency key presses.
 struct KeyboardActions {
-    /// Insert text into the active text field
-    let insertText: (String) -> Void
-
-    /// Insert a single committed character into the active text field.
-    /// Identical to `insertText` but marks the host's synchronous `textDidChange`
-    /// re-entrancy as "our own character insert" so the controller can skip the
-    /// redundant auto-capitalization context read on the hot path (V2 only).
-    let insertCharacter: (String) -> Void
+    /// Insert text into the active text field. The controller advances the context mirror
+    /// and flags the host's synchronous `textDidChange` re-entrancy as our own mutation.
+    var insertText: (String) -> Void
 
     /// Delete one character backward
-    let deleteBackward: () -> Void
+    var deleteBackward: () -> Void
 
     /// Switch to the next keyboard (globe key)
     let advanceToNextInputMode: () -> Void
 
-    /// Read the text before the cursor (for auto-period detection)
+    /// Synchronous cross-process read of the text before the caret. Toolbar-tap paths only
+    /// (suggestion accept validation); the keystroke path reads the context mirror instead.
     let documentContextBeforeInput: () -> String?
 
     /// Screen width from UIKit — avoids GeometryReader in the keyboard view.
@@ -82,10 +92,6 @@ struct KeyboardActions {
 
     /// Authoritative Full Access check (UIInputViewController.hasFullAccess).
     let hasFullAccess: () -> Bool
-
-    /// Schedule a generic local notification from the keyboard (🔔 quick button). The controller
-    /// supplies `hasFullAccess` and the delay. See LOCAL_NOTIFICATIONS.md.
-    let requestReminder: () -> Void
 
     /// Schedule a parsed `/remind … at <time>` reminder at an absolute fire date.
     /// `body` is the notification text, `fireDate` the resolved time. See ReminderParseEngine.
@@ -125,14 +131,27 @@ struct KeyboardActions {
     /// Used by V2's space-bar cursor drag.
     let adjustCaret: (Int) -> Void
 
-    /// Snapshot of the host text field's input traits — keyboard type, autocap, smart
-    /// quotes/dashes. Used by the commit pipeline to gate smart-punctuation and auto-cap
-    /// transforms (URL/email fields skip them).
+    /// Cached snapshot of the host text field's input traits — keyboard type, autocap,
+    /// smart quotes/dashes, return key, locale codes. O(1); refreshed by the controller off
+    /// the keystroke path. Used by the commit pipeline to gate smart-punctuation and
+    /// auto-cap transforms (URL/email fields skip them).
     let inputTraits: () -> HostInputTraits
 
-    /// Localized language codes for the user's active input modes (e.g. ["EN", "ES"]).
-    /// Rendered as a subtitle on the space bar when more than one mode is enabled.
+    /// `inputTraits().localeCodes` — O(1) cached array, safe to call every layout pass.
+    /// Rendered as a subtitle on the space bar when more than one input mode is enabled.
     let activeInputLocaleCodes: () -> [String]
+
+    /// Insert a command prefix through one selection-aware host transaction.
+    let insertQuickCommand: (String) -> Void
+
+    /// Validate the current host context before accepting a toolbar candidate.
+    let acceptPredictiveCandidate: (PredictiveCandidate) -> Void
+
+    /// Publish the runner-up words of a just-committed swipe to the toolbar so a tap can
+    /// replace the committed word (+ its trailing space). `committed` is the word that is
+    /// now in the document; `alternatives` are ranked best-first. Call even when there are
+    /// no alternatives: publishing invalidates pending predictions and clears the old row.
+    let showSwipeAlternatives: (_ committed: String, _ alternatives: [String]) -> Void
 
     /// Shared V2 callout view, pre-mounted on `KeyboardViewController.view`. Nil in previews.
     /// The V2 gesture coordinator presents/dismisses it directly; rect conversion
@@ -143,14 +162,12 @@ struct KeyboardActions {
     /// No-op instance for previews and default values
     static let noop = KeyboardActions(
         insertText: { _ in },
-        insertCharacter: { _ in },
         deleteBackward: {},
         advanceToNextInputMode: {},
         documentContextBeforeInput: { nil },
         screenWidthProvider: { 393 },
         openApp: {},
         hasFullAccess: { false },
-        requestReminder: {},
         createReminder: { _, _ in },
         createTimer: { _, _ in },
         pasteFromClipboard: {},
@@ -161,6 +178,9 @@ struct KeyboardActions {
         adjustCaret: { _ in },
         inputTraits: { .defaults },
         activeInputLocaleCodes: { [] },
+        insertQuickCommand: { _ in },
+        acceptPredictiveCandidate: { _ in },
+        showSwipeAlternatives: { _, _ in },
         v2CalloutView: nil
     )
 }
